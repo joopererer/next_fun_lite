@@ -13,9 +13,17 @@ import type {
 import { api, getEventUrl } from '../../lib/api'
 import { ACTIVITY_CATEGORIES } from '../../lib/categories'
 import { applyParseResult } from '../../lib/parseResult'
+import {
+  clampParticipantInput,
+  DEFAULT_MAX_PARTICIPANTS,
+  DEFAULT_MIN_PARTICIPANTS,
+  parseMaxParticipants,
+  parseMinParticipants,
+} from '../../lib/participants'
 import { formatEventDate, getUser } from '../../lib/user'
 import { ActivityParsePanel } from '../ActivityParsePanel'
 import { DiningFields } from './DiningFields'
+import { ParticipantLimitFields } from './ParticipantLimitFields'
 import { SportsFields } from './SportsFields'
 import { TicketFields } from './TicketFields'
 
@@ -39,7 +47,14 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
   const [description, setDescription] = useState(initial?.description ?? '')
   const [date, setDate] = useState(initial?.date?.slice(0, 16) ?? '')
   const [location, setLocation] = useState(initial?.location ?? '')
-  const [maxParticipants, setMaxParticipants] = useState(initial?.maxParticipants?.toString() ?? '')
+  const [minParticipants, setMinParticipants] = useState(
+    String(initial?.minParticipants ?? DEFAULT_MIN_PARTICIPANTS),
+  )
+  const [maxParticipants, setMaxParticipants] = useState(() => {
+    if (initial?.maxParticipants === null) return '0'
+    if (initial?.maxParticipants != null) return String(initial.maxParticipants)
+    return String(DEFAULT_MAX_PARTICIPANTS)
+  })
   const [fee, setFee] = useState(initial?.fee ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [organizerName, setOrganizerName] = useState(initial?.organizerName ?? getUser()?.name ?? '')
@@ -73,7 +88,14 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     setDescription(initial.description ?? '')
     setDate(initial.date?.slice(0, 16) ?? '')
     setLocation(initial.location ?? '')
-    setMaxParticipants(initial.maxParticipants?.toString() ?? '')
+    setMinParticipants(String(initial.minParticipants ?? DEFAULT_MIN_PARTICIPANTS))
+    setMaxParticipants(
+      initial.maxParticipants === null
+        ? '0'
+        : initial.maxParticipants != null
+          ? String(initial.maxParticipants)
+          : String(DEFAULT_MAX_PARTICIPANTS),
+    )
     setFee(initial.fee ?? '')
     setNotes(initial.notes ?? '')
     setOrganizerName(initial.organizerName ?? getUser()?.name ?? '')
@@ -142,18 +164,24 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
       setSourceUrl,
       setFee,
       setNotes,
-      setMaxParticipants,
+      setMaxParticipants: (v) => setMaxParticipants(clampParticipantInput(String(v))),
       setDate,
       setCategory,
+      setItinerary,
     }, { getNotes: () => notes })
   }
 
-  const buildPayload = (): Partial<Activity> => ({
+  const buildPayload = (): Partial<Activity> => {
+    const min = parseMinParticipants(minParticipants)
+    const max = parseMaxParticipants(maxParticipants)
+
+    return {
     title: title.trim(),
     description: description.trim(),
     date: date ? new Date(date).toISOString() : null,
     location: location.trim(),
-    maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : null,
+    minParticipants: min,
+    maxParticipants: max,
     fee: fee.trim(),
     notes: notes.trim(),
     organizerName: organizerName.trim(),
@@ -176,7 +204,8 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     perPersonCost: perPersonCost.trim() || undefined,
     reservationMethod: reservationMethod || undefined,
     requiresDeposit: requiresDeposit || undefined,
-  })
+  }
+  }
 
   const handleSubmit = async () => {
     if (!title.trim() || !organizerName.trim() || !organizerWechat.trim()) {
@@ -187,8 +216,10 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
       alert('请填写活动时间和地点')
       return
     }
-    if (!maxParticipants) {
-      alert('请填写目标人数')
+    const min = parseMinParticipants(minParticipants)
+    const max = parseMaxParticipants(maxParticipants)
+    if (max != null && min > max) {
+      alert('最少人数不能大于最多人数')
       return
     }
     setSubmitting(true)
@@ -263,6 +294,9 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
       {mode === 'admin' && !editId && (
         <ActivityParsePanel onParsed={handleParsed} className="border-b border-gray-100 pb-4 mb-2" />
       )}
+      {mode === 'public' && !editId && !sourceProposalId && (
+        <ActivityParsePanel onParsed={handleParsed} className="border-b border-gray-100 pb-4 mb-2" />
+      )}
       <div>
         <label className="text-sm text-gray-600 mb-1 block">活动名称 *</label>
         <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -307,19 +341,29 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
         <label className="text-sm text-gray-600 mb-1 block">地点 *</label>
         <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm text-gray-600 mb-1 block">目标人数 *</label>
-          <input type="number" className="input-field" value={maxParticipants} onChange={(e) => setMaxParticipants(e.target.value)} min={1} />
-        </div>
-        <div>
-          <label className="text-sm text-gray-600 mb-1 block">费用说明</label>
-          <input className="input-field" value={fee} onChange={(e) => setFee(e.target.value)} />
-        </div>
+      <ParticipantLimitFields
+        min={minParticipants}
+        max={maxParticipants}
+        onMinChange={setMinParticipants}
+        onMaxChange={setMaxParticipants}
+      />
+      <div>
+        <label className="text-sm text-gray-600 mb-1 block">费用说明</label>
+        <input className="input-field" value={fee} onChange={(e) => setFee(e.target.value)} />
       </div>
       <div>
         <label className="text-sm text-gray-600 mb-1 block">注意事项</label>
         <textarea className="input-field min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="多条用换行分隔" />
+      </div>
+      <div>
+        <label className="text-sm text-gray-600 mb-1 block">行程（选填）</label>
+        <textarea
+          className="input-field min-h-[80px]"
+          placeholder={'18:30 集合\n19:00 开始活动\n21:30 自由交流'}
+          value={itinerary}
+          onChange={(e) => setItinerary(e.target.value)}
+        />
+        <p className="text-xs text-gray-400 mt-1">每行一个时间节点，粘贴链接解析后会自动填入</p>
       </div>
 
       <div ref={dynamicRef}>
@@ -337,7 +381,6 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
           <SportsFields
             difficulty={difficulty}
             distanceAndDuration={distanceAndDuration}
-            itinerary={itinerary}
             equipment={equipment}
             transportation={transportation}
             mealArrangement={mealArrangement}

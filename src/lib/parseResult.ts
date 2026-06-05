@@ -19,6 +19,7 @@ export interface ParseFormSetters {
   setDateHint?: (v: string) => void
   setCategory?: (v: ActivityCategory) => void
   setFeeLevel?: (v: FeeLevel) => void
+  setItinerary?: (v: string) => void
 }
 
 export function applyParseResult(
@@ -34,6 +35,7 @@ export function applyParseResult(
   if (data.maxParticipants != null) setters.setMaxParticipants?.(String(data.maxParticipants))
   if (data.category) setters.setCategory?.(data.category)
   if (data.feeLevel) setters.setFeeLevel?.(data.feeLevel)
+  if (data.itinerary) setters.setItinerary?.(data.itinerary)
 
   if (data.date && !options?.dateHintOnly) {
     setters.setDate?.(toDatetimeLocalValue(data.date))

@@ -20,6 +20,7 @@ export interface Activity {
   description: string
   date: string | null
   location: string
+  minParticipants?: number | null
   maxParticipants: number | null
   fee: string
   notes: string
@@ -98,6 +99,7 @@ export interface ParseResult {
   notes?: string | null
   category?: ActivityCategory | null
   feeLevel?: FeeLevel | null
+  itinerary?: string | null
 }
 
 export interface ApiParseResponse {

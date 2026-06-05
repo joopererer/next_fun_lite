@@ -57,8 +57,8 @@ export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefre
             <p className="text-xs text-green-600 mb-2">
               ❤️ {activity.interestedCount}人感兴趣 {activity.interestedCount >= 5 ? '🔥' : ''}
             </p>
-            {(!activity.date || !activity.location || activity.maxParticipants == null) && (
-              <p className="text-xs text-amber-600 mb-1">⚠️ 缺时间/地点/人数，不可直接拖入招募中</p>
+            {(!activity.date || !activity.location) && (
+              <p className="text-xs text-amber-600 mb-1">⚠️ 缺时间/地点，不可直接拖入招募中</p>
             )}
           </>
         ) : (

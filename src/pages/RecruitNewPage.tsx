@@ -26,6 +26,10 @@ export function RecruitNewPage() {
         sourceUrl: sourceActivity.sourceUrl,
         category: sourceActivity.category,
         location: sourceActivity.location,
+        fee: sourceActivity.fee,
+        feeLevel: sourceActivity.feeLevel,
+        itinerary: sourceActivity.itinerary,
+        notes: sourceActivity.notes,
       }
     : undefined
 

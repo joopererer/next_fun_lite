@@ -6,6 +6,7 @@ import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { getFeeLevelEmoji, getFeeLevelLabel } from '../lib/feeLevel'
 import { formatRelativeTime, getSourceIcon, getUser, setInterest } from '../lib/user'
 import { UserIdentityModal } from './UserIdentityModal'
+import { ItineraryBlock } from './ItineraryBlock'
 
 interface Props {
   activity: ActivityWithCount
@@ -104,9 +105,17 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
           <div className="text-sm text-gray-600 space-y-1 mb-3 pl-1 border-l-2 border-green-100">
             {activity.location && <p>📍 {activity.location}</p>}
             {activity.feeLevel && (
-              <p>{getFeeLevelEmoji(activity.feeLevel)} {getFeeLevelLabel(activity.feeLevel)}</p>
+              <p>
+                {getFeeLevelEmoji(activity.feeLevel)} {getFeeLevelLabel(activity.feeLevel)}
+                {activity.fee && activity.feeLevel === 'paid' ? ` · ${activity.fee}` : ''}
+              </p>
             )}
-            {activity.fee && <p>💰 {activity.fee}</p>}
+            {activity.fee && activity.feeLevel !== 'paid' && <p>💰 {activity.fee}</p>}
+            {activity.itinerary && (
+              <div className="mt-2">
+                <ItineraryBlock itinerary={activity.itinerary} />
+              </div>
+            )}
             {activity.notes && <p className="whitespace-pre-wrap text-gray-500">{activity.notes}</p>}
             {activity.sourceUrl && (
               <a href={activity.sourceUrl} target="_blank" rel="noreferrer" className="text-green-600 underline block truncate">

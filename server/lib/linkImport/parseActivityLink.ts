@@ -67,8 +67,7 @@ function getLinkImportHostKey(url: URL): string | null {
 function scrapedToParseResult(activity: ScrapedActivity, sourceUrl: string): Partial<ParseResult> {
   const fee = formatScrapedFee(activity)
   const dateRangeLabel = formatScrapedDateRange(activity.startAt, activity.endAt)
-  const noteParts = [activity.itinerary, dateRangeLabel ? `活动时间：${dateRangeLabel}` : '']
-    .filter(Boolean)
+  const noteParts = [dateRangeLabel ? `活动时间：${dateRangeLabel}` : ''].filter(Boolean)
   return {
     title: activity.title || null,
     description: activity.description
@@ -80,6 +79,7 @@ function scrapedToParseResult(activity: ScrapedActivity, sourceUrl: string): Par
     maxParticipants: activity.capacity ?? linkImportDefaultCapacity,
     fee: fee || null,
     notes: noteParts.length > 0 ? noteParts.join('\n') : null,
+    itinerary: activity.itinerary?.trim() || null,
     category: mapScrapedCategory(activity.category),
     feeLevel: inferFeeLevel(activity, fee),
   }
@@ -225,6 +225,7 @@ export async function parseActivityLink(url: string): Promise<ApiParseResponse &
   const extras: string[] = []
   if (datePreview) extras.push(`时间 ${datePreview}`)
   if (data.fee) extras.push(`费用 ${data.fee}`)
+  if (data.itinerary) extras.push('已识别行程')
   if (data.category) extras.push(`类型 ${data.category}`)
 
   return {

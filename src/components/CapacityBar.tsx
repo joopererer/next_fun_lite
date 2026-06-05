@@ -11,7 +11,7 @@ export function CapacityBar({ current, max }: Props) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs text-gray-500">
-        <span>{full ? '名额已满' : `${current} / ${max} 人`}</span>
+        <span>{full ? '已满' : `${current} / ${max} 人`}</span>
       </div>
       <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
         <div

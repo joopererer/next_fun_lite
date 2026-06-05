@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../shared/types'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
+import { isRegistrationFull } from '../lib/participants'
 import { formatEventDate } from '../lib/user'
 import { CapacityBar } from './CapacityBar'
 
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export function ActivityCard({ activity, registered = false }: Props) {
-  const full = !registered && activity.maxParticipants !== null && activity.registeredCount >= activity.maxParticipants
+  const full = !registered && isRegistrationFull(activity.registeredCount, activity.maxParticipants)
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
@@ -45,7 +46,7 @@ export function ActivityCard({ activity, registered = false }: Props) {
             full ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'btn-primary block'
           }`}
         >
-          {full ? '名额已满' : '我要报名'}
+          {full ? '已满' : '我要报名'}
         </Link>
       )}
     </div>

@@ -12,6 +12,7 @@ const SYSTEM_PROMPT = `你是一个活动信息提取助手。从用户提供的
   "location": "地点或集合地点",
   "maxParticipants": null 或数字,
   "fee": "费用说明，如无则 null",
+  "itinerary": "活动行程/时间安排，每行一个节点，如无则 null",
   "notes": "注意事项，多条用换行分隔，如无则 null"
 }
 

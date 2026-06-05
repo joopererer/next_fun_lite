@@ -1,5 +1,27 @@
 import type { Activity, CreateRecruitmentBody } from '../../shared/types'
 
+const DEFAULT_MIN = 1
+const DEFAULT_MAX = 99
+
+const PARTICIPANT_MIN = 0
+const PARTICIPANT_MAX = 99
+
+function normalizeMinParticipants(body: Partial<Activity>): number {
+  const val = body.minParticipants
+  if (val === undefined || val === null) return DEFAULT_MIN
+  if (typeof val === 'number' && val >= PARTICIPANT_MIN && val <= PARTICIPANT_MAX) return val
+  return DEFAULT_MIN
+}
+
+function normalizeMaxParticipants(body: Partial<Activity>): number | null {
+  if (body.maxParticipants === null) return null
+  const val = body.maxParticipants
+  if (val === undefined) return DEFAULT_MAX
+  if (typeof val === 'number' && val === 0) return null
+  if (typeof val === 'number' && val >= 1 && val <= PARTICIPANT_MAX) return val
+  return DEFAULT_MAX
+}
+
 const EXTENDED_KEYS: (keyof Activity)[] = [
   'feeLevel', 'ticketPrices', 'ticketUrl', 'ticketDeadline', 'ticketMethod', 'refundPolicy',
   'difficulty', 'distanceAndDuration', 'itinerary', 'equipment', 'transportation', 'mealArrangement',
@@ -18,12 +40,19 @@ export function pickExtendedFields(body: Partial<Activity>): Partial<Activity> {
 }
 
 export function buildRecruitmentPayload(body: CreateRecruitmentBody): Partial<Activity> {
+  const minParticipants = normalizeMinParticipants(body)
+  const maxParticipants = normalizeMaxParticipants(body)
+  if (maxParticipants != null && minParticipants > maxParticipants) {
+    throw new Error('最少人数不能大于最多人数')
+  }
+
   return {
     title: body.title?.trim() ?? '',
     description: body.description?.trim() ?? '',
     date: body.date ?? null,
     location: body.location?.trim() ?? '',
-    maxParticipants: body.maxParticipants ?? null,
+    minParticipants,
+    maxParticipants,
     fee: body.fee?.trim() ?? '',
     notes: body.notes?.trim() ?? '',
     organizerName: body.organizerName?.trim() ?? '',
@@ -56,12 +85,16 @@ export function buildProposalPayload(body: Partial<Activity>): Omit<Activity, 'i
 }
 
 export function buildAdminCreatePayload(body: Partial<Activity>): Omit<Activity, 'id' | 'createdAt'> {
+  const minParticipants = normalizeMinParticipants(body)
+  const maxParticipants = normalizeMaxParticipants(body)
+
   return {
     title: body.title ?? '',
     description: body.description ?? '',
     date: body.date ?? null,
     location: body.location ?? '',
-    maxParticipants: body.maxParticipants ?? null,
+    minParticipants,
+    maxParticipants,
     fee: body.fee ?? '',
     notes: body.notes ?? '',
     organizerName: body.organizerName ?? '',

@@ -62,13 +62,15 @@ export async function handleCreateActivity(request: Request, env: EnvConfig, isP
 export async function handleCreateRecruitment(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
   const body = await parseBody<CreateRecruitmentBody>(request)
-  const payload = buildRecruitmentPayload(body)
+  let payload: Partial<Activity>
+  try {
+    payload = buildRecruitmentPayload(body)
+  } catch (err) {
+    return errorResponse(err instanceof Error ? err.message : 'Invalid payload')
+  }
 
   if (!payload.title || !payload.category || !payload.date || !payload.location) {
     return errorResponse('Missing required fields: title, category, date, location')
-  }
-  if (payload.maxParticipants === null || payload.maxParticipants === undefined) {
-    return errorResponse('Missing required field: maxParticipants')
   }
   if (!payload.organizerName || !payload.organizerWechat) {
     return errorResponse('Missing required fields: organizerName, organizerWechat')

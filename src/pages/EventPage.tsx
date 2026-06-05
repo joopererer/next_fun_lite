@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { ActivityWithCount, Registration } from '../../shared/types'
-import { CapacityBar } from '../components/CapacityBar'
+import { ItineraryBlock } from '../components/ItineraryBlock'
 import { Header } from '../components/layout/Header'
 import { UserIdentityModal } from '../components/UserIdentityModal'
 import { api } from '../lib/api'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
+import { isRegistrationFull } from '../lib/participants'
 import { formatEventDate, getUser, setInterest, setRegistered } from '../lib/user'
+import { CapacityBar } from '../components/CapacityBar'
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>()
@@ -223,7 +225,7 @@ export function EventPage() {
   }
 
   const displayCount = activity.registeredCount ?? registeredCount
-  const full = activity.maxParticipants != null && displayCount >= activity.maxParticipants
+  const full = isRegistrationFull(displayCount, activity.maxParticipants)
   const ended = activity.status === 'ended'
 
   const notes = activity.notes ? activity.notes.split('\n').filter(Boolean) : []
@@ -276,6 +278,12 @@ export function EventPage() {
           </div>
         )}
 
+        {activity.itinerary && (
+          <div className="bg-gray-50 rounded-xl p-4 mb-6">
+            <ItineraryBlock itinerary={activity.itinerary} />
+          </div>
+        )}
+
         {notes.length > 0 && (
           <div className="bg-amber-50 rounded-xl p-4 mb-8">
             <p className="font-medium text-amber-800 mb-2">⚠️ 注意事项</p>
@@ -304,8 +312,8 @@ export function EventPage() {
             本次活动已结束
           </div>
         ) : full ? (
-          <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
-            名额已满（{displayCount}/{activity.maxParticipants}）
+          <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500 font-medium">
+            已满
           </div>
         ) : activity.status === 'proposed' ? (
           <div className="space-y-4">

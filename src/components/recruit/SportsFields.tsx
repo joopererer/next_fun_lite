@@ -3,7 +3,6 @@ import type { Activity, Difficulty, MealArrangement } from '../../../shared/type
 interface Props {
   difficulty: Difficulty | ''
   distanceAndDuration: string
-  itinerary: string
   equipment: string
   transportation: string
   mealArrangement: MealArrangement | ''
@@ -11,7 +10,7 @@ interface Props {
 }
 
 export function SportsFields({
-  difficulty, distanceAndDuration, itinerary, equipment, transportation, mealArrangement, onChange,
+  difficulty, distanceAndDuration, equipment, transportation, mealArrangement, onChange,
 }: Props) {
   return (
     <div className="space-y-4 border border-blue-100 rounded-xl p-4 bg-blue-50/50">
@@ -28,10 +27,6 @@ export function SportsFields({
       <div>
         <label className="text-sm text-gray-600 mb-1 block">距离与时长</label>
         <input className="input-field" value={distanceAndDuration} onChange={(e) => onChange('distanceAndDuration', e.target.value)} placeholder="如：约 12km，4-5 小时" />
-      </div>
-      <div>
-        <label className="text-sm text-gray-600 mb-1 block">行程安排</label>
-        <textarea className="input-field min-h-[80px]" value={itinerary} onChange={(e) => onChange('itinerary', e.target.value)} />
       </div>
       <div>
         <label className="text-sm text-gray-600 mb-1 block">装备要求</label>

@@ -35,12 +35,12 @@ export function AdminPage() {
   }, [editId])
 
   const isRecruitingReady = (activity: Activity) =>
-    Boolean(activity.date && activity.location?.trim() && activity.maxParticipants != null)
+    Boolean(activity.date && activity.location?.trim())
 
   const handleStatusChange = async (id: string, status: ActivityStatus) => {
     const activity = activities.find((a) => a.id === id)
     if (status === 'recruiting' && activity && !isRecruitingReady(activity)) {
-      alert('转为招募需要填写：活动时间、地点、目标人数。\n请使用「转为招募 →」链接或编辑活动补充信息，不能直接拖入招募中。')
+      alert('转为招募需要填写：活动时间、地点。\n请使用「转为招募 →」链接或编辑活动补充信息，不能直接拖入招募中。')
       return
     }
 

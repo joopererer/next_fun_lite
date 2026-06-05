@@ -28,6 +28,8 @@ export function ProposePage() {
   const [location, setLocation] = useState('')
   const [category, setCategory] = useState<ActivityCategory>('other')
   const [feeLevel, setFeeLevel] = useState<FeeLevel>('unknown')
+  const [feeDetail, setFeeDetail] = useState('')
+  const [itinerary, setItinerary] = useState('')
   const [organizerName, setOrganizerName] = useState(user?.name ?? '')
   const [organizerWechat, setOrganizerWechat] = useState(user?.wechat ?? '')
   const [submitting, setSubmitting] = useState(false)
@@ -50,9 +52,14 @@ export function ProposePage() {
       setDateHint,
       setCategory,
       setFeeLevel,
+      setFee: setFeeDetail,
+      setItinerary,
     }, { dateHintOnly: true })
-    if (data.fee === '免费') setFeeLevel('free')
-    else if (data.fee?.includes('预算区间')) setFeeLevel('paid')
+  }
+
+  const selectFeeLevel = (level: FeeLevel) => {
+    setFeeLevel(level)
+    if (level !== 'paid' && level !== 'low') setFeeDetail('')
   }
 
   const handleParseUrl = async () => {
@@ -113,7 +120,8 @@ export function ProposePage() {
         feeLevel,
         organizerName: organizerName.trim(),
         organizerWechat: organizerWechat.trim(),
-        fee: '',
+        fee: feeDetail.trim(),
+        itinerary: itinerary.trim() || undefined,
         notes: dateHint ? `大概时间：${dateHint}` : '',
       })
       setSubmitted(true)
@@ -215,6 +223,16 @@ export function ProposePage() {
             <textarea className="input-field min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div>
+            <label className="text-sm text-gray-600 mb-1 block">行程（选填）</label>
+            <textarea
+              className="input-field min-h-[80px]"
+              placeholder={'18:30 集合\n19:00 开始活动\n21:30 自由交流'}
+              value={itinerary}
+              onChange={(e) => setItinerary(e.target.value)}
+            />
+            <p className="text-xs text-gray-400 mt-1">每行一个时间节点，粘贴链接解析后会自动填入</p>
+          </div>
+          <div>
             <label className="text-sm text-gray-600 mb-1 block">参考链接</label>
             <input className="input-field" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
           </div>
@@ -240,7 +258,7 @@ export function ProposePage() {
               {FEE_LEVELS.map((f) => (
                 <label
                   key={f.value}
-                  className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${
+                  className={`flex items-start gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${
                     feeLevel === f.value ? 'border-green-400 bg-green-50' : 'border-gray-200'
                   }`}
                 >
@@ -249,14 +267,32 @@ export function ProposePage() {
                     name="feeLevel"
                     value={f.value}
                     checked={feeLevel === f.value}
-                    onChange={() => setFeeLevel(f.value)}
+                    onChange={() => selectFeeLevel(f.value)}
                     className="sr-only"
                   />
-                  <span>{f.emoji}</span>
-                  <span className="text-sm">{f.label}</span>
+                  <span className="mt-0.5">{f.emoji}</span>
+                  <span className="text-sm min-w-0">
+                    <span className="block">{f.label}</span>
+                    {feeLevel === f.value && feeDetail && (f.value === 'paid' || f.value === 'free' || f.value === 'low') && (
+                      <span className="block text-xs text-green-700 mt-1 font-normal break-words">
+                        {feeDetail}
+                      </span>
+                    )}
+                  </span>
                 </label>
               ))}
             </div>
+            {feeLevel === 'paid' && (
+              <div className="mt-3">
+                <label className="text-xs text-gray-500 mb-1 block">费用说明（可编辑）</label>
+                <input
+                  className="input-field text-sm"
+                  placeholder="如：预算区间 · 58.86 – 116.52 EUR"
+                  value={feeDetail}
+                  onChange={(e) => setFeeDetail(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         </div>
 
