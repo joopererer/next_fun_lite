@@ -3,6 +3,8 @@ import {
   DragOverlay,
   PointerSensor,
   TouchSensor,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -14,6 +16,20 @@ import { KanbanColumn } from './KanbanColumn'
 import { KanbanCard } from './KanbanCard'
 
 const COLUMNS: ActivityStatus[] = ['proposed', 'recruiting', 'ended']
+
+function resolveDropStatus(
+  overId: string | number,
+  overData: Record<string, unknown> | undefined,
+  activities: ActivityWithCount[],
+): ActivityStatus | null {
+  const id = String(overId)
+  if (COLUMNS.includes(id as ActivityStatus)) return id as ActivityStatus
+  const overActivity = activities.find((a) => a.id === id)
+  if (overActivity) return overActivity.status
+  const column = overData?.column as ActivityStatus | undefined
+  if (column && COLUMNS.includes(column)) return column
+  return null
+}
 
 interface Props {
   activities: ActivityWithCount[]
@@ -44,15 +60,24 @@ export function KanbanBoard({ activities, onStatusChange, onDelete, onRefresh }:
     const { active, over } = event
     if (!over) return
 
-    const newStatus = over.id as ActivityStatus
+    const newStatus = resolveDropStatus(over.id, over.data.current as Record<string, unknown> | undefined, activities)
     const activity = activities.find((a) => a.id === active.id)
-    if (activity && COLUMNS.includes(newStatus) && activity.status !== newStatus) {
+    if (activity && newStatus && activity.status !== newStatus) {
       onStatusChange(activity.id, newStatus)
     }
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={(args) => {
+        const pointer = pointerWithin(args)
+        if (pointer.length > 0) return pointer
+        return rectIntersection(args)
+      }}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="flex gap-4 overflow-x-auto pb-4">
         {COLUMNS.map((status) => (
           <KanbanColumn

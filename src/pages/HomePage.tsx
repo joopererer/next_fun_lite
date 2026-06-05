@@ -6,6 +6,7 @@ import { CategoryFilter, matchesCategoryFilter } from '../components/CategoryFil
 import { Header } from '../components/layout/Header'
 import { ProposalCard } from '../components/ProposalCard'
 import { api } from '../lib/api'
+import { getUser, isRegistered, setRegistered } from '../lib/user'
 
 export function HomePage() {
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
@@ -13,17 +14,67 @@ export function HomePage() {
   const [error, setError] = useState(false)
   const [recruitingFilter, setRecruitingFilter] = useState<ActivityCategory[]>([])
   const [proposalFilter, setProposalFilter] = useState<ActivityCategory[]>([])
+  const [registeredIds, setRegisteredIds] = useState<Set<string>>(new Set())
+
+  const syncRegistrations = useCallback(async (list: ActivityWithCount[]) => {
+    const user = getUser()
+    if (!user) {
+      setRegisteredIds(new Set())
+      return
+    }
+    const recruiting = list.filter((a) => a.status === 'recruiting')
+    if (recruiting.length === 0) {
+      setRegisteredIds(new Set())
+      return
+    }
+    const results = await Promise.all(
+      recruiting.map((a) => api.getMyRegistration(a.id, user.wechat).catch(() => ({ registration: null })))
+    )
+    const ids = new Set<string>()
+    recruiting.forEach((a, i) => {
+      if (results[i].registration) {
+        ids.add(a.id)
+        setRegistered(a.id, true)
+      } else if (!isRegistered(a.id)) {
+        setRegistered(a.id, false)
+      }
+    })
+    setRegisteredIds(ids)
+  }, [])
 
   const load = useCallback(() => {
     setLoading(true)
     setError(false)
     api.getActivities()
-      .then(setActivities)
+      .then((list) => {
+        setActivities(list)
+        return syncRegistrations(list)
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [syncRegistrations])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const refresh = () => {
+      api.getActivities()
+        .then((list) => {
+          setActivities(list)
+          syncRegistrations(list)
+        })
+        .catch(() => {})
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    window.addEventListener('pageshow', refresh)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('pageshow', refresh)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [syncRegistrations])
 
   const recruiting = activities
     .filter((a) => a.status === 'recruiting')
@@ -57,7 +108,11 @@ export function HomePage() {
               ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {recruiting.map((a) => (
-                    <ActivityCard key={a.id} activity={a} />
+                    <ActivityCard
+                      key={a.id}
+                      activity={a}
+                      registered={registeredIds.has(a.id) || isRegistered(a.id)}
+                    />
                   ))}
                 </div>
               )}

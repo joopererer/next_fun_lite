@@ -1,7 +1,7 @@
 import { google } from 'googleapis'
 import { nanoid } from 'nanoid'
 import type { Activity, ActivityCategory, EnvConfig, Interest, Registration } from '../../shared/types'
-import type { InterestMutationResult, StorageAdapter } from './types'
+import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
 const ACTIVITY_HEADERS = [
   'id', 'title', 'description', 'date', 'location', 'max_participants',
@@ -252,6 +252,17 @@ export class GoogleSheetsAdapter implements StorageAdapter {
       .sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime())
   }
 
+  async findRegistration(activityId: string, wechat: string): Promise<Registration | null> {
+    const rows = await this.getSheetRows('registrations')
+    const row = rows.find((r) => r[1] === activityId && r[3] === wechat)
+    return row ? registrationFromRow(row) : null
+  }
+
+  private async countRegistrations(activityId: string): Promise<number> {
+    const registrations = await this.getRegistrations(activityId)
+    return registrations.reduce((sum, r) => sum + r.participantCount, 0)
+  }
+
   async createRegistration(data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> {
     const registration: Registration = {
       ...data,
@@ -260,6 +271,17 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     }
     await this.appendRow('registrations', registrationToRow(registration))
     return registration
+  }
+
+  async deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult> {
+    const rows = await this.getSheetRows('registrations')
+    const row = rows.find((r) => r[1] === activityId && r[3] === wechat)
+    if (!row?.[0]) {
+      return { registration: undefined, registeredCount: await this.countRegistrations(activityId) }
+    }
+    await this.deleteRowById('registrations', row[0])
+    const registration = registrationFromRow(row)
+    return { registration, registeredCount: await this.countRegistrations(activityId) }
   }
 
   async getInterests(activityId: string): Promise<Interest[]> {

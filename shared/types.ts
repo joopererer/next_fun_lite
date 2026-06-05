@@ -72,6 +72,11 @@ export interface ActivityWithCount extends Activity {
   registeredCount: number
 }
 
+export interface RegistrationMutationResult {
+  registration?: Registration
+  registeredCount: number
+}
+
 export interface InterestMutationResult {
   interest?: Interest
   interestedCount: number

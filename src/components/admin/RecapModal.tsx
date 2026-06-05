@@ -40,14 +40,14 @@ export function RecapModal({ activity, onSaved }: Props) {
         {activity.recap ? '编辑回顾' : '写回顾'}
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-lg mb-4">活动回顾 · {activity.title}</h3>
-            <div className="space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 sm:p-8">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-xl">
+            <h3 className="font-bold text-xl mb-5">活动回顾 · {activity.title}</h3>
+            <div className="space-y-5">
               <div>
                 <label className="text-sm text-gray-600 mb-1 block">回顾文字</label>
                 <textarea
-                  className="input-field min-h-[120px]"
+                  className="input-field min-h-[200px] text-base"
                   value={recap}
                   onChange={(e) => setRecap(e.target.value)}
                   placeholder="活动总结、感受..."
@@ -56,7 +56,7 @@ export function RecapModal({ activity, onSaved }: Props) {
               <div>
                 <label className="text-sm text-gray-600 mb-1 block">回顾图片（每行一个 URL）</label>
                 <textarea
-                  className="input-field min-h-[80px]"
+                  className="input-field min-h-[120px] text-base"
                   value={recapImages}
                   onChange={(e) => setRecapImages(e.target.value)}
                   placeholder="https://..."

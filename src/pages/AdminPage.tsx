@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import type { ActivityStatus, ActivityWithCount } from '../../shared/types'
+import type { Activity, ActivityStatus, ActivityWithCount } from '../../shared/types'
 import { ActivityListTable } from '../components/admin/ActivityListTable'
 import { AdminGate } from '../components/admin/AdminGate'
 import { KanbanBoard } from '../components/admin/KanbanBoard'
@@ -34,11 +34,24 @@ export function AdminPage() {
     }
   }, [editId])
 
+  const isRecruitingReady = (activity: Activity) =>
+    Boolean(activity.date && activity.location?.trim() && activity.maxParticipants != null)
+
   const handleStatusChange = async (id: string, status: ActivityStatus) => {
+    const activity = activities.find((a) => a.id === id)
+    if (status === 'recruiting' && activity && !isRecruitingReady(activity)) {
+      alert('转为招募需要填写：活动时间、地点、目标人数。\n请使用「转为招募 →」链接或编辑活动补充信息，不能直接拖入招募中。')
+      return
+    }
+
+    const previous = activity?.status
+    setActivities((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
     try {
       await api.updateActivity(id, { status })
-      load()
     } catch (err) {
+      if (previous) {
+        setActivities((prev) => prev.map((a) => (a.id === id ? { ...a, status: previous } : a)))
+      }
       alert(err instanceof Error ? err.message : '更新失败')
     }
   }

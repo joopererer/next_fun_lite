@@ -131,13 +131,13 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
             type="button"
             className={`flex-1 rounded-xl py-2 text-sm font-medium border transition-colors ${
               interested
-                ? 'border-green-300 bg-green-50 text-green-700'
+                ? 'border-gray-300 bg-gray-100 text-gray-600'
                 : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
             }`}
             onClick={toggleInterest}
             disabled={loading}
           >
-            {loading ? '...' : interested ? '💔 取消感兴趣' : '❤️ 我也感兴趣'}
+            {loading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
           </button>
           <Link
             to={`/recruit/new?from=${activity.id}`}

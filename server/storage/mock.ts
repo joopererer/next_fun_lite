@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid'
 import type { Activity, Interest, Registration } from '../../shared/types'
-import type { InterestMutationResult, StorageAdapter } from './types'
+import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
 const now = new Date()
 const daysAgo = (n: number) => new Date(now.getTime() - n * 86400000).toISOString()
@@ -213,6 +213,16 @@ export class MockAdapter implements StorageAdapter {
       .sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime())
   }
 
+  async findRegistration(activityId: string, wechat: string): Promise<Registration | null> {
+    return this.registrations.find((r) => r.activityId === activityId && r.wechat === wechat) ?? null
+  }
+
+  private countRegistrations(activityId: string): number {
+    return this.registrations
+      .filter((r) => r.activityId === activityId)
+      .reduce((sum, r) => sum + r.participantCount, 0)
+  }
+
   async createRegistration(data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> {
     const registration: Registration = {
       ...data,
@@ -221,6 +231,15 @@ export class MockAdapter implements StorageAdapter {
     }
     this.registrations.push(registration)
     return registration
+  }
+
+  async deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult> {
+    const idx = this.registrations.findIndex((r) => r.activityId === activityId && r.wechat === wechat)
+    if (idx === -1) {
+      return { registration: undefined, registeredCount: this.countRegistrations(activityId) }
+    }
+    const [removed] = this.registrations.splice(idx, 1)
+    return { registration: removed, registeredCount: this.countRegistrations(activityId) }
   }
 
   async getInterests(activityId: string): Promise<Interest[]> {

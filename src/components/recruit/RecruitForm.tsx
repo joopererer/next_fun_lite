@@ -6,12 +6,14 @@ import type {
   ActivityStatus,
   Difficulty,
   MealArrangement,
+  ParseResult,
   ReservationMethod,
   TicketMethod,
 } from '../../../shared/types'
 import { api, getEventUrl } from '../../lib/api'
 import { ACTIVITY_CATEGORIES } from '../../lib/categories'
 import { formatEventDate, getUser } from '../../lib/user'
+import { ActivityParsePanel } from '../ActivityParsePanel'
 import { DiningFields } from './DiningFields'
 import { SportsFields } from './SportsFields'
 import { TicketFields } from './TicketFields'
@@ -131,6 +133,17 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     setters[field]?.(value)
   }
 
+  const handleParsed = (data: Partial<ParseResult> & { sourceUrl?: string }) => {
+    if (data.title) setTitle(data.title)
+    if (data.description) setDescription(data.description ?? '')
+    if (data.location) setLocation(data.location ?? '')
+    if (data.sourceUrl) setSourceUrl(data.sourceUrl)
+    if (data.fee) setFee(data.fee ?? '')
+    if (data.notes) setNotes(data.notes ?? '')
+    if (data.maxParticipants != null) setMaxParticipants(String(data.maxParticipants))
+    if (data.date) setDate(new Date(data.date).toISOString().slice(0, 16))
+  }
+
   const buildPayload = (): Partial<Activity> => ({
     title: title.trim(),
     description: description.trim(),
@@ -243,6 +256,9 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
 
   return (
     <div className="space-y-4 max-w-lg">
+      {mode === 'admin' && !editId && (
+        <ActivityParsePanel onParsed={handleParsed} className="border-b border-gray-100 pb-4 mb-2" />
+      )}
       <div>
         <label className="text-sm text-gray-600 mb-1 block">活动名称 *</label>
         <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} />

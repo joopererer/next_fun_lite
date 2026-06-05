@@ -1,4 +1,5 @@
 import type { ApiParseResponse, EnvConfig } from '../../shared/types'
+import { parseActivityLink } from '../lib/linkImport/parseActivityLink'
 import { jsonResponse, parseBody } from '../lib/utils'
 
 const SYSTEM_PROMPT = `你是一个活动信息提取助手。从用户提供的网页文本或图片中提取活动/地点相关信息。
@@ -105,6 +106,14 @@ export async function handleParse(request: Request, env: EnvConfig): Promise<Res
   const parseMode = env.PARSE_MODE ?? process.env.PARSE_MODE
 
   if (parseMode === 'mock' || (!env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY)) {
+    if (body.url) {
+      try {
+        const structured = await parseActivityLink(body.url)
+        if (structured.success) return jsonResponse(structured)
+      } catch {
+        /* fall through to mock */
+      }
+    }
     return jsonResponse(MOCK_DATA)
   }
 
@@ -121,6 +130,13 @@ export async function handleParse(request: Request, env: EnvConfig): Promise<Res
     }
 
     if (body.url) {
+      try {
+        const structured = await parseActivityLink(body.url)
+        if (structured.success) return jsonResponse(structured)
+      } catch {
+        /* fall through to Claude */
+      }
+
       let pageText: string
       try {
         pageText = await fetchPageText(body.url)

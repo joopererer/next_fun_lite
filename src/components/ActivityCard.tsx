@@ -6,10 +6,11 @@ import { CapacityBar } from './CapacityBar'
 
 interface Props {
   activity: ActivityWithCount
+  registered?: boolean
 }
 
-export function ActivityCard({ activity }: Props) {
-  const full = activity.maxParticipants !== null && activity.registeredCount >= activity.maxParticipants
+export function ActivityCard({ activity, registered = false }: Props) {
+  const full = !registered && activity.maxParticipants !== null && activity.registeredCount >= activity.maxParticipants
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
@@ -33,14 +34,20 @@ export function ActivityCard({ activity }: Props) {
         <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName || '管理员'} 发起</p>
         <p className="text-xs text-green-600 mb-3">点击查看详情 →</p>
       </Link>
-      <Link
-        to={`/event/${activity.id}`}
-        className={`mt-auto text-center rounded-xl py-2.5 font-medium transition-colors ${
-          full ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'btn-primary block'
-        }`}
-      >
-        {full ? '名额已满' : '我要报名'}
-      </Link>
+      {registered ? (
+        <div className="mt-auto text-center rounded-xl py-2.5 font-medium bg-gray-100 text-gray-500 border border-gray-200">
+          已报名
+        </div>
+      ) : (
+        <Link
+          to={`/event/${activity.id}`}
+          className={`mt-auto text-center rounded-xl py-2.5 font-medium transition-colors ${
+            full ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'btn-primary block'
+          }`}
+        >
+          {full ? '名额已满' : '我要报名'}
+        </Link>
+      )}
     </div>
   )
 }

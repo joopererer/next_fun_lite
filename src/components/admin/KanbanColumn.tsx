@@ -1,5 +1,4 @@
 import { useDroppable } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { ActivityWithCount, ActivityStatus } from '../../../shared/types'
 import { KanbanCard } from './KanbanCard'
 
@@ -23,7 +22,7 @@ export function KanbanColumn({ status, activities, onDelete, onStatusChange, onR
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[240px] bg-gray-50 rounded-2xl p-3 transition-colors ${
+      className={`flex-1 min-w-[240px] bg-gray-50 rounded-2xl p-3 transition-colors flex flex-col ${
         isOver ? 'bg-green-50 ring-2 ring-green-300' : ''
       }`}
     >
@@ -33,7 +32,7 @@ export function KanbanColumn({ status, activities, onDelete, onStatusChange, onR
           {activities.length}
         </span>
       </div>
-      <SortableContext items={activities.map((a) => a.id)} strategy={verticalListSortingStrategy}>
+      <div className="flex-1 min-h-[120px]">
         {activities.map((a) => (
           <KanbanCard
             key={a.id}
@@ -44,7 +43,7 @@ export function KanbanColumn({ status, activities, onDelete, onStatusChange, onR
             onRefresh={onRefresh}
           />
         ))}
-      </SortableContext>
+      </div>
     </div>
   )
 }

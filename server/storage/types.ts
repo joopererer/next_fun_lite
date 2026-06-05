@@ -4,6 +4,11 @@ export interface InterestMutationResult {
   interestedCount: number
 }
 
+export interface RegistrationMutationResult {
+  registration?: Registration
+  registeredCount: number
+}
+
 export interface StorageAdapter {
   getActivities(): Promise<Activity[]>
   getActivity(id: string): Promise<Activity | null>
@@ -12,7 +17,9 @@ export interface StorageAdapter {
   deleteActivity(id: string): Promise<void>
 
   getRegistrations(activityId: string): Promise<Registration[]>
+  findRegistration(activityId: string, wechat: string): Promise<Registration | null>
   createRegistration(data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration>
+  deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult>
 
   getInterests(activityId: string): Promise<Interest[]>
   findInterest(activityId: string, wechat: string): Promise<Interest | null>

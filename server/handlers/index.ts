@@ -123,17 +123,38 @@ export async function handleGetRegistrations(request: Request, env: EnvConfig, a
   return jsonResponse(registrations)
 }
 
+export async function handleGetMyRegistration(request: Request, env: EnvConfig, activityId: string): Promise<Response> {
+  const wechat = new URL(request.url).searchParams.get('wechat')
+  if (!wechat) return errorResponse('Missing wechat')
+  const storage = createStorageAdapter(env)
+  const registration = await storage.findRegistration(activityId, wechat)
+  const registeredCount = await getRegisteredCount(storage, activityId)
+  return jsonResponse({ registration, registeredCount })
+}
+
 export async function handleCreateRegistration(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
   const body = await parseBody<{
     activityId: string
-    name: string
+    name?: string
     wechat: string
     participantCount?: number
     note?: string
+    action?: 'remove'
   }>(request)
 
-  if (!body.activityId || !body.name || !body.wechat) {
+  if (!body.activityId || !body.wechat) {
+    return errorResponse('Missing required fields')
+  }
+
+  if (body.action === 'remove') {
+    const activity = await storage.getActivity(body.activityId)
+    if (!activity) return errorResponse('Activity not found', 404)
+    const result = await storage.deleteRegistration(body.activityId, body.wechat)
+    return jsonResponse(result)
+  }
+
+  if (!body.name) {
     return errorResponse('Missing required fields')
   }
 
@@ -141,6 +162,9 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
   if (!activity) return errorResponse('Activity not found', 404)
   if (activity.status === 'ended') return errorResponse('Activity has ended')
   if (activity.status !== 'recruiting') return errorResponse('Activity is not open for registration')
+
+  const existing = await storage.findRegistration(body.activityId, body.wechat)
+  if (existing) return errorResponse('Already registered', 409)
 
   const participantCount = body.participantCount ?? 1
   const currentCount = await getRegisteredCount(storage, body.activityId)
@@ -156,7 +180,8 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
     participantCount,
     note: body.note ?? '',
   })
-  return jsonResponse(registration, 201)
+  const registeredCount = await getRegisteredCount(storage, body.activityId)
+  return jsonResponse({ registration, registeredCount }, 201)
 }
 
 export async function handleGetInterests(_request: Request, env: EnvConfig, activityId: string): Promise<Response> {

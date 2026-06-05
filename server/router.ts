@@ -10,6 +10,7 @@ import {
   handleGetActivity,
   handleGetInterests,
   handleGetRegistrations,
+  handleGetMyRegistration,
   handleUpdateActivity,
 } from './handlers'
 import { handleParse } from './handlers/parse'
@@ -48,6 +49,11 @@ const routes: Array<{
     method: 'DELETE',
     pattern: /^\/api\/activities\/([^/]+)$/,
     handler: (req, env, p) => handleDeleteActivity(req, env, p.id),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/activities\/([^/]+)\/registration$/,
+    handler: (req, env, p) => handleGetMyRegistration(req, env, p.id),
   },
   {
     method: 'GET',

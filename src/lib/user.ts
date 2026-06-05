@@ -32,6 +32,19 @@ export function setInterest(activityId: string, active: boolean): void {
   else localStorage.removeItem(interestKey(activityId))
 }
 
+function registrationKey(activityId: string): string {
+  return `nfl_registered_${activityId}`
+}
+
+export function isRegistered(activityId: string): boolean {
+  return localStorage.getItem(registrationKey(activityId)) === '1'
+}
+
+export function setRegistered(activityId: string, active: boolean): void {
+  if (active) localStorage.setItem(registrationKey(activityId), '1')
+  else localStorage.removeItem(registrationKey(activityId))
+}
+
 export function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const minutes = Math.floor(diff / 60000)

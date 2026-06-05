@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import type { ActivityWithCount } from '../../shared/types'
+import type { ActivityWithCount, Registration } from '../../shared/types'
 import { CapacityBar } from '../components/CapacityBar'
 import { Header } from '../components/layout/Header'
 import { UserIdentityModal } from '../components/UserIdentityModal'
 import { api } from '../lib/api'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
-import { formatEventDate, getUser, setInterest } from '../lib/user'
+import { formatEventDate, getUser, setInterest, setRegistered } from '../lib/user'
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>()
@@ -26,6 +26,8 @@ export function EventPage() {
   const [interested, setInterested] = useState(false)
   const [interestCount, setInterestCount] = useState(0)
   const [interestLoading, setInterestLoading] = useState(false)
+  const [myRegistration, setMyRegistration] = useState<Registration | null>(null)
+  const [cancelLoading, setCancelLoading] = useState(false)
 
   useEffect(() => {
     const user = getUser()
@@ -46,12 +48,27 @@ export function EventPage() {
         const user = getUser()
         if (!user) {
           setInterested(false)
+          setMyRegistration(null)
           return
         }
-        return api.getInterests(a.id).then((interests) => {
+        return Promise.all([
+          api.getInterests(a.id),
+          a.status === 'recruiting' ? api.getMyRegistration(a.id, user.wechat) : Promise.resolve(null),
+        ]).then(([interests, regResult]) => {
           const mine = interests.some((i) => i.wechat === user.wechat)
           setInterested(mine)
           setInterest(a.id, mine)
+          if (regResult?.registration) {
+            setMyRegistration(regResult.registration)
+            setRegistered(a.id, true)
+            setName(regResult.registration.name)
+            setWechat(regResult.registration.wechat)
+            setParticipantCount(regResult.registration.participantCount)
+            setNote(regResult.registration.note)
+          } else {
+            setMyRegistration(null)
+            setRegistered(a.id, false)
+          }
         })
       })
       .catch(() => setNotFound(true))
@@ -99,29 +116,52 @@ export function EventPage() {
       setIdentityModal(true)
       return
     }
-    if (!id || !activity || activity.status !== 'recruiting') return
+    if (!id || !activity || activity.status !== 'recruiting' || myRegistration) return
     if (activity.maxParticipants != null && activity.registeredCount + participantCount > activity.maxParticipants) {
       alert('名额不足')
       return
     }
     setSubmitting(true)
     try {
-      await api.createRegistration({
+      const res = await api.createRegistration({
         activityId: id,
         name: name.trim(),
         wechat: wechat.trim(),
         participantCount,
         note: note.trim(),
       })
+      setMyRegistration(res.registration ?? null)
+      if (res.registration) setRegistered(id, true)
       setActivity((prev) =>
-        prev ? { ...prev, registeredCount: prev.registeredCount + participantCount } : prev
+        prev ? { ...prev, registeredCount: res.registeredCount } : prev
       )
-      setRegisteredCount((c) => c + participantCount)
+      setRegisteredCount(res.registeredCount)
       setSuccess(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : '报名失败')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleCancelRegistration = async () => {
+    const user = getUser()
+    if (!user || !activity || !myRegistration) return
+    if (!confirm('确定取消报名？')) return
+    setCancelLoading(true)
+    try {
+      const res = await api.cancelRegistration({ activityId: activity.id, wechat: user.wechat })
+      setMyRegistration(null)
+      setSuccess(false)
+      setRegistered(activity.id, false)
+      setActivity((prev) =>
+        prev ? { ...prev, registeredCount: res.registeredCount } : prev
+      )
+      setRegisteredCount(res.registeredCount)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '取消失败')
+    } finally {
+      setCancelLoading(false)
     }
   }
 
@@ -273,19 +313,42 @@ export function EventPage() {
               type="button"
               className={`w-full rounded-xl py-3 font-medium border transition-colors ${
                 interested
-                  ? 'border-green-300 bg-green-50 text-green-700'
+                  ? 'border-gray-300 bg-gray-100 text-gray-600'
                   : 'btn-primary'
               }`}
               onClick={toggleInterest}
               disabled={interestLoading}
             >
-              {interestLoading ? '...' : interested ? '💔 取消感兴趣' : '❤️ 我也感兴趣'}
+              {interestLoading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
             </button>
             <Link to="/" className="btn-secondary block text-center">回到首页</Link>
           </div>
         ) : activity.status !== 'recruiting' ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
             该活动暂未开放报名
+          </div>
+        ) : myRegistration ? (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-1">
+              <p>姓名：{myRegistration.name}</p>
+              <p>参与人数：{myRegistration.participantCount} 人</p>
+              {myRegistration.note && <p>备注：{myRegistration.note}</p>}
+            </div>
+            <button
+              type="button"
+              className="w-full rounded-xl py-3 font-medium border border-gray-200 bg-gray-100 text-gray-500 cursor-default"
+              disabled
+            >
+              已报名
+            </button>
+            <button
+              type="button"
+              className="w-full rounded-xl py-3 font-medium border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+              onClick={handleCancelRegistration}
+              disabled={cancelLoading}
+            >
+              {cancelLoading ? '取消中...' : '取消报名'}
+            </button>
           </div>
         ) : (
           <>

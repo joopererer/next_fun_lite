@@ -1,4 +1,4 @@
-import { useSortable } from '@dnd-kit/sortable'
+import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../../shared/types'
@@ -16,15 +16,13 @@ interface Props {
 }
 
 export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefresh }: Props) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
     data: { column, activity },
   })
 
   const style = {
-    transform: `${CSS.Transform.toString(transform)}${isDragging ? ' rotate(-2deg)' : ''}`,
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    transform: CSS.Translate.toString(transform),
   }
 
   const copyLink = () => {
@@ -32,11 +30,22 @@ export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefre
     alert('链接已复制')
   }
 
+  if (isDragging) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="h-0 overflow-hidden opacity-0 pointer-events-none mb-0"
+        aria-hidden
+      />
+    )
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white rounded-xl p-3 shadow-sm border border-gray-100 mb-3 ${isDragging ? 'shadow-lg' : ''}`}
+      className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 mb-3"
     >
       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
         <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
@@ -48,11 +57,14 @@ export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefre
             <p className="text-xs text-green-600 mb-2">
               ❤️ {activity.interestedCount}人感兴趣 {activity.interestedCount >= 5 ? '🔥' : ''}
             </p>
+            {(!activity.date || !activity.location || activity.maxParticipants == null) && (
+              <p className="text-xs text-amber-600 mb-1">⚠️ 缺时间/地点/人数，不可直接拖入招募中</p>
+            )}
           </>
         ) : (
           <>
             <p className="text-xs text-gray-400 mb-2">
-              {formatEventDate(activity.date)} · {activity.location}
+              {formatEventDate(activity.date)} · {activity.location || '—'}
             </p>
             <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
           </>

@@ -1,4 +1,4 @@
-import type { Activity, ActivityWithCount, ApiParseResponse, Interest, InterestMutationResult, RecruitmentResponse, Registration } from '../../shared/types'
+import type { Activity, ActivityWithCount, ApiParseResponse, Interest, InterestMutationResult, RecruitmentResponse, Registration, RegistrationMutationResult } from '../../shared/types'
 
 const ADMIN_KEY = 'nfl_admin_password'
 
@@ -50,13 +50,23 @@ export const api = {
     request<{ ok: boolean }>(`/api/activities/${id}`, { method: 'DELETE' }),
   getRegistrations: (activityId: string) =>
     request<Registration[]>(`/api/activities/${activityId}/registrations`),
+  getMyRegistration: (activityId: string, wechat: string) =>
+    request<{ registration: Registration | null; registeredCount: number }>(
+      `/api/activities/${activityId}/registration?wechat=${encodeURIComponent(wechat)}`
+    ),
   createRegistration: (data: {
     activityId: string
     name: string
     wechat: string
     participantCount: number
     note: string
-  }) => request<Registration>('/api/registrations', { method: 'POST', body: JSON.stringify(data) }),
+  }) =>
+    request<RegistrationMutationResult>('/api/registrations', { method: 'POST', body: JSON.stringify(data) }),
+  cancelRegistration: (data: { activityId: string; wechat: string }) =>
+    request<RegistrationMutationResult>('/api/registrations', {
+      method: 'POST',
+      body: JSON.stringify({ ...data, action: 'remove' as const }),
+    }),
   createInterest: (data: { activityId: string; name: string; wechat: string }) =>
     request<InterestMutationResult>('/api/interests', { method: 'POST', body: JSON.stringify(data) }),
   getInterests: (activityId: string) =>
