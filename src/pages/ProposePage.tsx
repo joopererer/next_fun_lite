@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/layout/Header'
 import { UserIdentityModal } from '../components/UserIdentityModal'
-import type { ActivityCategory, FeeLevel } from '../../shared/types'
+import type { ActivityCategory, FeeLevel, ParseResult } from '../../shared/types'
 import { api } from '../lib/api'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { FEE_LEVELS } from '../lib/feeLevel'
+import { applyParseResult } from '../lib/parseResult'
 import { getUser } from '../lib/user'
 
 type InputMode = 'link' | 'image' | 'manual'
@@ -40,6 +41,20 @@ export function ProposePage() {
     }
   }, [])
 
+  const applyParsed = (data: Partial<ParseResult> & { sourceUrl?: string }) => {
+    applyParseResult(data, {
+      setTitle,
+      setDescription,
+      setLocation,
+      setSourceUrl,
+      setDateHint,
+      setCategory,
+      setFeeLevel,
+    }, { dateHintOnly: true })
+    if (data.fee === '免费') setFeeLevel('free')
+    else if (data.fee?.includes('预算区间')) setFeeLevel('paid')
+  }
+
   const handleParseUrl = async () => {
     if (!url.trim()) return
     setParsing(true)
@@ -48,10 +63,7 @@ export function ProposePage() {
       const res = await api.parse({ url: url.trim() })
       setParseSuccess(res.success)
       setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
-      if (res.data.title) setTitle(res.data.title)
-      if (res.data.description) setDescription(res.data.description ?? '')
-      if (res.data.location) setLocation(res.data.location ?? '')
-      setSourceUrl(url.trim())
+      applyParsed({ ...res.data, sourceUrl: url.trim() })
     } catch {
       setParseSuccess(false)
       setParseMessage('解析失败，请手动填写或上传截图')
@@ -73,9 +85,7 @@ export function ProposePage() {
         const res = await api.parse({ imageBase64: base64, mimeType: file.type })
         setParseSuccess(res.success)
         setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
-        if (res.data.title) setTitle(res.data.title)
-        if (res.data.description) setDescription(res.data.description ?? '')
-        if (res.data.location) setLocation(res.data.location ?? '')
+        applyParsed(res.data)
       } catch {
         setParseSuccess(false)
         setParseMessage('解析失败，请手动填写')

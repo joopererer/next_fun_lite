@@ -91,10 +91,13 @@ export interface ParseResult {
   title?: string | null
   description?: string | null
   date?: string | null
+  dateEnd?: string | null
   location?: string | null
   maxParticipants?: number | null
   fee?: string | null
   notes?: string | null
+  category?: ActivityCategory | null
+  feeLevel?: FeeLevel | null
 }
 
 export interface ApiParseResponse {

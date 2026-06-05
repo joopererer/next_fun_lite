@@ -12,6 +12,7 @@ import type {
 } from '../../../shared/types'
 import { api, getEventUrl } from '../../lib/api'
 import { ACTIVITY_CATEGORIES } from '../../lib/categories'
+import { applyParseResult } from '../../lib/parseResult'
 import { formatEventDate, getUser } from '../../lib/user'
 import { ActivityParsePanel } from '../ActivityParsePanel'
 import { DiningFields } from './DiningFields'
@@ -134,14 +135,17 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
   }
 
   const handleParsed = (data: Partial<ParseResult> & { sourceUrl?: string }) => {
-    if (data.title) setTitle(data.title)
-    if (data.description) setDescription(data.description ?? '')
-    if (data.location) setLocation(data.location ?? '')
-    if (data.sourceUrl) setSourceUrl(data.sourceUrl)
-    if (data.fee) setFee(data.fee ?? '')
-    if (data.notes) setNotes(data.notes ?? '')
-    if (data.maxParticipants != null) setMaxParticipants(String(data.maxParticipants))
-    if (data.date) setDate(new Date(data.date).toISOString().slice(0, 16))
+    applyParseResult(data, {
+      setTitle,
+      setDescription,
+      setLocation,
+      setSourceUrl,
+      setFee,
+      setNotes,
+      setMaxParticipants,
+      setDate,
+      setCategory,
+    }, { getNotes: () => notes })
   }
 
   const buildPayload = (): Partial<Activity> => ({

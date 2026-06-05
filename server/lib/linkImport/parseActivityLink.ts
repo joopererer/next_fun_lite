@@ -1,6 +1,12 @@
 import type { ApiParseResponse, ParseResult } from '../../../shared/types'
 import type { ScrapedActivity } from './types'
 import {
+  formatScrapedDateRange,
+  formatScrapedFee,
+  inferFeeLevel,
+  mapScrapedCategory,
+} from './mapScraped'
+import {
   activityLinkImportUserAgent,
   enrichSortirActivityAddress,
   extractSortirFrenchStreetAddress,
@@ -59,18 +65,23 @@ function getLinkImportHostKey(url: URL): string | null {
 }
 
 function scrapedToParseResult(activity: ScrapedActivity, sourceUrl: string): Partial<ParseResult> {
-  const notes = [activity.itinerary].filter(Boolean).join('\n')
-  const location = [activity.address, activity.city].filter(Boolean).join(', ')
+  const fee = formatScrapedFee(activity)
+  const dateRangeLabel = formatScrapedDateRange(activity.startAt, activity.endAt)
+  const noteParts = [activity.itinerary, dateRangeLabel ? `活动时间：${dateRangeLabel}` : '']
+    .filter(Boolean)
   return {
     title: activity.title || null,
     description: activity.description
       ? `${activity.description}\n\n来源：${sourceUrl}`
       : null,
     date: activity.startAt || null,
-    location: location || null,
+    dateEnd: activity.endAt || null,
+    location: [activity.address, activity.city].filter(Boolean).join(', ') || null,
     maxParticipants: activity.capacity ?? linkImportDefaultCapacity,
-    fee: activity.priceText || null,
-    notes: notes || null,
+    fee: fee || null,
+    notes: noteParts.length > 0 ? noteParts.join('\n') : null,
+    category: mapScrapedCategory(activity.category),
+    feeLevel: inferFeeLevel(activity, fee),
   }
 }
 
@@ -208,6 +219,13 @@ export async function parseActivityLink(url: string): Promise<ApiParseResponse &
   if (!data.title) missing.push('标题')
   if (!data.date) missing.push('时间')
   if (!data.location) missing.push('地点')
+  if (!data.fee) missing.push('费用')
+
+  const datePreview = data.date ? formatScrapedDateRange(data.date, data.dateEnd ?? null) : ''
+  const extras: string[] = []
+  if (datePreview) extras.push(`时间 ${datePreview}`)
+  if (data.fee) extras.push(`费用 ${data.fee}`)
+  if (data.category) extras.push(`类型 ${data.category}`)
 
   return {
     success: true,
@@ -215,7 +233,7 @@ export async function parseActivityLink(url: string): Promise<ApiParseResponse &
     data,
     message:
       missing.length > 0
-        ? `已从 ${siteName} 导入，请补充：${missing.join('、')}`
-        : `已从 ${siteName} 导入，请确认并补充`,
+        ? `已从 ${siteName} 导入${extras.length ? `（${extras.join(' · ')}）` : ''}，请补充：${missing.join('、')}`
+        : `已从 ${siteName} 导入：${extras.join(' · ') || '请确认并补充'}`,
   }
 }

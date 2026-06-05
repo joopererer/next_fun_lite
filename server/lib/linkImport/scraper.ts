@@ -1088,7 +1088,7 @@ export function parseChineseDate(
     .replace(/\uFF0F/g, "/")
     .replace(/\u2013|\u2014|\u2212/g, "-");
   const rangeMatch = normalized.match(
-    /(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日(?:至|到|-|与)(?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日/,
+    /(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日(?:至|到|-|与|和)(?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日/,
   );
   if (rangeMatch) {
     const [, yearA, monthA, dayA, yearB, monthB, dayB] = rangeMatch;
@@ -1100,6 +1100,18 @@ export function parseChineseDate(
     );
     const end = new Date(Date.UTC(endYear, endMonth, Number(dayB), 18, 0, 0));
     return { start, end };
+  }
+  const dayOnlyEnd = normalized.match(
+    /(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日(?:至|到|-|与|和)(\d{1,2})日/,
+  );
+  if (dayOnlyEnd) {
+    const [, year, month, dayA, dayB] = dayOnlyEnd;
+    const y = Number(year ?? referenceYear);
+    const m = Number(month) - 1;
+    return {
+      start: new Date(Date.UTC(y, m, Number(dayA), 9, 0, 0)),
+      end: new Date(Date.UTC(y, m, Number(dayB), 18, 0, 0)),
+    };
   }
   const singleMatch = normalized.match(/(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日/);
   if (singleMatch) {
@@ -1525,6 +1537,10 @@ function mapFeverPlanCategory(
 function guessCategory(text: string): ScrapedActivity["category"] {
   const value = text.toLowerCase();
 
+  if (/(文化|文化节|文化周|wenhua|vietnam.*文化)/i.test(value)) {
+    return "EXHIBITION";
+  }
+
   if (/(桌游|board\s*game|jenga|狼人杀|卡牌)/i.test(value)) {
     return "BOARD_GAME";
   }
@@ -1537,9 +1553,10 @@ function guessCategory(text: string): ScrapedActivity["category"] {
   }
 
   if (
-    /(candlelight|音乐|concert|live\s*music|quatuor|orchestre|symphon|dj\b|k-pop|kpop|festival|opera)/i.test(
+    /(candlelight|音乐|concert|live\s*music|quatuor|orchestre|symphon|dj\b|k-pop|kpop|opera)/i.test(
       value,
-    )
+    ) &&
+    !/(文化|cinema|cinéma|电影|film|exhibition|exposition|展)/i.test(value)
   ) {
     return "MUSIC";
   }
@@ -1553,7 +1570,7 @@ function guessCategory(text: string): ScrapedActivity["category"] {
   }
 
   if (
-    /(电影|cinema|movie|\bfilm\b|projection)/i.test(value) &&
+    /(电影|cinema|cinéma|movie|\bfilm\b|projection|festival du cin)/i.test(value) &&
     !/candlelight/i.test(value)
   ) {
     return "MOVIE";
