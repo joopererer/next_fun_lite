@@ -51,7 +51,7 @@ npm run dev
 1. 在 [GCP 控制台](https://console.cloud.google.com/) 创建项目并启用 **Google Sheets API**
 2. 创建 **Service Account**，下载 JSON 密钥
 3. 创建 Google 表格，添加三个 Sheet：
-   - `activities` — 列：`id | title | description | date | location | max_participants | fee | notes | organizer_name | organizer_wechat | source_url | status | interested_count | created_at`
+   - `activities` — 列：`id | title | description | date | location | max_participants | fee | notes | organizer_name | organizer_wechat | source_url | category | status | interested_count | created_at`
    - `registrations` — 列：`id | activity_id | name | wechat | participant_count | note | registered_at`
    - `interests` — 列：`id | activity_id | name | wechat | created_at`
 4. 将 Service Account 邮箱添加为表格**编辑者**

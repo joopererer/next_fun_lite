@@ -1,4 +1,4 @@
-import type { Activity, ActivityWithCount, ApiParseResponse, Interest, Registration } from '../../shared/types'
+import type { Activity, ActivityWithCount, ApiParseResponse, InterestMutationResult, Registration } from '../../shared/types'
 
 const ADMIN_KEY = 'nfl_admin_password'
 
@@ -55,10 +55,10 @@ export const api = {
     participantCount: number
     note: string
   }) => request<Registration>('/api/registrations', { method: 'POST', body: JSON.stringify(data) }),
-  getInterests: (activityId: string) =>
-    request<Interest[]>(`/api/activities/${activityId}/interests`),
   createInterest: (data: { activityId: string; name: string; wechat: string }) =>
-    request<Interest>('/api/interests', { method: 'POST', body: JSON.stringify(data) }),
+    request<InterestMutationResult>('/api/interests', { method: 'POST', body: JSON.stringify(data) }),
+  deleteInterest: (data: { activityId: string; wechat: string }) =>
+    request<InterestMutationResult>('/api/interests', { method: 'DELETE', body: JSON.stringify(data) }),
   parse: (data: { url?: string; imageBase64?: string; mimeType?: string }) =>
     request<ApiParseResponse>('/api/parse', { method: 'POST', body: JSON.stringify(data) }),
 }

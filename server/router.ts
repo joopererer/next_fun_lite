@@ -3,6 +3,7 @@ import {
   handleCreateActivity,
   handleCreateInterest,
   handleCreateRegistration,
+  handleDeleteInterest,
   handleDeleteActivity,
   handleGetActivities,
   handleGetActivity,
@@ -58,6 +59,7 @@ const routes: Array<{
     handler: (req, env, p) => handleGetInterests(req, env, p.id),
   },
   { method: 'POST', pattern: /^\/api\/interests$/, handler: (req, env) => handleCreateInterest(req, env) },
+  { method: 'DELETE', pattern: /^\/api\/interests$/, handler: (req, env) => handleDeleteInterest(req, env) },
   { method: 'POST', pattern: /^\/api\/parse$/, handler: (req, env) => handleParse(req, env) },
 ]
 

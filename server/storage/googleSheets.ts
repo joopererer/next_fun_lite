@@ -1,12 +1,12 @@
 import { google } from 'googleapis'
 import { nanoid } from 'nanoid'
-import type { Activity, EnvConfig, Interest, Registration } from '../../shared/types'
-import type { StorageAdapter } from './types'
+import type { Activity, ActivityCategory, EnvConfig, Interest, Registration } from '../../shared/types'
+import type { InterestMutationResult, StorageAdapter } from './types'
 
 const ACTIVITY_HEADERS = [
   'id', 'title', 'description', 'date', 'location', 'max_participants',
   'fee', 'notes', 'organizer_name', 'organizer_wechat', 'source_url',
-  'status', 'interested_count', 'created_at',
+  'category', 'status', 'interested_count', 'created_at',
 ] as const
 
 const REGISTRATION_HEADERS = [
@@ -38,6 +38,7 @@ function activityFromRow(row: string[]): Activity {
     organizerWechat: r.organizer_wechat,
     sourceUrl: r.source_url,
     status: r.status as Activity['status'],
+    category: (r.category as ActivityCategory) || 'other',
     interestedCount: parseInt(r.interested_count, 10) || 0,
     createdAt: r.created_at,
   }
@@ -47,7 +48,7 @@ function activityToRow(a: Activity): string[] {
   return [
     a.id, a.title, a.description, a.date ?? '', a.location,
     a.maxParticipants?.toString() ?? '', a.fee, a.notes,
-    a.organizerName, a.organizerWechat, a.sourceUrl, a.status,
+    a.organizerName, a.organizerWechat, a.sourceUrl, a.category, a.status,
     a.interestedCount.toString(), a.createdAt,
   ]
 }
@@ -132,7 +133,7 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     const allRows = res.data.values ?? []
     const idx = allRows.findIndex((r, i) => i > 0 && r[idCol] === id)
     if (idx === -1) throw new Error('Row not found')
-    const range = `${sheetName}!A${idx + 1}:N${idx + 1}`
+    const range = `${sheetName}!A${idx + 1}:O${idx + 1}`
     await this.sheets.spreadsheets.values.update({
       spreadsheetId: this.spreadsheetId,
       range,
@@ -237,17 +238,41 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     return rows.filter((r) => r[1] === activityId).map(interestFromRow)
   }
 
-  async createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<Interest> {
+  async findInterest(activityId: string, wechat: string): Promise<Interest | null> {
+    const rows = await this.getSheetRows('interests')
+    const row = rows.find((r) => r[1] === activityId && r[3] === wechat)
+    return row ? interestFromRow(row) : null
+  }
+
+  private async syncInterestedCount(activityId: string): Promise<number> {
+    const interests = await this.getInterests(activityId)
+    const count = interests.length
+    await this.updateActivity(activityId, { interestedCount: count })
+    return count
+  }
+
+  async createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> {
+    const existing = await this.findInterest(data.activityId, data.wechat)
+    if (existing) {
+      return { interest: existing, interestedCount: (await this.getActivity(data.activityId))?.interestedCount ?? 0 }
+    }
     const interest: Interest = {
       ...data,
       id: nanoid(8),
       createdAt: new Date().toISOString(),
     }
     await this.appendRow('interests', interestToRow(interest))
+    const interestedCount = await this.syncInterestedCount(data.activityId)
+    return { interest, interestedCount }
+  }
 
-    const interests = await this.getInterests(data.activityId)
-    await this.updateActivity(data.activityId, { interestedCount: interests.length + 1 })
-
-    return interest
+  async deleteInterest(activityId: string, wechat: string): Promise<InterestMutationResult> {
+    const existing = await this.findInterest(activityId, wechat)
+    if (!existing) {
+      return { interestedCount: (await this.getActivity(activityId))?.interestedCount ?? 0 }
+    }
+    await this.deleteRowById('interests', existing.id)
+    const interestedCount = await this.syncInterestedCount(activityId)
+    return { interest: existing, interestedCount }
   }
 }

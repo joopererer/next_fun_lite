@@ -1,5 +1,9 @@
 import type { Activity, Interest, Registration } from '../../shared/types'
 
+export interface InterestMutationResult {
+  interestedCount: number
+}
+
 export interface StorageAdapter {
   getActivities(): Promise<Activity[]>
   getActivity(id: string): Promise<Activity | null>
@@ -11,5 +15,7 @@ export interface StorageAdapter {
   createRegistration(data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration>
 
   getInterests(activityId: string): Promise<Interest[]>
-  createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<Interest>
+  findInterest(activityId: string, wechat: string): Promise<Interest | null>
+  createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult>
+  deleteInterest(activityId: string, wechat: string): Promise<InterestMutationResult>
 }

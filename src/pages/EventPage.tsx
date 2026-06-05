@@ -5,7 +5,8 @@ import { CapacityBar } from '../components/CapacityBar'
 import { Header } from '../components/layout/Header'
 import { UserIdentityModal } from '../components/UserIdentityModal'
 import { api } from '../lib/api'
-import { formatEventDate, getUser } from '../lib/user'
+import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
+import { formatEventDate, getUser, hasInterest, setInterest } from '../lib/user'
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>()
@@ -21,6 +22,9 @@ export function EventPage() {
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [identityModal, setIdentityModal] = useState(false)
+  const [interested, setInterested] = useState(false)
+  const [interestCount, setInterestCount] = useState(0)
+  const [interestLoading, setInterestLoading] = useState(false)
 
   useEffect(() => {
     const user = getUser()
@@ -33,10 +37,45 @@ export function EventPage() {
   useEffect(() => {
     if (!id) return
     api.getActivity(id)
-      .then(setActivity)
+      .then((a) => {
+        setActivity(a)
+        setInterestCount(a.interestedCount)
+        setInterested(hasInterest(a.id))
+      })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
   }, [id])
+
+  const toggleInterest = async () => {
+    const user = getUser()
+    if (!user || !activity) {
+      setIdentityModal(true)
+      return
+    }
+    if (interestLoading) return
+    setInterestLoading(true)
+    try {
+      if (interested) {
+        const res = await api.deleteInterest({ activityId: activity.id, wechat: user.wechat })
+        setInterested(false)
+        setInterest(activity.id, false)
+        setInterestCount(res.interestedCount)
+      } else {
+        const res = await api.createInterest({
+          activityId: activity.id,
+          name: user.name,
+          wechat: user.wechat,
+        })
+        setInterested(true)
+        setInterest(activity.id, true)
+        setInterestCount(res.interestedCount)
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '操作失败')
+    } finally {
+      setInterestLoading(false)
+    }
+  }
 
   const full = activity?.maxParticipants != null && activity.registeredCount >= activity.maxParticipants
   const ended = activity?.status === 'ended'
@@ -109,16 +148,35 @@ export function EventPage() {
     <div className="min-h-screen pb-16">
       <Header />
       <main className="max-w-lg mx-auto px-4 py-6 page-enter">
-        <h1 className="text-2xl font-bold mb-4">🏃 {activity.title}</h1>
+        <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
+          {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+        </span>
+        <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
+
+        {activity.status === 'proposed' && (
+          <div className="bg-blue-50 text-blue-800 text-sm rounded-xl p-3 mb-4">
+            💡 这是一个提议，尚未开始招募。感兴趣的人多了，管理员会发起正式活动。
+          </div>
+        )}
 
         <div className="space-y-2 text-sm text-gray-600 mb-6">
           <p>📅 {formatEventDate(activity.date)}</p>
           <p>📍 {activity.location || '地点待定'}</p>
-          <div>
-            <p className="mb-1">👥 已报名 {activity.registeredCount}{activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''} 人</p>
-            <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
-          </div>
+          {activity.status === 'recruiting' && (
+            <div>
+              <p className="mb-1">👥 已报名 {activity.registeredCount}{activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''} 人</p>
+              <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
+            </div>
+          )}
+          {activity.status === 'proposed' && (
+            <p>💡 {interestCount} 人感兴趣</p>
+          )}
           {activity.fee && <p>💰 {activity.fee}</p>}
+          {activity.sourceUrl && (
+            <a href={activity.sourceUrl} target="_blank" rel="noreferrer" className="text-green-600 underline block truncate">
+              🔗 参考链接
+            </a>
+          )}
         </div>
 
         {activity.description && (
@@ -150,6 +208,22 @@ export function EventPage() {
         ) : full ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
             名额已满（{activity.registeredCount}/{activity.maxParticipants}）
+          </div>
+        ) : activity.status === 'proposed' ? (
+          <div className="space-y-4">
+            <button
+              type="button"
+              className={`w-full rounded-xl py-3 font-medium border transition-colors ${
+                interested
+                  ? 'border-green-300 bg-green-50 text-green-700'
+                  : 'btn-primary'
+              }`}
+              onClick={toggleInterest}
+              disabled={interestLoading}
+            >
+              {interestLoading ? '...' : interested ? '💔 取消感兴趣' : '❤️ 我也感兴趣'}
+            </button>
+            <Link to="/" className="btn-secondary block text-center">回到首页</Link>
           </div>
         ) : activity.status !== 'recruiting' ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">

@@ -19,12 +19,17 @@ export function saveUser(user: UserIdentity): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
-export function hasInterest(activityId: string): boolean {
-  return localStorage.getItem(`nfl_interested_${activityId}`) === '1'
+function interestKey(activityId: string): string {
+  return `nfl_interest_${activityId}`
 }
 
-export function markInterest(activityId: string): void {
-  localStorage.setItem(`nfl_interested_${activityId}`, '1')
+export function hasInterest(activityId: string): boolean {
+  return localStorage.getItem(interestKey(activityId)) === '1'
+}
+
+export function setInterest(activityId: string, active: boolean): void {
+  if (active) localStorage.setItem(interestKey(activityId), '1')
+  else localStorage.removeItem(interestKey(activityId))
 }
 
 export function formatRelativeTime(iso: string): string {

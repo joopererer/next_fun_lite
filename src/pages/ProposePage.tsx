@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/layout/Header'
 import { UserIdentityModal } from '../components/UserIdentityModal'
+import type { ActivityCategory } from '../../shared/types'
 import { api } from '../lib/api'
+import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { getUser } from '../lib/user'
 
 type InputMode = 'link' | 'image' | 'manual'
@@ -22,6 +24,7 @@ export function ProposePage() {
   const [sourceUrl, setSourceUrl] = useState('')
   const [dateHint, setDateHint] = useState('')
   const [location, setLocation] = useState('')
+  const [category, setCategory] = useState<ActivityCategory>('other')
   const [organizerName, setOrganizerName] = useState(user?.name ?? '')
   const [organizerWechat, setOrganizerWechat] = useState(user?.wechat ?? '')
   const [submitting, setSubmitting] = useState(false)
@@ -94,6 +97,7 @@ export function ProposePage() {
         date: dateHint ? null : null,
         location: location.trim(),
         sourceUrl: sourceUrl.trim(),
+        category,
         organizerName: organizerName.trim(),
         organizerWechat: organizerWechat.trim(),
         fee: '',
@@ -204,6 +208,14 @@ export function ProposePage() {
           <div>
             <label className="text-sm text-gray-600 mb-1 block">大概时间（选填）</label>
             <input className="input-field" placeholder="如「周末」「下午」" value={dateHint} onChange={(e) => setDateHint(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm text-gray-600 mb-1 block">活动类型</label>
+            <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
+              {ACTIVITY_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="text-sm text-gray-600 mb-1 block">大概地点（选填）</label>

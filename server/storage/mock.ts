@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid'
 import type { Activity, Interest, Registration } from '../../shared/types'
-import type { StorageAdapter } from './types'
+import type { InterestMutationResult, StorageAdapter } from './types'
 
 const now = new Date()
 const daysAgo = (n: number) => new Date(now.getTime() - n * 86400000).toISOString()
@@ -25,6 +25,7 @@ function seedActivities(): Activity[] {
       organizerWechat: 'cette456',
       sourceUrl: 'https://www.sortiraparis.com/example',
       status: 'proposed',
+      category: 'dining',
       interestedCount: 5,
       createdAt: daysAgo(2),
     },
@@ -41,6 +42,7 @@ function seedActivities(): Activity[] {
       organizerWechat: 'xiaoming88',
       sourceUrl: '',
       status: 'proposed',
+      category: 'dining',
       interestedCount: 3,
       createdAt: daysAgo(5),
     },
@@ -57,6 +59,7 @@ function seedActivities(): Activity[] {
       organizerWechat: 'lily_art',
       sourceUrl: 'https://www.louvre.fr/',
       status: 'proposed',
+      category: 'culture',
       interestedCount: 2,
       createdAt: daysAgo(1),
     },
@@ -73,6 +76,7 @@ function seedActivities(): Activity[] {
       organizerWechat: 'james123',
       sourceUrl: '',
       status: 'recruiting',
+      category: 'sports',
       interestedCount: 0,
       createdAt: daysAgo(7),
     },
@@ -89,13 +93,14 @@ function seedActivities(): Activity[] {
       organizerWechat: 'amy_vintage',
       sourceUrl: 'https://www.pucesdevanves.fr/',
       status: 'recruiting',
+      category: 'culture',
       interestedCount: 0,
       createdAt: daysAgo(3),
     },
     {
       id: 'end001',
       title: 'Montmartre 摄影漫步',
-      description: '已完成的活动：蒙马特高地街拍，_sacré-cœur 日落，大家拍了很多好照片！',
+      description: '已完成的活动：蒙马特高地街拍，Sacré-Cœur 日落，大家拍了很多好照片！',
       date: daysAgo(14),
       location: 'Abbesses 站',
       maxParticipants: 12,
@@ -105,6 +110,7 @@ function seedActivities(): Activity[] {
       organizerWechat: 'tom_photo',
       sourceUrl: '',
       status: 'ended',
+      category: 'culture',
       interestedCount: 0,
       createdAt: daysAgo(30),
     },
@@ -144,6 +150,13 @@ export class MockAdapter implements StorageAdapter {
     this.activities = seedActivities()
     this.registrations = seedRegistrations()
     this.interests = seedInterests()
+  }
+
+  private syncInterestedCount(activityId: string): number {
+    const count = this.interests.filter((i) => i.activityId === activityId).length
+    const activity = this.activities.find((a) => a.id === activityId)
+    if (activity) activity.interestedCount = count
+    return count
   }
 
   async getActivities(): Promise<Activity[]> {
@@ -199,17 +212,30 @@ export class MockAdapter implements StorageAdapter {
     return this.interests.filter((i) => i.activityId === activityId)
   }
 
-  async createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<Interest> {
+  async findInterest(activityId: string, wechat: string): Promise<Interest | null> {
+    return this.interests.find((i) => i.activityId === activityId && i.wechat === wechat) ?? null
+  }
+
+  async createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> {
+    const existing = await this.findInterest(data.activityId, data.wechat)
+    if (existing) {
+      return { interest: existing, interestedCount: this.syncInterestedCount(data.activityId) }
+    }
     const interest: Interest = {
       ...data,
       id: nanoid(8),
       createdAt: new Date().toISOString(),
     }
     this.interests.push(interest)
-    const activity = this.activities.find((a) => a.id === data.activityId)
-    if (activity) {
-      activity.interestedCount += 1
+    return { interest, interestedCount: this.syncInterestedCount(data.activityId) }
+  }
+
+  async deleteInterest(activityId: string, wechat: string): Promise<InterestMutationResult> {
+    const idx = this.interests.findIndex((i) => i.activityId === activityId && i.wechat === wechat)
+    if (idx === -1) {
+      return { interest: undefined, interestedCount: this.syncInterestedCount(activityId) }
     }
-    return interest
+    const [removed] = this.interests.splice(idx, 1)
+    return { interest: removed, interestedCount: this.syncInterestedCount(activityId) }
   }
 }

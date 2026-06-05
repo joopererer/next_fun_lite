@@ -1,5 +1,13 @@
 export type ActivityStatus = 'proposed' | 'recruiting' | 'ended'
 
+export type ActivityCategory =
+  | 'board_game'
+  | 'sports'
+  | 'culture'
+  | 'dining'
+  | 'escape_room'
+  | 'other'
+
 export interface Activity {
   id: string
   title: string
@@ -13,6 +21,7 @@ export interface Activity {
   organizerWechat: string
   sourceUrl: string
   status: ActivityStatus
+  category: ActivityCategory
   interestedCount: number
   createdAt: string
 }
@@ -37,6 +46,11 @@ export interface Interest {
 
 export interface ActivityWithCount extends Activity {
   registeredCount: number
+}
+
+export interface InterestMutationResult {
+  interest?: Interest
+  interestedCount: number
 }
 
 export interface ParseResult {

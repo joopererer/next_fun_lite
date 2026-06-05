@@ -1,7 +1,8 @@
 import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
-import type { Activity, ActivityStatus } from '../../../shared/types'
+import type { Activity, ActivityCategory, ActivityStatus } from '../../../shared/types'
 import { api, getEventUrl } from '../../lib/api'
+import { ACTIVITY_CATEGORIES } from '../../lib/categories'
 
 interface Props {
   initial?: Partial<Activity>
@@ -20,6 +21,7 @@ export function ActivityForm({ initial, editId, onSuccess }: Props) {
   const [organizerName, setOrganizerName] = useState(initial?.organizerName ?? '')
   const [organizerWechat, setOrganizerWechat] = useState(initial?.organizerWechat ?? '')
   const [sourceUrl, setSourceUrl] = useState(initial?.sourceUrl ?? '')
+  const [category, setCategory] = useState<ActivityCategory>(initial?.category ?? 'other')
   const [status, setStatus] = useState<ActivityStatus>(initial?.status ?? 'recruiting')
   const [submitting, setSubmitting] = useState(false)
   const [created, setCreated] = useState<Activity | null>(null)
@@ -37,6 +39,7 @@ export function ActivityForm({ initial, editId, onSuccess }: Props) {
       setOrganizerName(initial.organizerName ?? '')
       setOrganizerWechat(initial.organizerWechat ?? '')
       setSourceUrl(initial.sourceUrl ?? '')
+      setCategory(initial.category ?? 'other')
       setStatus(initial.status ?? 'recruiting')
     }
   }, [initial])
@@ -58,6 +61,7 @@ export function ActivityForm({ initial, editId, onSuccess }: Props) {
       organizerName: organizerName.trim(),
       organizerWechat: organizerWechat.trim(),
       sourceUrl: sourceUrl.trim(),
+      category,
       status,
     }
     try {
@@ -115,6 +119,14 @@ export function ActivityForm({ initial, editId, onSuccess }: Props) {
       <div>
         <label className="text-sm text-gray-600 mb-1 block">参考链接</label>
         <input className="input-field" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
+      </div>
+      <div>
+        <label className="text-sm text-gray-600 mb-1 block">活动类型</label>
+        <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
+          {ACTIVITY_CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
+          ))}
+        </select>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>

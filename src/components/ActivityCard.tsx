@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../shared/types'
+import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { formatEventDate } from '../lib/user'
 import { CapacityBar } from './CapacityBar'
 
@@ -12,17 +13,26 @@ export function ActivityCard({ activity }: Props) {
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover min-w-[260px] flex flex-col">
-      <h3 className="font-semibold text-base mb-1">🏃 {activity.title}</h3>
-      <p className="text-sm text-gray-500 mb-3">
-        {formatEventDate(activity.date)} · {activity.location || '地点待定'}
-      </p>
-      <div className="mb-3">
-        <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
-      </div>
-      {activity.fee && (
-        <p className="text-sm text-gray-600 mb-1">💰 {activity.fee}</p>
-      )}
-      <p className="text-sm text-gray-500 mb-4">👤 {activity.organizerName || '管理员'} 发起</p>
+      <Link to={`/event/${activity.id}`} className="block flex-1 group">
+        <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
+          {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+        </span>
+        <h3 className="font-semibold text-base mb-1 group-hover:text-green-700 transition-colors">
+          {activity.title}
+        </h3>
+        <p className="text-sm text-gray-500 mb-2">
+          {formatEventDate(activity.date)} · {activity.location || '地点待定'}
+        </p>
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{activity.description}</p>
+        <div className="mb-3">
+          <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
+        </div>
+        {activity.fee && (
+          <p className="text-sm text-gray-600 mb-1">💰 {activity.fee}</p>
+        )}
+        <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName || '管理员'} 发起</p>
+        <p className="text-xs text-green-600 mb-3">点击查看详情 →</p>
+      </Link>
       <Link
         to={`/event/${activity.id}`}
         className={`mt-auto text-center rounded-xl py-2.5 font-medium transition-colors ${
