@@ -7,6 +7,10 @@ const ACTIVITY_HEADERS = [
   'id', 'title', 'description', 'date', 'location', 'max_participants',
   'fee', 'notes', 'organizer_name', 'organizer_wechat', 'source_url',
   'category', 'status', 'interested_count', 'created_at',
+  'fee_level', 'ticket_prices', 'ticket_url', 'ticket_deadline', 'ticket_method', 'refund_policy',
+  'difficulty', 'distance_and_duration', 'itinerary', 'equipment', 'transportation', 'meal_arrangement',
+  'restaurant_address', 'per_person_cost', 'reservation_method', 'requires_deposit',
+  'recap', 'recap_images',
 ] as const
 
 const REGISTRATION_HEADERS = [
@@ -41,6 +45,24 @@ function activityFromRow(row: string[]): Activity {
     category: (r.category as ActivityCategory) || 'other',
     interestedCount: parseInt(r.interested_count, 10) || 0,
     createdAt: r.created_at,
+    feeLevel: (r.fee_level as Activity['feeLevel']) || undefined,
+    ticketPrices: r.ticket_prices || undefined,
+    ticketUrl: r.ticket_url || undefined,
+    ticketDeadline: r.ticket_deadline || undefined,
+    ticketMethod: (r.ticket_method as Activity['ticketMethod']) || undefined,
+    refundPolicy: r.refund_policy || undefined,
+    difficulty: (r.difficulty as Activity['difficulty']) || undefined,
+    distanceAndDuration: r.distance_and_duration || undefined,
+    itinerary: r.itinerary || undefined,
+    equipment: r.equipment || undefined,
+    transportation: r.transportation || undefined,
+    mealArrangement: (r.meal_arrangement as Activity['mealArrangement']) || undefined,
+    restaurantAddress: r.restaurant_address || undefined,
+    perPersonCost: r.per_person_cost || undefined,
+    reservationMethod: (r.reservation_method as Activity['reservationMethod']) || undefined,
+    requiresDeposit: r.requires_deposit === 'true' ? true : r.requires_deposit === 'false' ? false : undefined,
+    recap: r.recap || undefined,
+    recapImages: r.recap_images || undefined,
   }
 }
 
@@ -50,6 +72,13 @@ function activityToRow(a: Activity): string[] {
     a.maxParticipants?.toString() ?? '', a.fee, a.notes,
     a.organizerName, a.organizerWechat, a.sourceUrl, a.category, a.status,
     a.interestedCount.toString(), a.createdAt,
+    a.feeLevel ?? '', a.ticketPrices ?? '', a.ticketUrl ?? '', a.ticketDeadline ?? '',
+    a.ticketMethod ?? '', a.refundPolicy ?? '',
+    a.difficulty ?? '', a.distanceAndDuration ?? '', a.itinerary ?? '', a.equipment ?? '',
+    a.transportation ?? '', a.mealArrangement ?? '',
+    a.restaurantAddress ?? '', a.perPersonCost ?? '', a.reservationMethod ?? '',
+    a.requiresDeposit === true ? 'true' : a.requiresDeposit === false ? 'false' : '',
+    a.recap ?? '', a.recapImages ?? '',
   ]
 }
 

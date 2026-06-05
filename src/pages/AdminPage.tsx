@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { ActivityStatus, ActivityWithCount } from '../../shared/types'
-import { ActivityForm } from '../components/admin/ActivityForm'
 import { ActivityListTable } from '../components/admin/ActivityListTable'
 import { AdminGate } from '../components/admin/AdminGate'
 import { KanbanBoard } from '../components/admin/KanbanBoard'
+import { RecruitForm } from '../components/recruit/RecruitForm'
 import { api } from '../lib/api'
 
 type Tab = 'kanban' | 'list' | 'create'
@@ -12,12 +12,12 @@ type Tab = 'kanban' | 'list' | 'create'
 export function AdminPage() {
   const [searchParams] = useSearchParams()
   const initialTab = (searchParams.get('tab') as Tab) || 'kanban'
-  const fromId = searchParams.get('from')
+  const editId = searchParams.get('edit')
 
   const [tab, setTab] = useState<Tab>(initialTab)
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
   const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'all'>('all')
-  const [fromActivity, setFromActivity] = useState<ActivityWithCount | null>(null)
+  const [editActivity, setEditActivity] = useState<ActivityWithCount | null>(null)
 
   const load = useCallback(() => {
     api.getActivities().then(setActivities).catch(console.error)
@@ -26,11 +26,13 @@ export function AdminPage() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    if (fromId) {
-      api.getActivity(fromId).then(setFromActivity).catch(console.error)
+    if (editId) {
+      api.getActivity(editId).then(setEditActivity).catch(console.error)
       setTab('create')
+    } else {
+      setEditActivity(null)
     }
-  }, [fromId])
+  }, [editId])
 
   const handleStatusChange = async (id: string, status: ActivityStatus) => {
     try {
@@ -53,7 +55,7 @@ export function AdminPage() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'kanban', label: '看板视图' },
     { id: 'list', label: '列表视图' },
-    { id: 'create', label: fromId ? '转为招募' : '发起/编辑活动' },
+    { id: 'create', label: editId ? '编辑活动' : '新建活动' },
   ]
 
   return (
@@ -90,6 +92,7 @@ export function AdminPage() {
               activities={activities}
               onStatusChange={handleStatusChange}
               onDelete={handleDelete}
+              onRefresh={load}
             />
           )}
           {tab === 'list' && (
@@ -101,14 +104,10 @@ export function AdminPage() {
             />
           )}
           {tab === 'create' && (
-            <ActivityForm
-              initial={fromActivity ? {
-                title: fromActivity.title,
-                description: fromActivity.description,
-                sourceUrl: fromActivity.sourceUrl,
-                location: fromActivity.location,
-                status: 'recruiting',
-              } : undefined}
+            <RecruitForm
+              mode="admin"
+              initial={editActivity ?? undefined}
+              editId={editId ?? undefined}
               onSuccess={load}
             />
           )}

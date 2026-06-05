@@ -19,9 +19,10 @@ interface Props {
   activities: ActivityWithCount[]
   onStatusChange: (id: string, status: ActivityStatus) => void
   onDelete: (id: string) => void
+  onRefresh?: () => void
 }
 
-export function KanbanBoard({ activities, onStatusChange, onDelete }: Props) {
+export function KanbanBoard({ activities, onStatusChange, onDelete, onRefresh }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -60,6 +61,7 @@ export function KanbanBoard({ activities, onStatusChange, onDelete }: Props) {
             activities={byStatus(status)}
             onDelete={onDelete}
             onStatusChange={onStatusChange}
+            onRefresh={onRefresh}
           />
         ))}
       </div>

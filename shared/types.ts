@@ -8,6 +8,12 @@ export type ActivityCategory =
   | 'escape_room'
   | 'other'
 
+export type FeeLevel = 'free' | 'low' | 'paid' | 'unknown'
+export type TicketMethod = 'self' | 'group'
+export type Difficulty = 'easy' | 'medium' | 'hard'
+export type MealArrangement = 'self' | 'restaurant' | 'group'
+export type ReservationMethod = 'organizer' | 'self'
+
 export interface Activity {
   id: string
   title: string
@@ -24,6 +30,24 @@ export interface Activity {
   category: ActivityCategory
   interestedCount: number
   createdAt: string
+  feeLevel?: FeeLevel
+  ticketPrices?: string
+  ticketUrl?: string
+  ticketDeadline?: string
+  ticketMethod?: TicketMethod
+  refundPolicy?: string
+  difficulty?: Difficulty
+  distanceAndDuration?: string
+  itinerary?: string
+  equipment?: string
+  transportation?: string
+  mealArrangement?: MealArrangement
+  restaurantAddress?: string
+  perPersonCost?: string
+  reservationMethod?: ReservationMethod
+  requiresDeposit?: boolean
+  recap?: string
+  recapImages?: string
 }
 
 export interface Registration {
@@ -51,6 +75,11 @@ export interface ActivityWithCount extends Activity {
 export interface InterestMutationResult {
   interest?: Interest
   interestedCount: number
+}
+
+export interface RecruitmentResponse {
+  activity: Activity
+  eventUrl: string
 }
 
 export interface ParseResult {
@@ -81,4 +110,8 @@ export type EnvConfig = {
   ADMIN_PASSWORD?: string
   SITE_URL?: string
   PARSE_MODE?: string
+}
+
+export type CreateRecruitmentBody = Partial<Activity> & {
+  sourceProposalId?: string
 }

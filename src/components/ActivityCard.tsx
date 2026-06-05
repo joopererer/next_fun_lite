@@ -12,7 +12,7 @@ export function ActivityCard({ activity }: Props) {
   const full = activity.maxParticipants !== null && activity.registeredCount >= activity.maxParticipants
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover min-w-[260px] flex flex-col">
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
       <Link to={`/event/${activity.id}`} className="block flex-1 group">
         <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
           {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}

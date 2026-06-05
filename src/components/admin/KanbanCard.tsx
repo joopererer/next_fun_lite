@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../../shared/types'
+import { RecapModal } from './RecapModal'
 import { CapacityBar } from '../CapacityBar'
 import { formatEventDate, formatRelativeTime } from '../../lib/user'
 import { getEventUrl } from '../../lib/api'
@@ -11,9 +12,10 @@ interface Props {
   column: string
   onDelete: (id: string) => void
   onStatusChange: (id: string, status: ActivityWithCount['status']) => void
+  onRefresh?: () => void
 }
 
-export function KanbanCard({ activity, column, onDelete, onStatusChange }: Props) {
+export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefresh }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: activity.id,
     data: { column, activity },
@@ -64,7 +66,7 @@ export function KanbanCard({ activity, column, onDelete, onStatusChange }: Props
               查看详情
             </Link>
             <Link
-              to={`/admin?tab=create&from=${activity.id}`}
+              to={`/recruit/new?from=${activity.id}`}
               className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
             >
               转为招募 →
@@ -82,9 +84,12 @@ export function KanbanCard({ activity, column, onDelete, onStatusChange }: Props
           </>
         )}
         {column === 'ended' && (
-          <Link to={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
-            查看详情
-          </Link>
+          <>
+            <Link to={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
+              查看详情
+            </Link>
+            <RecapModal activity={activity} onSaved={onRefresh} />
+          </>
         )}
         <select
           className="text-xs px-1 py-1 border border-gray-200 rounded-lg"

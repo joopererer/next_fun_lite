@@ -28,11 +28,20 @@ npm run dev
 
 | 路径 | 说明 |
 |------|------|
-| `/` | 首页：招募中 + 提议池 |
+| `/` | 首页：招募中 + 提议池（支持类型筛选） |
 | `/propose` | 提交提议 |
+| `/recruit/new` | 公开发起招募（支持 `?from=:id` 从提议转化） |
 | `/event/:id` | 活动报名 |
 | `/admin` | 管理员看板 |
 | `/admin/activity/:id` | 活动详情 + 报名名单 |
+
+## API
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/proposals` | 公开提交提议 |
+| POST | `/api/recruitments` | 公开发起招募（无需管理员密码） |
+| POST | `/api/activities` | 管理员创建活动 |
 
 ## 环境变量
 
@@ -51,7 +60,7 @@ npm run dev
 1. 在 [GCP 控制台](https://console.cloud.google.com/) 创建项目并启用 **Google Sheets API**
 2. 创建 **Service Account**，下载 JSON 密钥
 3. 创建 Google 表格，添加三个 Sheet：
-   - `activities` — 列：`id | title | description | date | location | max_participants | fee | notes | organizer_name | organizer_wechat | source_url | category | status | interested_count | created_at`
+   - `activities` — 列：`id | title | description | date | location | max_participants | fee | notes | organizer_name | organizer_wechat | source_url | category | status | interested_count | created_at | fee_level | ticket_prices | ticket_url | ticket_deadline | ticket_method | refund_policy | difficulty | distance_and_duration | itinerary | equipment | transportation | meal_arrangement | restaurant_address | per_person_cost | reservation_method | requires_deposit | recap | recap_images`
    - `registrations` — 列：`id | activity_id | name | wechat | participant_count | note | registered_at`
    - `interests` — 列：`id | activity_id | name | wechat | created_at`
 4. 将 Service Account 邮箱添加为表格**编辑者**

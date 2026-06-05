@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../shared/types'
 import { api } from '../lib/api'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
+import { getFeeLevelEmoji, getFeeLevelLabel } from '../lib/feeLevel'
 import { formatRelativeTime, getSourceIcon, getUser, setInterest } from '../lib/user'
 import { UserIdentityModal } from './UserIdentityModal'
 
@@ -102,6 +103,9 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
         {expanded && (
           <div className="text-sm text-gray-600 space-y-1 mb-3 pl-1 border-l-2 border-green-100">
             {activity.location && <p>📍 {activity.location}</p>}
+            {activity.feeLevel && (
+              <p>{getFeeLevelEmoji(activity.feeLevel)} {getFeeLevelLabel(activity.feeLevel)}</p>
+            )}
             {activity.fee && <p>💰 {activity.fee}</p>}
             {activity.notes && <p className="whitespace-pre-wrap text-gray-500">{activity.notes}</p>}
             {activity.sourceUrl && (
@@ -136,7 +140,7 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
             {loading ? '...' : interested ? '💔 取消感兴趣' : '❤️ 我也感兴趣'}
           </button>
           <Link
-            to={`/admin?tab=create&from=${activity.id}`}
+            to={`/recruit/new?from=${activity.id}`}
             className="flex-1 btn-secondary text-sm text-center py-2"
           >
             发起招募 →

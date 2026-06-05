@@ -1,4 +1,15 @@
-import type { Activity, ActivityWithCount, EnvConfig, InterestMutationResult } from '../../shared/types'
+import type {
+  Activity,
+  ActivityWithCount,
+  CreateRecruitmentBody,
+  EnvConfig,
+  InterestMutationResult,
+} from '../../shared/types'
+import {
+  buildAdminCreatePayload,
+  buildProposalPayload,
+  buildRecruitmentPayload,
+} from '../lib/activityPayload'
 import { createStorageAdapter } from '../storage'
 import type { StorageAdapter } from '../storage/types'
 import {
@@ -8,6 +19,11 @@ import {
   jsonResponse,
   parseBody,
 } from '../lib/utils'
+
+function getEventUrl(env: EnvConfig, activityId: string): string {
+  const base = env.SITE_URL?.replace(/\/$/, '') ?? ''
+  return base ? `${base}/event/${activityId}` : `/event/${activityId}`
+}
 
 async function enrichActivity(storage: StorageAdapter, activity: Activity): Promise<ActivityWithCount> {
   const registeredCount = await getRegisteredCount(storage, activity.id)
@@ -33,42 +49,52 @@ export async function handleCreateActivity(request: Request, env: EnvConfig, isP
   const body = await parseBody<Partial<Activity>>(request)
 
   if (isPublic) {
-    const activity = await storage.createActivity({
-      title: body.title ?? '',
-      description: body.description ?? '',
-      date: body.date ?? null,
-      location: body.location ?? '',
-      maxParticipants: null,
-      fee: body.fee ?? '',
-      notes: body.notes ?? '',
-      organizerName: body.organizerName ?? '',
-      organizerWechat: body.organizerWechat ?? '',
-      sourceUrl: body.sourceUrl ?? '',
-      status: 'proposed',
-      category: body.category ?? 'other',
-      interestedCount: 0,
-    })
+    const activity = await storage.createActivity(buildProposalPayload(body))
     return jsonResponse(activity, 201)
   }
 
   if (!checkAdminAuth(request, env)) return errorResponse('Unauthorized', 401)
 
-  const activity = await storage.createActivity({
-    title: body.title ?? '',
-    description: body.description ?? '',
-    date: body.date ?? null,
-    location: body.location ?? '',
-    maxParticipants: body.maxParticipants ?? null,
-    fee: body.fee ?? '',
-    notes: body.notes ?? '',
-    organizerName: body.organizerName ?? '',
-    organizerWechat: body.organizerWechat ?? '',
-    sourceUrl: body.sourceUrl ?? '',
-    status: body.status ?? 'proposed',
-    category: body.category ?? 'other',
-    interestedCount: body.interestedCount ?? 0,
-  })
+  const activity = await storage.createActivity(buildAdminCreatePayload(body))
   return jsonResponse(activity, 201)
+}
+
+export async function handleCreateRecruitment(request: Request, env: EnvConfig): Promise<Response> {
+  const storage = createStorageAdapter(env)
+  const body = await parseBody<CreateRecruitmentBody>(request)
+  const payload = buildRecruitmentPayload(body)
+
+  if (!payload.title || !payload.category || !payload.date || !payload.location) {
+    return errorResponse('Missing required fields: title, category, date, location')
+  }
+  if (payload.maxParticipants === null || payload.maxParticipants === undefined) {
+    return errorResponse('Missing required field: maxParticipants')
+  }
+  if (!payload.organizerName || !payload.organizerWechat) {
+    return errorResponse('Missing required fields: organizerName, organizerWechat')
+  }
+
+  let activity: Activity
+
+  if (body.sourceProposalId) {
+    const existing = await storage.getActivity(body.sourceProposalId)
+    if (!existing) return errorResponse('Proposal not found', 404)
+    if (existing.status !== 'proposed') return errorResponse('Activity is not a proposal')
+    activity = await storage.updateActivity(body.sourceProposalId, {
+      ...payload,
+      interestedCount: existing.interestedCount,
+    })
+  } else {
+    activity = await storage.createActivity({
+      ...(payload as Omit<Activity, 'id' | 'createdAt'>),
+      interestedCount: 0,
+    })
+  }
+
+  return jsonResponse(
+    { activity, eventUrl: getEventUrl(env, activity.id) },
+    body.sourceProposalId ? 200 : 201
+  )
 }
 
 export async function handleUpdateActivity(request: Request, env: EnvConfig, id: string): Promise<Response> {

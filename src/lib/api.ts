@@ -1,4 +1,4 @@
-import type { Activity, ActivityWithCount, ApiParseResponse, Interest, InterestMutationResult, Registration } from '../../shared/types'
+import type { Activity, ActivityWithCount, ApiParseResponse, Interest, InterestMutationResult, RecruitmentResponse, Registration } from '../../shared/types'
 
 const ADMIN_KEY = 'nfl_admin_password'
 
@@ -40,6 +40,8 @@ export const api = {
   getActivity: (id: string) => request<ActivityWithCount>(`/api/activities/${id}`),
   createProposal: (data: Partial<Activity>) =>
     request<Activity>('/api/proposals', { method: 'POST', body: JSON.stringify(data) }),
+  createRecruitment: (data: Partial<Activity> & { sourceProposalId?: string }) =>
+    request<RecruitmentResponse>('/api/recruitments', { method: 'POST', body: JSON.stringify(data) }),
   createActivity: (data: Partial<Activity>) =>
     request<Activity>('/api/activities', { method: 'POST', body: JSON.stringify(data) }),
   updateActivity: (id: string, data: Partial<Activity>) =>

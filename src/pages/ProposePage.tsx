@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/layout/Header'
 import { UserIdentityModal } from '../components/UserIdentityModal'
-import type { ActivityCategory } from '../../shared/types'
+import type { ActivityCategory, FeeLevel } from '../../shared/types'
 import { api } from '../lib/api'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
+import { FEE_LEVELS } from '../lib/feeLevel'
 import { getUser } from '../lib/user'
 
 type InputMode = 'link' | 'image' | 'manual'
@@ -25,6 +26,7 @@ export function ProposePage() {
   const [dateHint, setDateHint] = useState('')
   const [location, setLocation] = useState('')
   const [category, setCategory] = useState<ActivityCategory>('other')
+  const [feeLevel, setFeeLevel] = useState<FeeLevel>('unknown')
   const [organizerName, setOrganizerName] = useState(user?.name ?? '')
   const [organizerWechat, setOrganizerWechat] = useState(user?.wechat ?? '')
   const [submitting, setSubmitting] = useState(false)
@@ -98,6 +100,7 @@ export function ProposePage() {
         location: location.trim(),
         sourceUrl: sourceUrl.trim(),
         category,
+        feeLevel,
         organizerName: organizerName.trim(),
         organizerWechat: organizerWechat.trim(),
         fee: '',
@@ -131,7 +134,7 @@ export function ProposePage() {
   }
 
   return (
-    <div className="min-h-screen pb-12">
+    <div className="min-h-screen pb-32">
       <Header />
       <main className="max-w-lg mx-auto px-4 py-6 page-enter">
         <h1 className="text-2xl font-bold mb-1">分享一个好去处 💡</h1>
@@ -142,7 +145,7 @@ export function ProposePage() {
             <button
               key={m}
               type="button"
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 mode === m ? 'bg-white shadow-sm text-green-700' : 'text-gray-500'
               }`}
               onClick={() => setMode(m)}
@@ -220,6 +223,30 @@ export function ProposePage() {
           <div>
             <label className="text-sm text-gray-600 mb-1 block">大概地点（选填）</label>
             <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm text-gray-600 mb-1 block">费用水平</label>
+            <div className="grid grid-cols-2 gap-2">
+              {FEE_LEVELS.map((f) => (
+                <label
+                  key={f.value}
+                  className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-colors ${
+                    feeLevel === f.value ? 'border-green-400 bg-green-50' : 'border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="feeLevel"
+                    value={f.value}
+                    checked={feeLevel === f.value}
+                    onChange={() => setFeeLevel(f.value)}
+                    className="sr-only"
+                  />
+                  <span>{f.emoji}</span>
+                  <span className="text-sm">{f.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import type { EnvConfig } from '../shared/types'
 import {
   handleCreateActivity,
+  handleCreateRecruitment,
   handleMutateInterest,
   handleCreateRegistration,
   handleDeleteInterest,
@@ -37,6 +38,7 @@ const routes: Array<{
     pattern: /^\/api\/proposals$/,
     handler: (req, env) => handleCreateActivity(req, env, true),
   },
+  { method: 'POST', pattern: /^\/api\/recruitments$/, handler: (req, env) => handleCreateRecruitment(req, env) },
   {
     method: 'PATCH',
     pattern: /^\/api\/activities\/([^/]+)$/,

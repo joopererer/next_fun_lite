@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount, ActivityStatus } from '../../../shared/types'
 import { getCategoryLabel } from '../../lib/categories'
-import { formatEventDate } from '../../lib/user'
+import { formatListDate } from '../../lib/user'
 
 type SortField = 'title' | 'status' | 'date' | 'location' | 'category' | 'registeredCount' | 'createdAt'
 type SortDir = 'asc' | 'desc'
@@ -130,7 +130,7 @@ export function ActivityListTable({ activities, statusFilter, onStatusFilterChan
                 <td className="py-3 pr-4 font-medium">{a.title}</td>
                 <td className="py-3 pr-4">{getCategoryLabel(a.category)}</td>
                 <td className="py-3 pr-4">{statusLabel(a.status)}</td>
-                <td className="py-3 pr-4">{formatEventDate(a.date)}</td>
+                <td className="py-3 pr-4">{formatListDate(a.date)}</td>
                 <td className="py-3 pr-4">{a.location || '-'}</td>
                 <td className="py-3 pr-4">
                   {a.status === 'recruiting'
@@ -140,6 +140,9 @@ export function ActivityListTable({ activities, statusFilter, onStatusFilterChan
                 <td className="py-3 whitespace-nowrap">
                   <Link to={`/admin/activity/${a.id}`} className="text-green-600 hover:underline mr-2">
                     详情
+                  </Link>
+                  <Link to={`/admin?tab=create&edit=${a.id}`} className="text-green-600 hover:underline mr-2">
+                    编辑
                   </Link>
                   <button
                     type="button"

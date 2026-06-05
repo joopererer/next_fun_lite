@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { ActivityWithCount } from '../../shared/types'
+import type { ActivityCategory, ActivityWithCount } from '../../shared/types'
 import { ActivityCard } from '../components/ActivityCard'
+import { CategoryFilter, matchesCategoryFilter } from '../components/CategoryFilter'
 import { Header } from '../components/layout/Header'
 import { ProposalCard } from '../components/ProposalCard'
 import { api } from '../lib/api'
@@ -10,6 +11,8 @@ export function HomePage() {
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [recruitingFilter, setRecruitingFilter] = useState<ActivityCategory[]>([])
+  const [proposalFilter, setProposalFilter] = useState<ActivityCategory[]>([])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -22,8 +25,12 @@ export function HomePage() {
 
   useEffect(() => { load() }, [load])
 
-  const recruiting = activities.filter((a) => a.status === 'recruiting')
-  const proposed = activities.filter((a) => a.status === 'proposed')
+  const recruiting = activities
+    .filter((a) => a.status === 'recruiting')
+    .filter((a) => matchesCategoryFilter(a.category, recruitingFilter))
+  const proposed = activities
+    .filter((a) => a.status === 'proposed')
+    .filter((a) => matchesCategoryFilter(a.category, proposalFilter))
 
   return (
     <div className="min-h-screen pb-12">
@@ -40,14 +47,17 @@ export function HomePage() {
           <>
             <section className="mb-10">
               <h2 className="section-title">🟢 正在招募</h2>
+              <div className="mb-3">
+                <CategoryFilter selected={recruitingFilter} onChange={setRecruitingFilter} />
+              </div>
               {recruiting.length === 0 ? (
-                <p className="text-gray-400 text-sm">暂无招募中的活动</p>
+                <p className="text-gray-400 text-sm">
+                  {recruitingFilter.length > 0 ? '暂无该类型活动' : '暂无招募中的活动'}
+                </p>
               ) : (
-                <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 snap-x md:grid md:grid-cols-2 md:overflow-visible md:mx-0 md:px-0">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {recruiting.map((a) => (
-                    <div key={a.id} className="snap-start shrink-0 md:shrink">
-                      <ActivityCard activity={a} />
-                    </div>
+                    <ActivityCard key={a.id} activity={a} />
                   ))}
                 </div>
               )}
@@ -63,8 +73,13 @@ export function HomePage() {
                   + 我有个提议
                 </Link>
               </div>
+              <div className="mb-3">
+                <CategoryFilter selected={proposalFilter} onChange={setProposalFilter} />
+              </div>
               {proposed.length === 0 ? (
-                <p className="text-gray-400 text-sm">还没有提议，来做第一个吧！</p>
+                <p className="text-gray-400 text-sm">
+                  {proposalFilter.length > 0 ? '暂无该类型活动' : '还没有提议，来做第一个吧！'}
+                </p>
               ) : (
                 <div className="space-y-4">
                   {proposed.map((a) => (

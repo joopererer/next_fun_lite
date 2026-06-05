@@ -14,9 +14,10 @@ interface Props {
   activities: ActivityWithCount[]
   onDelete: (id: string) => void
   onStatusChange: (id: string, status: ActivityStatus) => void
+  onRefresh?: () => void
 }
 
-export function KanbanColumn({ status, activities, onDelete, onStatusChange }: Props) {
+export function KanbanColumn({ status, activities, onDelete, onStatusChange, onRefresh }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
 
   return (
@@ -40,6 +41,7 @@ export function KanbanColumn({ status, activities, onDelete, onStatusChange }: P
             column={status}
             onDelete={onDelete}
             onStatusChange={onStatusChange}
+            onRefresh={onRefresh}
           />
         ))}
       </SortableContext>

@@ -47,8 +47,22 @@ export function formatRelativeTime(iso: string): string {
 export function formatEventDate(iso: string | null): string {
   if (!iso) return '时间待定'
   const d = new Date(iso)
+  const now = new Date()
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  return `${d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })} ${weekdays[d.getDay()]} ${d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
+  const month = d.getMonth() + 1
+  const day = d.getDate()
+  const time = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const yearPrefix = d.getFullYear() !== now.getFullYear() ? `${d.getFullYear()}年` : ''
+  return `${yearPrefix}${month}月${day}日 ${weekdays[d.getDay()]} ${time}`
+}
+
+export function formatListDate(iso: string | null): string {
+  if (!iso) return '时间待定'
+  const d = new Date(iso)
+  const month = d.getMonth() + 1
+  const day = d.getDate()
+  const time = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${month}月${day}日 ${time}`
 }
 
 export function getSourceIcon(sourceUrl: string): string {

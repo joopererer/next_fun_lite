@@ -15,6 +15,7 @@ export function EventPage() {
   const [notFound, setNotFound] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [registeredCount, setRegisteredCount] = useState(0)
 
   const [name, setName] = useState('')
   const [wechat, setWechat] = useState('')
@@ -40,6 +41,7 @@ export function EventPage() {
       .then((a) => {
         setActivity(a)
         setInterestCount(a.interestedCount ?? 0)
+        setRegisteredCount(a.registeredCount)
 
         const user = getUser()
         if (!user) {
@@ -92,16 +94,16 @@ export function EventPage() {
     }
   }
 
-  const full = activity?.maxParticipants != null && activity.registeredCount >= activity.maxParticipants
-  const ended = activity?.status === 'ended'
-  const canRegister = activity?.status === 'recruiting' && !full && !ended
-
   const handleSubmit = async () => {
     if (!name.trim() || !wechat.trim()) {
       setIdentityModal(true)
       return
     }
-    if (!id || !canRegister) return
+    if (!id || !activity || activity.status !== 'recruiting') return
+    if (activity.maxParticipants != null && activity.registeredCount + participantCount > activity.maxParticipants) {
+      alert('名额不足')
+      return
+    }
     setSubmitting(true)
     try {
       await api.createRegistration({
@@ -111,6 +113,10 @@ export function EventPage() {
         participantCount,
         note: note.trim(),
       })
+      setActivity((prev) =>
+        prev ? { ...prev, registeredCount: prev.registeredCount + participantCount } : prev
+      )
+      setRegisteredCount((c) => c + participantCount)
       setSuccess(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : '报名失败')
@@ -141,21 +147,44 @@ export function EventPage() {
     )
   }
 
-  if (success) {
+  if (success && activity) {
     return (
       <div className="min-h-screen">
         <Header />
-        <main className="max-w-lg mx-auto px-4 py-16 text-center page-enter">
-          <div className="text-5xl mb-4">🎉</div>
-          <h2 className="text-xl font-bold mb-3">报名成功！</h2>
-          <p className="text-gray-600">
-            请添加发起人微信 <strong>{activity.organizerWechat}</strong> 确认
+        <main className="max-w-lg mx-auto px-4 py-16 page-enter">
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-4">🎉</div>
+            <h2 className="text-xl font-bold mb-2">报名成功！</h2>
+            <p className="text-gray-600">{activity.title}</p>
+            <p className="text-sm text-gray-500 mt-2">参与人数：{participantCount} 人</p>
+          </div>
+          <div className="bg-green-50 rounded-xl p-4 mb-6 text-sm text-gray-700 space-y-2">
+            <p className="font-medium text-green-800">接下来：</p>
+            <p>1. 添加发起人微信确认报名</p>
+            <p>2. 留意活动群通知</p>
+            <p>3. 活动当天准时到达集合地点</p>
+          </div>
+          <p className="text-center text-sm text-gray-600 mb-4">
+            发起人微信：<strong>{activity.organizerWechat}</strong>
           </p>
-          <Link to="/" className="btn-primary inline-block mt-8">回到首页</Link>
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              className="btn-primary w-full"
+              onClick={() => navigator.clipboard.writeText(activity.organizerWechat)}
+            >
+              复制微信号
+            </button>
+            <Link to="/" className="btn-secondary block text-center">回到首页</Link>
+          </div>
         </main>
       </div>
     )
   }
+
+  const displayCount = activity.registeredCount ?? registeredCount
+  const full = activity.maxParticipants != null && displayCount >= activity.maxParticipants
+  const ended = activity.status === 'ended'
 
   const notes = activity.notes ? activity.notes.split('\n').filter(Boolean) : []
 
@@ -179,8 +208,8 @@ export function EventPage() {
           <p>📍 {activity.location || '地点待定'}</p>
           {activity.status === 'recruiting' && (
             <div>
-              <p className="mb-1">👥 已报名 {activity.registeredCount}{activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''} 人</p>
-              <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
+              <p className="mb-1">👥 已报名 {displayCount}{activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''} 人</p>
+              <CapacityBar current={displayCount} max={activity.maxParticipants} />
             </div>
           )}
           {activity.status === 'proposed' && (
@@ -216,13 +245,27 @@ export function EventPage() {
           </div>
         )}
 
+        {ended && activity.recap && (
+          <div className="bg-purple-50 rounded-xl p-4 mb-8">
+            <p className="font-medium text-purple-800 mb-2">📝 活动回顾</p>
+            <p className="text-sm text-purple-900 whitespace-pre-wrap">{activity.recap}</p>
+            {activity.recapImages && (
+              <div className="flex gap-2 mt-3 overflow-x-auto">
+                {activity.recapImages.split('\n').filter(Boolean).map((url) => (
+                  <img key={url} src={url.trim()} alt="" className="h-24 w-24 object-cover rounded-lg shrink-0" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {ended ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
             本次活动已结束
           </div>
         ) : full ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
-            名额已满（{activity.registeredCount}/{activity.maxParticipants}）
+            名额已满（{displayCount}/{activity.maxParticipants}）
           </div>
         ) : activity.status === 'proposed' ? (
           <div className="space-y-4">
@@ -266,7 +309,7 @@ export function EventPage() {
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
-                    className="w-10 h-10 rounded-xl border border-gray-200 text-lg"
+                    className="min-h-[44px] min-w-[44px] rounded-xl border border-gray-200 text-lg flex items-center justify-center"
                     onClick={() => setParticipantCount(Math.max(1, participantCount - 1))}
                   >
                     −
@@ -274,7 +317,7 @@ export function EventPage() {
                   <span className="text-lg font-medium w-8 text-center">{participantCount}</span>
                   <button
                     type="button"
-                    className="w-10 h-10 rounded-xl border border-gray-200 text-lg"
+                    className="min-h-[44px] min-w-[44px] rounded-xl border border-gray-200 text-lg flex items-center justify-center"
                     onClick={() => setParticipantCount(participantCount + 1)}
                   >
                     +
@@ -287,9 +330,11 @@ export function EventPage() {
               </div>
             </div>
 
-            <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? '提交中...' : '提交报名'}
-            </button>
+            <div className="sticky bottom-0 bg-warm-bg pt-3 pb-safe -mx-4 px-4">
+              <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting}>
+                {submitting ? '提交中...' : '提交报名'}
+              </button>
+            </div>
           </>
         )}
 
