@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../shared/types'
 import { ActivityCard } from '../components/ActivityCard'
@@ -9,15 +9,18 @@ import { api } from '../lib/api'
 export function HomePage() {
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-  const load = () => {
+  const load = useCallback(() => {
+    setLoading(true)
+    setError(false)
     api.getActivities()
       .then(setActivities)
-      .catch(console.error)
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   const recruiting = activities.filter((a) => a.status === 'recruiting')
   const proposed = activities.filter((a) => a.status === 'proposed')
@@ -28,6 +31,11 @@ export function HomePage() {
       <main className="max-w-3xl mx-auto px-4 py-6 page-enter">
         {loading ? (
           <div className="text-center text-gray-400 py-12">加载中...</div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 mb-4">加载失败，API 可能还在启动中</p>
+            <button type="button" className="btn-primary" onClick={load}>重试</button>
+          </div>
         ) : (
           <>
             <section className="mb-10">
@@ -60,7 +68,17 @@ export function HomePage() {
               ) : (
                 <div className="space-y-4">
                   {proposed.map((a) => (
-                    <ProposalCard key={a.id} activity={a} onInterest={load} />
+                    <ProposalCard
+                      key={a.id}
+                      activity={a}
+                      onInterestUpdate={(id, interestedCount) => {
+                        setActivities((prev) =>
+                          prev.map((item) =>
+                            item.id === id ? { ...item, interestedCount } : item
+                          )
+                        )
+                      }}
+                    />
                   ))}
                 </div>
               )}

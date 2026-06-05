@@ -1,7 +1,7 @@
 import type { EnvConfig } from '../shared/types'
 import {
   handleCreateActivity,
-  handleCreateInterest,
+  handleMutateInterest,
   handleCreateRegistration,
   handleDeleteInterest,
   handleDeleteActivity,
@@ -58,7 +58,8 @@ const routes: Array<{
     pattern: /^\/api\/activities\/([^/]+)\/interests$/,
     handler: (req, env, p) => handleGetInterests(req, env, p.id),
   },
-  { method: 'POST', pattern: /^\/api\/interests$/, handler: (req, env) => handleCreateInterest(req, env) },
+  { method: 'POST', pattern: /^\/api\/interests$/, handler: (req, env) => handleMutateInterest(req, env) },
+  { method: 'POST', pattern: /^\/api\/interests\/remove$/, handler: (req, env) => handleDeleteInterest(req, env) },
   { method: 'DELETE', pattern: /^\/api\/interests$/, handler: (req, env) => handleDeleteInterest(req, env) },
   { method: 'POST', pattern: /^\/api\/parse$/, handler: (req, env) => handleParse(req, env) },
 ]

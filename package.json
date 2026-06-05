@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n web,api -c green,blue \"vite\" \"tsx server/index.ts\"",
+    "dev": "kill-port 8787 && concurrently -k -n api,web -c blue,green \"tsx server/index.ts\" \"wait-on tcp:127.0.0.1:8787 && vite\"",
     "dev:web": "vite",
-    "dev:api": "tsx server/index.ts",
+    "dev:api": "kill-port 8787 && tsx server/index.ts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -44,10 +44,12 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "kill-port": "^2.0.1",
     "tailwindcss": "^4.3.0",
     "tsx": "^4.22.4",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "wait-on": "^9.0.10"
   }
 }

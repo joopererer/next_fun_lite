@@ -139,17 +139,31 @@ export async function handleGetInterests(_request: Request, env: EnvConfig, acti
   return jsonResponse(interests)
 }
 
-export async function handleCreateInterest(request: Request, env: EnvConfig): Promise<Response> {
+export async function handleMutateInterest(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
-  const body = await parseBody<{ activityId: string; name: string; wechat: string }>(request)
+  const body = await parseBody<{
+    activityId: string
+    name?: string
+    wechat: string
+    action?: 'remove'
+  }>(request)
 
-  if (!body.activityId || !body.name || !body.wechat) {
+  if (!body.activityId || !body.wechat) {
     return errorResponse('Missing required fields')
   }
 
   const activity = await storage.getActivity(body.activityId)
   if (!activity) return errorResponse('Activity not found', 404)
   if (activity.status !== 'proposed') return errorResponse('Can only express interest in proposals')
+
+  if (body.action === 'remove') {
+    const result = await storage.deleteInterest(body.activityId, body.wechat)
+    return jsonResponse(result)
+  }
+
+  if (!body.name) {
+    return errorResponse('Missing required fields')
+  }
 
   const existing = await storage.findInterest(body.activityId, body.wechat)
   if (existing) {
@@ -167,15 +181,25 @@ export async function handleCreateInterest(request: Request, env: EnvConfig): Pr
 
 export async function handleDeleteInterest(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
-  const body = await parseBody<{ activityId: string; wechat: string }>(request)
+  const url = new URL(request.url)
 
-  if (!body.activityId || !body.wechat) {
+  let body: { activityId?: string; wechat?: string } = {}
+  try {
+    body = await parseBody<{ activityId?: string; wechat?: string }>(request)
+  } catch {
+    // DELETE body may be empty in some environments; fall back to query params
+  }
+
+  const activityId = body.activityId ?? url.searchParams.get('activityId') ?? undefined
+  const wechat = body.wechat ?? url.searchParams.get('wechat') ?? undefined
+
+  if (!activityId || !wechat) {
     return errorResponse('Missing required fields')
   }
 
-  const activity = await storage.getActivity(body.activityId)
+  const activity = await storage.getActivity(activityId)
   if (!activity) return errorResponse('Activity not found', 404)
 
-  const result = await storage.deleteInterest(body.activityId, body.wechat)
+  const result = await storage.deleteInterest(activityId, wechat)
   return jsonResponse(result)
 }

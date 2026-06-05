@@ -3,25 +3,41 @@ import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../shared/types'
 import { api } from '../lib/api'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
-import { formatRelativeTime, getSourceIcon, getUser, hasInterest, setInterest } from '../lib/user'
+import { formatRelativeTime, getSourceIcon, getUser, setInterest } from '../lib/user'
 import { UserIdentityModal } from './UserIdentityModal'
 
 interface Props {
   activity: ActivityWithCount
-  onInterest?: () => void
+  onInterestUpdate?: (activityId: string, interestedCount: number) => void
 }
 
-export function ProposalCard({ activity, onInterest }: Props) {
-  const [interested, setInterested] = useState(hasInterest(activity.id))
-  const [count, setCount] = useState(activity.interestedCount)
+export function ProposalCard({ activity, onInterestUpdate }: Props) {
+  const [interested, setInterested] = useState(false)
+  const [count, setCount] = useState(activity.interestedCount ?? 0)
   const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const hot = count >= 5
 
   useEffect(() => {
-    setCount(activity.interestedCount)
-  }, [activity.interestedCount])
+    setCount(activity.interestedCount ?? 0)
+  }, [activity.id, activity.interestedCount])
+
+  useEffect(() => {
+    const user = getUser()
+    if (!user) {
+      setInterested(false)
+      return
+    }
+
+    api.getInterests(activity.id)
+      .then((interests) => {
+        const mine = interests.some((i) => i.wechat === user.wechat)
+        setInterested(mine)
+        setInterest(activity.id, mine)
+      })
+      .catch(() => setInterested(false))
+  }, [activity.id])
 
   const toggleInterest = async () => {
     const user = getUser()
@@ -32,25 +48,26 @@ export function ProposalCard({ activity, onInterest }: Props) {
     if (loading) return
     setLoading(true)
     try {
-      if (interested) {
-        const res = await api.deleteInterest({
-          activityId: activity.id,
-          wechat: user.wechat,
-        })
-        setInterested(false)
-        setInterest(activity.id, false)
-        setCount(res.interestedCount)
-      } else {
-        const res = await api.createInterest({
-          activityId: activity.id,
-          name: user.name,
-          wechat: user.wechat,
-        })
-        setInterested(true)
-        setInterest(activity.id, true)
-        setCount(res.interestedCount)
-      }
-      onInterest?.()
+      const res = interested
+        ? await api.deleteInterest({ activityId: activity.id, wechat: user.wechat })
+        : await api.createInterest({
+            activityId: activity.id,
+            name: user.name,
+            wechat: user.wechat,
+          })
+
+      const nextCount =
+        typeof res.interestedCount === 'number'
+          ? res.interestedCount
+          : interested
+            ? Math.max(0, count - 1)
+            : count + 1
+      const nextInterested = !interested
+
+      setInterested(nextInterested)
+      setInterest(activity.id, nextInterested)
+      setCount(nextCount)
+      onInterestUpdate?.(activity.id, nextCount)
     } catch (err) {
       alert(err instanceof Error ? err.message : '操作失败')
     } finally {

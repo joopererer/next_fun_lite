@@ -5,7 +5,7 @@ import { handleApiRequest } from './router'
 import { getEnvConfig } from './lib/utils'
 
 const app = express()
-const PORT = 8787
+const PORT = Number(process.env.API_PORT ?? 8787)
 
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
@@ -33,6 +33,16 @@ app.all('/api/*splat', async (req, res) => {
   res.send(text)
 })
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`API server running on http://localhost:${PORT}`)
+})
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `Port ${PORT} is already in use. Stop the other API process first (Task Manager / kill node on port ${PORT}).`
+    )
+    process.exit(1)
+  }
+  throw err
 })

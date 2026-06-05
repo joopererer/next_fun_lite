@@ -5,6 +5,13 @@ import { SupabaseAdapter } from './supabase'
 import { TencentDocsAdapter } from './tencentDocs'
 import type { StorageAdapter } from './types'
 
+let mockInstance: MockAdapter | null = null
+
+function getMockAdapter(): MockAdapter {
+  if (!mockInstance) mockInstance = new MockAdapter()
+  return mockInstance
+}
+
 export function createStorageAdapter(env?: EnvConfig): StorageAdapter {
   const backend = env?.STORAGE_BACKEND ?? process.env.STORAGE_BACKEND ?? 'mock'
 
@@ -16,7 +23,7 @@ export function createStorageAdapter(env?: EnvConfig): StorageAdapter {
     case 'tencent_docs':
       return new TencentDocsAdapter()
     default:
-      return new MockAdapter()
+      return getMockAdapter()
   }
 }
 

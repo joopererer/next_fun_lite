@@ -6,7 +6,7 @@ import { Header } from '../components/layout/Header'
 import { UserIdentityModal } from '../components/UserIdentityModal'
 import { api } from '../lib/api'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
-import { formatEventDate, getUser, hasInterest, setInterest } from '../lib/user'
+import { formatEventDate, getUser, setInterest } from '../lib/user'
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>()
@@ -39,8 +39,18 @@ export function EventPage() {
     api.getActivity(id)
       .then((a) => {
         setActivity(a)
-        setInterestCount(a.interestedCount)
-        setInterested(hasInterest(a.id))
+        setInterestCount(a.interestedCount ?? 0)
+
+        const user = getUser()
+        if (!user) {
+          setInterested(false)
+          return
+        }
+        return api.getInterests(a.id).then((interests) => {
+          const mine = interests.some((i) => i.wechat === user.wechat)
+          setInterested(mine)
+          setInterest(a.id, mine)
+        })
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
@@ -55,21 +65,26 @@ export function EventPage() {
     if (interestLoading) return
     setInterestLoading(true)
     try {
-      if (interested) {
-        const res = await api.deleteInterest({ activityId: activity.id, wechat: user.wechat })
-        setInterested(false)
-        setInterest(activity.id, false)
-        setInterestCount(res.interestedCount)
-      } else {
-        const res = await api.createInterest({
-          activityId: activity.id,
-          name: user.name,
-          wechat: user.wechat,
-        })
-        setInterested(true)
-        setInterest(activity.id, true)
-        setInterestCount(res.interestedCount)
-      }
+      const res = interested
+        ? await api.deleteInterest({ activityId: activity.id, wechat: user.wechat })
+        : await api.createInterest({
+            activityId: activity.id,
+            name: user.name,
+            wechat: user.wechat,
+          })
+
+      const nextCount =
+        typeof res.interestedCount === 'number'
+          ? res.interestedCount
+          : interested
+            ? Math.max(0, interestCount - 1)
+            : interestCount + 1
+      const nextInterested = !interested
+
+      setInterested(nextInterested)
+      setInterest(activity.id, nextInterested)
+      setInterestCount(nextCount)
+      setActivity((prev) => (prev ? { ...prev, interestedCount: nextCount } : prev))
     } catch (err) {
       alert(err instanceof Error ? err.message : '操作失败')
     } finally {
