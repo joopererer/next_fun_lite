@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import type { ActivityWithCount, CancelReason } from '../../../shared/types'
 import { getCancelReasonLabel } from '../../lib/activityStatus'

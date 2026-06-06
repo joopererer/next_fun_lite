@@ -1,8 +1,25 @@
-import type { Activity, ActivityWithCount, ApiParseResponse, Interest, InterestMutationResult, RecruitmentResponse, Registration, RegistrationMutationResult } from '../../shared/types'
+import type {
+  Activity,
+  ActivityWithCount,
+  ApiParseResponse,
+  Interest,
+  InterestMutationResult,
+  Profile,
+  RecruitmentResponse,
+  Registration,
+  RegistrationMutationResult,
+} from '@/shared/types'
 
 const ADMIN_KEY = 'nfl_admin_password'
 
+let tokenGetter: (() => Promise<string | null>) | null = null
+
+export function setAuthTokenGetter(getter: () => Promise<string | null>): void {
+  tokenGetter = getter
+}
+
 export function getAdminPassword(): string | null {
+  if (typeof window === 'undefined') return null
   return sessionStorage.getItem(ADMIN_KEY)
 }
 
@@ -19,12 +36,19 @@ function adminHeaders(): HeadersInit {
   return password ? { 'X-Admin-Password': password } : {}
 }
 
+async function authHeaders(): Promise<HeadersInit> {
+  if (!tokenGetter) return {}
+  const token = await tokenGetter()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       ...adminHeaders(),
+      ...(await authHeaders()),
       ...options.headers,
     },
   })
@@ -33,6 +57,11 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
     throw new Error((err as { error?: string }).error ?? 'Request failed')
   }
   return res.json() as Promise<T>
+}
+
+export interface MyRegistrationsResponse {
+  registrations: Record<string, Registration>
+  activities: ActivityWithCount[]
 }
 
 export const api = {
@@ -54,28 +83,34 @@ export const api = {
     request<{ ok: boolean }>(`/api/activities/${id}`, { method: 'DELETE' }),
   getRegistrations: (activityId: string) =>
     request<Registration[]>(`/api/activities/${activityId}/registrations`),
-  getMyRegistration: (activityId: string, wechat: string) =>
+  getMyRegistration: (activityId: string, wechat?: string) =>
     request<{ registration: Registration | null; registeredCount: number }>(
-      `/api/activities/${activityId}/registration?wechat=${encodeURIComponent(wechat)}`
+      wechat
+        ? `/api/activities/${activityId}/registration?wechat=${encodeURIComponent(wechat)}`
+        : `/api/activities/${activityId}/registration`,
     ),
+  getMyRegistrations: () => request<MyRegistrationsResponse>('/api/my-registrations'),
+  getProfile: () => request<Profile | null>('/api/profile'),
+  saveProfile: (data: { nickname: string; wechat?: string }) =>
+    request<Profile>('/api/profile', { method: 'POST', body: JSON.stringify(data) }),
   createRegistration: (data: {
     activityId: string
-    name: string
-    wechat: string
+    name?: string
+    wechat?: string
     participantCount: number
     note: string
   }) =>
     request<RegistrationMutationResult>('/api/registrations', { method: 'POST', body: JSON.stringify(data) }),
-  cancelRegistration: (data: { activityId: string; wechat: string }) =>
+  cancelRegistration: (data: { activityId: string; wechat?: string }) =>
     request<RegistrationMutationResult>('/api/registrations', {
       method: 'POST',
       body: JSON.stringify({ ...data, action: 'remove' as const }),
     }),
-  createInterest: (data: { activityId: string; name: string; wechat: string }) =>
+  createInterest: (data: { activityId: string; name?: string; wechat?: string }) =>
     request<InterestMutationResult>('/api/interests', { method: 'POST', body: JSON.stringify(data) }),
   getInterests: (activityId: string) =>
     request<Interest[]>(`/api/activities/${activityId}/interests`),
-  deleteInterest: (data: { activityId: string; wechat: string }) =>
+  deleteInterest: (data: { activityId: string; wechat?: string }) =>
     request<InterestMutationResult>('/api/interests', {
       method: 'POST',
       body: JSON.stringify({ ...data, action: 'remove' as const }),
@@ -85,6 +120,6 @@ export const api = {
 }
 
 export function getEventUrl(id: string): string {
-  const base = import.meta.env.VITE_SITE_URL || window.location.origin
-  return `${base}/event/${id}`
+  if (typeof window === 'undefined') return `/event/${id}`
+  return `${window.location.origin}/event/${id}`
 }

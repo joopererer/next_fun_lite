@@ -1,12 +1,16 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import type { ActivityWithCount } from '../../shared/types'
 import { Header } from '../components/layout/Header'
+import { SignInGate } from '../components/SignInGate'
 import { RecruitForm } from '../components/recruit/RecruitForm'
 import { api } from '../lib/api'
 
 export function RecruitNewPage() {
-  const [searchParams] = useSearchParams()
+  const searchParams = useSearchParams()
   const fromId = searchParams.get('from')
   const [sourceActivity, setSourceActivity] = useState<ActivityWithCount | null>(null)
   const [loading, setLoading] = useState(!!fromId)
@@ -36,6 +40,7 @@ export function RecruitNewPage() {
   return (
     <div className="min-h-screen pb-24">
       <Header />
+      <SignInGate message="登录后即可发起招募">
       <main className="max-w-lg mx-auto px-4 py-6 page-enter">
         <h1 className="text-2xl font-bold mb-1">发起招募 🎯</h1>
         <p className="text-gray-500 text-sm mb-6">填写活动详情，创建公开报名链接</p>
@@ -59,10 +64,11 @@ export function RecruitNewPage() {
               initial={initial}
               sourceProposalId={sourceActivity ? fromId ?? undefined : undefined}
             />
-            <Link to="/" className="block text-center text-sm text-gray-500 mt-6">← 回到首页</Link>
+            <Link href="/" className="block text-center text-sm text-gray-500 mt-6">← 回到首页</Link>
           </>
         )}
       </main>
+      </SignInGate>
     </div>
   )
 }

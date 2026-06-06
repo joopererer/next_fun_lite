@@ -1,19 +1,25 @@
+'use client'
+
+import { SignInButton, useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import type { ActivityWithCount, Registration } from '../../shared/types'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+import type { ActivityWithCount, Profile, Registration } from '../../shared/types'
 import { ItineraryBlock } from '../components/ItineraryBlock'
 import { Header } from '../components/layout/Header'
-import { UserIdentityModal } from '../components/UserIdentityModal'
 import { api } from '../lib/api'
 import { getCancelReasonLabel, isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { isRegistrationFull } from '../lib/participants'
 import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
-import { formatEventDate, getUser, setInterest, setRegistered } from '../lib/user'
+import { getClerkDisplayName } from '../lib/displayName'
+import { formatEventDate, setRegistered } from '../lib/user'
 import { CapacityBar } from '../components/CapacityBar'
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>()
+  const { isSignedIn, isLoaded, user: clerkUser } = useUser()
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [activity, setActivity] = useState<ActivityWithCount | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -21,12 +27,10 @@ export function EventPage() {
   const [success, setSuccess] = useState(false)
   const [registeredCount, setRegisteredCount] = useState(0)
 
-  const [name, setName] = useState('')
   const [wechat, setWechat] = useState('')
   const [participantCount, setParticipantCount] = useState(1)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [identityModal, setIdentityModal] = useState(false)
   const [interested, setInterested] = useState(false)
   const [interestCount, setInterestCount] = useState(0)
   const [interestLoading, setInterestLoading] = useState(false)
@@ -34,16 +38,20 @@ export function EventPage() {
   const [cancelLoading, setCancelLoading] = useState(false)
   const [sourceProposal, setSourceProposal] = useState<ActivityWithCount | null | undefined>(undefined)
 
-  useEffect(() => {
-    const user = getUser()
-    if (user) {
-      setName(user.name)
-      setWechat(user.wechat)
-    }
-  }, [])
+  const displayName = getClerkDisplayName(clerkUser)
 
   useEffect(() => {
-    if (!id) return
+    if (!isLoaded || !isSignedIn) return
+    api.getProfile()
+      .then((p) => {
+        setProfile(p)
+        if (p?.wechat) setWechat(p.wechat)
+      })
+      .catch(() => {})
+  }, [isLoaded, isSignedIn])
+
+  useEffect(() => {
+    if (!id || !isLoaded) return
     api.getActivity(id)
       .then((a) => {
         setActivity(a)
@@ -58,24 +66,20 @@ export function EventPage() {
           setSourceProposal(undefined)
         }
 
-        const user = getUser()
-        if (!user) {
+        if (!isSignedIn || !clerkUser?.id) {
           setInterested(false)
           setMyRegistration(null)
           return
         }
+
         return Promise.all([
           api.getInterests(a.id),
-          a.status === 'recruiting' ? api.getMyRegistration(a.id, user.wechat) : Promise.resolve(null),
+          a.status === 'recruiting' ? api.getMyRegistration(a.id) : Promise.resolve(null),
         ]).then(([interests, regResult]) => {
-          const mine = interests.some((i) => i.wechat === user.wechat)
-          setInterested(mine)
-          setInterest(a.id, mine)
+          setInterested(interests.some((i) => i.userId === clerkUser.id))
           if (regResult?.registration) {
             setMyRegistration(regResult.registration)
             setRegistered(a.id, true)
-            setName(regResult.registration.name)
-            setWechat(regResult.registration.wechat)
             setParticipantCount(regResult.registration.participantCount)
             setNote(regResult.registration.note)
           } else {
@@ -86,35 +90,22 @@ export function EventPage() {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, isLoaded, isSignedIn, clerkUser?.id])
 
   const toggleInterest = async () => {
-    const user = getUser()
-    if (!user || !activity) {
-      setIdentityModal(true)
-      return
-    }
-    if (interestLoading) return
+    if (!activity || !isSignedIn || interestLoading) return
     setInterestLoading(true)
     try {
       const res = interested
-        ? await api.deleteInterest({ activityId: activity.id, wechat: user.wechat })
-        : await api.createInterest({
-            activityId: activity.id,
-            name: user.name,
-            wechat: user.wechat,
-          })
-
+        ? await api.deleteInterest({ activityId: activity.id })
+        : await api.createInterest({ activityId: activity.id })
       const nextCount =
         typeof res.interestedCount === 'number'
           ? res.interestedCount
           : interested
             ? Math.max(0, interestCount - 1)
             : interestCount + 1
-      const nextInterested = !interested
-
-      setInterested(nextInterested)
-      setInterest(activity.id, nextInterested)
+      setInterested(!interested)
       setInterestCount(nextCount)
       setActivity((prev) => (prev ? { ...prev, interestedCount: nextCount } : prev))
     } catch (err) {
@@ -125,24 +116,25 @@ export function EventPage() {
   }
 
   const handleSubmit = async () => {
-    if (!name.trim() || !wechat.trim()) {
-      setIdentityModal(true)
-      return
-    }
-    if (!id || !activity || activity.status !== 'recruiting' || myRegistration) return
+    if (!isSignedIn || !id || !activity || activity.status !== 'recruiting' || myRegistration) return
     if (activity.maxParticipants != null && activity.registeredCount + participantCount > activity.maxParticipants) {
       alert('名额不足')
       return
     }
     setSubmitting(true)
     try {
-      const res = await api.createRegistration({
+      const payload: {
+        activityId: string
+        participantCount: number
+        note: string
+        wechat?: string
+      } = {
         activityId: id,
-        name: name.trim(),
-        wechat: wechat.trim(),
         participantCount,
         note: note.trim(),
-      })
+      }
+      if (wechat.trim()) payload.wechat = wechat.trim()
+      const res = await api.createRegistration(payload)
       setMyRegistration(res.registration ?? null)
       if (res.registration) setRegistered(id, true)
       setActivity((prev) =>
@@ -159,12 +151,11 @@ export function EventPage() {
   }
 
   const handleCancelRegistration = async () => {
-    const user = getUser()
-    if (!user || !activity || !myRegistration) return
+    if (!activity || !myRegistration || !isSignedIn) return
     if (!confirm('确定取消报名？')) return
     setCancelLoading(true)
     try {
-      const res = await api.cancelRegistration({ activityId: activity.id, wechat: user.wechat })
+      const res = await api.cancelRegistration({ activityId: activity.id })
       setMyRegistration(null)
       setSuccess(false)
       setRegistered(activity.id, false)
@@ -196,7 +187,7 @@ export function EventPage() {
         <main className="max-w-lg mx-auto px-4 py-16 text-center page-enter">
           <div className="text-5xl mb-4">😕</div>
           <h2 className="text-xl font-bold mb-2">活动不存在</h2>
-          <Link to="/" className="btn-primary inline-block mt-4">回到首页</Link>
+          <Link href="/" className="btn-primary inline-block mt-4">回到首页</Link>
         </main>
       </div>
     )
@@ -230,7 +221,7 @@ export function EventPage() {
             >
               复制微信号
             </button>
-            <Link to="/" className="btn-secondary block text-center">回到首页</Link>
+            <Link href="/" className="btn-secondary block text-center">回到首页</Link>
           </div>
         </main>
       </div>
@@ -281,7 +272,7 @@ export function EventPage() {
             )}
           </div>
 
-          <Link to="/" className="btn-primary block text-center w-full mt-6">回到首页</Link>
+          <Link href="/" className="btn-primary block text-center w-full mt-6">回到首页</Link>
         </main>
       </div>
     )
@@ -369,7 +360,7 @@ export function EventPage() {
             {sourceProposal ? (
               <>
                 💡 本次活动来源于提议「{sourceProposal.title}」{' '}
-                <Link to={`/event/${sourceProposal.id}`} className="text-green-700 underline">
+                <Link href={`/event/${sourceProposal.id}`} className="text-green-700 underline">
                   查看原提议
                 </Link>
               </>
@@ -389,19 +380,27 @@ export function EventPage() {
           </div>
         ) : activity.status === 'proposed' ? (
           <div className="space-y-4">
-            <button
-              type="button"
-              className={`w-full rounded-xl py-3 font-medium border transition-colors ${
-                interested
-                  ? 'border-gray-300 bg-gray-100 text-gray-600'
-                  : 'btn-primary'
-              }`}
-              onClick={toggleInterest}
-              disabled={interestLoading}
-            >
-              {interestLoading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
-            </button>
-            <Link to="/" className="btn-secondary block text-center">回到首页</Link>
+            {isSignedIn ? (
+              <button
+                type="button"
+                className={`w-full rounded-xl py-3 font-medium border transition-colors ${
+                  interested
+                    ? 'border-gray-300 bg-gray-100 text-gray-600'
+                    : 'btn-primary'
+                }`}
+                onClick={toggleInterest}
+                disabled={interestLoading}
+              >
+                {interestLoading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
+              </button>
+            ) : (
+              <SignInButton mode="modal">
+                <button type="button" className="btn-primary w-full rounded-xl py-3 font-medium">
+                  ❤️ 我也感兴趣
+                </button>
+              </SignInButton>
+            )}
+            <Link href="/" className="btn-secondary block text-center">回到首页</Link>
           </div>
         ) : activity.status !== 'recruiting' ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
@@ -430,6 +429,13 @@ export function EventPage() {
               {cancelLoading ? '取消中...' : '取消报名'}
             </button>
           </div>
+        ) : !isSignedIn ? (
+          <div className="text-center py-8 bg-gray-50 rounded-xl space-y-4">
+            <p className="text-gray-600">登录后即可报名</p>
+            <SignInButton mode="modal">
+              <button type="button" className="btn-primary">登录 / 注册</button>
+            </SignInButton>
+          </div>
         ) : (
           <>
             <div className="flex items-center gap-3 text-gray-400 text-sm mb-6">
@@ -439,13 +445,19 @@ export function EventPage() {
             </div>
 
             <div className="space-y-4 mb-8">
-              <div>
-                <label className="text-sm text-gray-600 mb-1 block">姓名/昵称 *</label>
-                <input className="input-field" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 mb-1 block">微信号 *</label>
-                <input className="input-field" value={wechat} onChange={(e) => setWechat(e.target.value)} />
+              <div className="bg-green-50 rounded-xl p-4 text-sm text-gray-700">
+                <p>以 <span className="font-medium">{displayName}</span> 的身份报名</p>
+                {!profile?.wechat && (
+                  <div className="mt-3">
+                    <label className="text-sm text-gray-600 mb-1 block">微信号（可选，方便组织者联系）</label>
+                    <input
+                      className="input-field"
+                      value={wechat}
+                      onChange={(e) => setWechat(e.target.value)}
+                      placeholder="可在个人资料中补充"
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-sm text-gray-600 mb-1 block">参与人数（含同行）</label>
@@ -486,7 +498,6 @@ export function EventPage() {
           {activity.organizerWechat && <p>报名后添加微信：{activity.organizerWechat}</p>}
         </div>
       </main>
-      <UserIdentityModal open={identityModal} onClose={() => setIdentityModal(false)} />
     </div>
   )
 }

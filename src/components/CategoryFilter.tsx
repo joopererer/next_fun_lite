@@ -1,3 +1,5 @@
+'use client'
+
 import type { ActivityCategory } from '../../shared/types'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
 

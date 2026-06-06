@@ -19,7 +19,7 @@ export function createStorageAdapter(env?: EnvConfig): StorageAdapter {
     case 'google_sheets':
       return new GoogleSheetsAdapter(env)
     case 'supabase':
-      return new SupabaseAdapter()
+      return new SupabaseAdapter(env)
     case 'tencent_docs':
       return new TencentDocsAdapter()
     default:

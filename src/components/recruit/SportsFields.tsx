@@ -1,3 +1,5 @@
+'use client'
+
 import type { Activity, Difficulty, MealArrangement } from '../../../shared/types'
 
 interface Props {

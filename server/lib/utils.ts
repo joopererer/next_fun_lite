@@ -1,21 +1,9 @@
 import type { EnvConfig } from '../../shared/types'
 import type { StorageAdapter } from '../storage/types'
+import { getEnvConfig as loadEnvConfig } from '@/lib/env'
 
 export function getEnvConfig(env?: EnvConfig): EnvConfig {
-  if (env) return env
-  return {
-    STORAGE_BACKEND: process.env.STORAGE_BACKEND,
-    GOOGLE_SHEETS_ID: process.env.GOOGLE_SHEETS_ID,
-    GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
-    SUPABASE_URL: process.env.SUPABASE_URL,
-    SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY,
-    TENCENT_DOCS_APP_ID: process.env.TENCENT_DOCS_APP_ID,
-    TENCENT_DOCS_APP_SECRET: process.env.TENCENT_DOCS_APP_SECRET,
-    CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
-    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
-    SITE_URL: process.env.SITE_URL,
-    PARSE_MODE: process.env.PARSE_MODE,
-  }
+  return loadEnvConfig(env)
 }
 
 export function checkAdminAuth(request: Request, env: EnvConfig): boolean {

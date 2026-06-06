@@ -1,5 +1,8 @@
+'use client'
+
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import type { Activity, ActivityStatus, ActivityWithCount } from '../../shared/types'
 import { ActivityListTable } from '../components/admin/ActivityListTable'
 import { AdminGate } from '../components/admin/AdminGate'
@@ -13,7 +16,7 @@ import { api } from '../lib/api'
 type Tab = 'kanban' | 'list' | 'create'
 
 export function AdminPage() {
-  const [searchParams] = useSearchParams()
+  const searchParams = useSearchParams()
   const initialTab = (searchParams.get('tab') as Tab) || 'kanban'
   const editId = searchParams.get('edit')
 
@@ -89,7 +92,7 @@ export function AdminPage() {
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
             <div>
               <h1 className="text-lg font-bold text-green-700">管理看板</h1>
-              <Link to="/" className="text-xs text-gray-400 hover:text-green-600">← 回到首页</Link>
+              <Link href="/" className="text-xs text-gray-400 hover:text-green-600">← 回到首页</Link>
             </div>
           </div>
           <div className="max-w-6xl mx-auto px-4 flex gap-1 border-t border-gray-50">

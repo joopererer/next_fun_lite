@@ -1,3 +1,5 @@
+'use client'
+
 import type { Activity, ReservationMethod } from '../../../shared/types'
 
 interface Props {

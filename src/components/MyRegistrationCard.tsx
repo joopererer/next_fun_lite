@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import type { ActivityWithCount, Registration } from '../../shared/types'
 import { getCancelReasonLabel, isEndedCancelled } from '../lib/activityStatus'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
@@ -24,7 +24,7 @@ export function MyRegistrationCard({ activity, registration }: Props) {
         <p className="text-xs text-gray-500 mb-3">
           如有疑问联系：{activity.organizerWechat}
         </p>
-        <Link to={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline">
+        <Link href={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline">
           查看详情
         </Link>
       </div>
@@ -43,7 +43,7 @@ export function MyRegistrationCard({ activity, registration }: Props) {
       {registration && (
         <p className="text-sm text-green-700 mb-3">你的报名：{registration.participantCount}人</p>
       )}
-      <Link to={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline">
+      <Link href={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline">
         查看详情
       </Link>
     </div>

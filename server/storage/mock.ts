@@ -212,6 +212,8 @@ function seedInterests(): Interest[] {
     { id: 'int006', activityId: 'prop002', name: 'Frank', wechat: 'frank06', createdAt: daysAgo(4) },
     { id: 'int007', activityId: 'prop002', name: 'Grace', wechat: 'grace07', createdAt: daysAgo(3) },
     { id: 'int008', activityId: 'prop002', name: 'Henry', wechat: 'henry08', createdAt: daysAgo(2) },
+    { id: 'int009', activityId: 'prop003', name: 'Ivy', wechat: 'ivy09', createdAt: daysAgo(3) },
+    { id: 'int010', activityId: 'prop003', name: 'Jack', wechat: 'jack10', createdAt: daysAgo(2) },
   ]
 }
 
@@ -224,6 +226,9 @@ export class MockAdapter implements StorageAdapter {
     this.activities = seedActivities()
     this.registrations = seedRegistrations()
     this.interests = seedInterests()
+    for (const activity of this.activities) {
+      this.syncInterestedCount(activity.id)
+    }
   }
 
   private syncInterestedCount(activityId: string): number {
@@ -288,6 +293,12 @@ export class MockAdapter implements StorageAdapter {
       .sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime())
   }
 
+  async getRegistrationsByUser(userId: string): Promise<Registration[]> {
+    return this.registrations
+      .filter((r) => r.userId === userId)
+      .sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime())
+  }
+
   async findRegistration(activityId: string, wechat: string): Promise<Registration | null> {
     return this.registrations.find((r) => r.activityId === activityId && r.wechat === wechat) ?? null
   }
@@ -325,10 +336,21 @@ export class MockAdapter implements StorageAdapter {
     return this.interests.find((i) => i.activityId === activityId && i.wechat === wechat) ?? null
   }
 
+  async findInterestByUserId(activityId: string, userId: string): Promise<Interest | null> {
+    return this.interests.find((i) => i.activityId === activityId && i.userId === userId) ?? null
+  }
+
   async createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> {
-    const existing = await this.findInterest(data.activityId, data.wechat)
-    if (existing) {
-      return { interest: existing, interestedCount: this.syncInterestedCount(data.activityId) }
+    if (data.userId) {
+      const existing = await this.findInterestByUserId(data.activityId, data.userId)
+      if (existing) {
+        return { interest: existing, interestedCount: this.syncInterestedCount(data.activityId) }
+      }
+    } else if (data.wechat) {
+      const existing = await this.findInterest(data.activityId, data.wechat)
+      if (existing) {
+        return { interest: existing, interestedCount: this.syncInterestedCount(data.activityId) }
+      }
     }
     const interest: Interest = {
       ...data,
@@ -341,6 +363,15 @@ export class MockAdapter implements StorageAdapter {
 
   async deleteInterest(activityId: string, wechat: string): Promise<InterestMutationResult> {
     const idx = this.interests.findIndex((i) => i.activityId === activityId && i.wechat === wechat)
+    if (idx === -1) {
+      return { interest: undefined, interestedCount: this.syncInterestedCount(activityId) }
+    }
+    const [removed] = this.interests.splice(idx, 1)
+    return { interest: removed, interestedCount: this.syncInterestedCount(activityId) }
+  }
+
+  async deleteInterestByUserId(activityId: string, userId: string): Promise<InterestMutationResult> {
+    const idx = this.interests.findIndex((i) => i.activityId === activityId && i.userId === userId)
     if (idx === -1) {
       return { interest: undefined, interestedCount: this.syncInterestedCount(activityId) }
     }

@@ -15,10 +15,10 @@ const ACTIVITY_HEADERS = [
 ] as const
 
 const REGISTRATION_HEADERS = [
-  'id', 'activity_id', 'name', 'wechat', 'participant_count', 'note', 'registered_at',
+  'id', 'activity_id', 'name', 'wechat', 'participant_count', 'note', 'registered_at', 'user_id',
 ] as const
 
-const INTEREST_HEADERS = ['id', 'activity_id', 'name', 'wechat', 'created_at'] as const
+const INTEREST_HEADERS = ['id', 'activity_id', 'name', 'wechat', 'created_at', 'user_id'] as const
 
 function rowToObject<T extends Record<string, string>>(headers: readonly string[], row: string[]): T {
   const obj: Record<string, string> = {}
@@ -101,6 +101,7 @@ function registrationFromRow(row: string[]): Registration {
   return {
     id: r.id,
     activityId: r.activity_id,
+    userId: r.user_id || undefined,
     name: r.name,
     wechat: r.wechat,
     participantCount: parseInt(r.participant_count, 10) || 1,
@@ -110,7 +111,10 @@ function registrationFromRow(row: string[]): Registration {
 }
 
 function registrationToRow(r: Registration): string[] {
-  return [r.id, r.activityId, r.name, r.wechat, r.participantCount.toString(), r.note, r.registeredAt]
+  return [
+    r.id, r.activityId, r.name, r.wechat, r.participantCount.toString(), r.note, r.registeredAt,
+    r.userId ?? '',
+  ]
 }
 
 function interestFromRow(row: string[]): Interest {
@@ -118,14 +122,15 @@ function interestFromRow(row: string[]): Interest {
   return {
     id: r.id,
     activityId: r.activity_id,
-    name: r.name,
-    wechat: r.wechat,
+    userId: r.user_id || undefined,
+    name: r.name || undefined,
+    wechat: r.wechat || undefined,
     createdAt: r.created_at,
   }
 }
 
 function interestToRow(i: Interest): string[] {
-  return [i.id, i.activityId, i.name, i.wechat, i.createdAt]
+  return [i.id, i.activityId, i.name ?? '', i.wechat ?? '', i.createdAt, i.userId ?? '']
 }
 
 export class GoogleSheetsAdapter implements StorageAdapter {
@@ -281,6 +286,14 @@ export class GoogleSheetsAdapter implements StorageAdapter {
       .sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime())
   }
 
+  async getRegistrationsByUser(userId: string): Promise<Registration[]> {
+    const rows = await this.getSheetRows('registrations')
+    return rows
+      .map(registrationFromRow)
+      .filter((r) => r.userId === userId)
+      .sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime())
+  }
+
   async findRegistration(activityId: string, wechat: string): Promise<Registration | null> {
     const rows = await this.getSheetRows('registrations')
     const row = rows.find((r) => r[1] === activityId && r[3] === wechat)
@@ -324,6 +337,15 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     return row ? interestFromRow(row) : null
   }
 
+  async findInterestByUserId(activityId: string, userId: string): Promise<Interest | null> {
+    const rows = await this.getSheetRows('interests')
+    const row = rows.find((r) => {
+      const interest = interestFromRow(r)
+      return interest.activityId === activityId && interest.userId === userId
+    })
+    return row ? interestFromRow(row) : null
+  }
+
   private async syncInterestedCount(activityId: string): Promise<number> {
     const interests = await this.getInterests(activityId)
     const count = interests.length
@@ -332,9 +354,16 @@ export class GoogleSheetsAdapter implements StorageAdapter {
   }
 
   async createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> {
-    const existing = await this.findInterest(data.activityId, data.wechat)
-    if (existing) {
-      return { interest: existing, interestedCount: (await this.getActivity(data.activityId))?.interestedCount ?? 0 }
+    if (data.userId) {
+      const existing = await this.findInterestByUserId(data.activityId, data.userId)
+      if (existing) {
+        return { interest: existing, interestedCount: (await this.getActivity(data.activityId))?.interestedCount ?? 0 }
+      }
+    } else if (data.wechat) {
+      const existing = await this.findInterest(data.activityId, data.wechat)
+      if (existing) {
+        return { interest: existing, interestedCount: (await this.getActivity(data.activityId))?.interestedCount ?? 0 }
+      }
     }
     const interest: Interest = {
       ...data,
@@ -348,6 +377,16 @@ export class GoogleSheetsAdapter implements StorageAdapter {
 
   async deleteInterest(activityId: string, wechat: string): Promise<InterestMutationResult> {
     const existing = await this.findInterest(activityId, wechat)
+    if (!existing) {
+      return { interestedCount: (await this.getActivity(activityId))?.interestedCount ?? 0 }
+    }
+    await this.deleteRowById('interests', existing.id)
+    const interestedCount = await this.syncInterestedCount(activityId)
+    return { interest: existing, interestedCount }
+  }
+
+  async deleteInterestByUserId(activityId: string, userId: string): Promise<InterestMutationResult> {
+    const existing = await this.findInterestByUserId(activityId, userId)
     if (!existing) {
       return { interestedCount: (await this.getActivity(activityId))?.interestedCount ?? 0 }
     }

@@ -1,6 +1,8 @@
+'use client'
+
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import type { ActivityWithCount } from '../../../shared/types'
 import {
   getAllowedTransitions,
@@ -119,11 +121,11 @@ export function KanbanCard({
       <div className="flex flex-wrap gap-1.5 mt-3">
         {column === 'proposed' && (
           <>
-            <Link to={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
+            <Link href={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
               查看详情
             </Link>
             <Link
-              to={`/recruit/new?from=${activity.id}`}
+              href={`/recruit/new?from=${activity.id}`}
               className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
             >
               转为招募 →
@@ -132,7 +134,7 @@ export function KanbanCard({
         )}
         {column === 'recruiting' && (
           <>
-            <Link to={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
+            <Link href={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
               报名名单
             </Link>
             <button type="button" className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200" onClick={copyLink}>
@@ -142,7 +144,7 @@ export function KanbanCard({
         )}
         {column === 'ended' && (
           <>
-            <Link to={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
+            <Link href={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
               查看详情
             </Link>
             {isEndedSuccess(activity.status) && (

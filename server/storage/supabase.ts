@@ -1,20 +1,342 @@
-import type { Activity, Interest, Registration } from '../../shared/types'
+import { nanoid } from 'nanoid'
+import type { Activity, EnvConfig, Interest, Registration } from '@/shared/types'
+import { getSupabaseClient } from '@/lib/supabase'
 import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
-const TODO = 'TODO: SupabaseAdapter not implemented'
+type ActivityRow = Record<string, unknown>
+type RegistrationRow = Record<string, unknown>
+type InterestRow = Record<string, unknown>
 
 export class SupabaseAdapter implements StorageAdapter {
-  async getActivities(): Promise<Activity[]> { throw new Error(TODO) }
-  async getActivity(_id: string): Promise<Activity | null> { throw new Error(TODO) }
-  async createActivity(_data: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> { throw new Error(TODO) }
-  async updateActivity(_id: string, _data: Partial<Activity>): Promise<Activity> { throw new Error(TODO) }
-  async deleteActivity(_id: string): Promise<void> { throw new Error(TODO) }
-  async getRegistrations(_activityId: string): Promise<Registration[]> { throw new Error(TODO) }
-  async findRegistration(_activityId: string, _wechat: string): Promise<Registration | null> { throw new Error(TODO) }
-  async createRegistration(_data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> { throw new Error(TODO) }
-  async deleteRegistration(_activityId: string, _wechat: string): Promise<RegistrationMutationResult> { throw new Error(TODO) }
-  async getInterests(_activityId: string): Promise<Interest[]> { throw new Error(TODO) }
-  async findInterest(_activityId: string, _wechat: string): Promise<Interest | null> { throw new Error(TODO) }
-  async createInterest(_data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> { throw new Error(TODO) }
-  async deleteInterest(_activityId: string, _wechat: string): Promise<InterestMutationResult> { throw new Error(TODO) }
+  private env?: EnvConfig
+
+  constructor(env?: EnvConfig) {
+    this.env = env
+  }
+
+  private get db() {
+    return getSupabaseClient(this.env)
+  }
+
+  async getActivities(): Promise<Activity[]> {
+    const { data, error } = await this.db
+      .from('activities')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
+  }
+
+  async getActivity(id: string): Promise<Activity | null> {
+    const { data, error } = await this.db.from('activities').select('*').eq('id', id).single()
+    if (error) return null
+    return this.mapActivity(data as ActivityRow)
+  }
+
+  async getActivitiesByIds(ids: string[]): Promise<Activity[]> {
+    if (ids.length === 0) return []
+    const { data, error } = await this.db.from('activities').select('*').in('id', ids)
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
+  }
+
+  async createActivity(input: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> {
+    const id = nanoid(8)
+    const { data, error } = await this.db
+      .from('activities')
+      .insert({ id, ...this.unmapActivity(input) })
+      .select()
+      .single()
+    if (error) throw error
+    return this.mapActivity(data as ActivityRow)
+  }
+
+  async updateActivity(id: string, input: Partial<Activity>): Promise<Activity> {
+    const { data, error } = await this.db
+      .from('activities')
+      .update(this.unmapActivity(input))
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return this.mapActivity(data as ActivityRow)
+  }
+
+  async deleteActivity(id: string): Promise<void> {
+    const { error } = await this.db.from('activities').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  async addLinkedRecruit(proposalId: string, recruitId: string): Promise<void> {
+    const proposal = await this.getActivity(proposalId)
+    if (!proposal) return
+    const existing = proposal.linkedRecruitIds ?? []
+    if (existing.includes(recruitId)) return
+    await this.updateActivity(proposalId, { linkedRecruitIds: [...existing, recruitId] })
+  }
+
+  async getRegistrations(activityId: string): Promise<Registration[]> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('activity_id', activityId)
+      .order('registered_at', { ascending: true })
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapRegistration(row as RegistrationRow))
+  }
+
+  async getRegistrationsByUser(userId: string): Promise<Registration[]> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('user_id', userId)
+      .order('registered_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapRegistration(row as RegistrationRow))
+  }
+
+  async findRegistration(activityId: string, wechat: string): Promise<Registration | null> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('wechat', wechat)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async createRegistration(input: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> {
+    const id = nanoid(8)
+    const { data, error } = await this.db
+      .from('registrations')
+      .insert({ id, ...this.unmapRegistration(input) })
+      .select()
+      .single()
+    if (error) throw error
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult> {
+    const existing = await this.findRegistration(activityId, wechat)
+    const { error } = await this.db
+      .from('registrations')
+      .delete()
+      .eq('activity_id', activityId)
+      .eq('wechat', wechat)
+    if (error) throw error
+    const registeredCount = await this.countRegistrations(activityId)
+    return { registration: existing ?? undefined, registeredCount }
+  }
+
+  async getInterests(activityId: string): Promise<Interest[]> {
+    const { data, error } = await this.db.from('interests').select('*').eq('activity_id', activityId)
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapInterest(row as InterestRow))
+  }
+
+  async findInterest(activityId: string, wechat: string): Promise<Interest | null> {
+    const { data, error } = await this.db
+      .from('interests')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('wechat', wechat)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapInterest(data as InterestRow)
+  }
+
+  async findInterestByUserId(activityId: string, userId: string): Promise<Interest | null> {
+    const { data, error } = await this.db
+      .from('interests')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapInterest(data as InterestRow)
+  }
+
+  async createInterest(input: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> {
+    const id = nanoid(8)
+    const { data, error } = await this.db
+      .from('interests')
+      .insert({ id, ...this.unmapInterest(input) })
+      .select()
+      .single()
+    if (error) throw error
+    const interest = this.mapInterest(data as InterestRow)
+    const interestedCount = await this.syncInterestedCount(input.activityId)
+    return { interest, interestedCount }
+  }
+
+  async deleteInterest(activityId: string, wechat: string): Promise<InterestMutationResult> {
+    const existing = await this.findInterest(activityId, wechat)
+    const { error } = await this.db
+      .from('interests')
+      .delete()
+      .eq('activity_id', activityId)
+      .eq('wechat', wechat)
+    if (error) throw error
+    const interestedCount = await this.syncInterestedCount(activityId)
+    return { interest: existing ?? undefined, interestedCount }
+  }
+
+  async deleteInterestByUserId(activityId: string, userId: string): Promise<InterestMutationResult> {
+    const existing = await this.findInterestByUserId(activityId, userId)
+    const { error } = await this.db
+      .from('interests')
+      .delete()
+      .eq('activity_id', activityId)
+      .eq('user_id', userId)
+    if (error) throw error
+    const interestedCount = await this.syncInterestedCount(activityId)
+    return { interest: existing ?? undefined, interestedCount }
+  }
+
+  private async countRegistrations(activityId: string): Promise<number> {
+    const registrations = await this.getRegistrations(activityId)
+    return registrations.reduce((sum, r) => sum + r.participantCount, 0)
+  }
+
+  private async syncInterestedCount(activityId: string): Promise<number> {
+    const { count, error } = await this.db
+      .from('interests')
+      .select('*', { count: 'exact', head: true })
+      .eq('activity_id', activityId)
+    if (error) throw error
+    const interestedCount = count ?? 0
+    await this.updateActivity(activityId, { interestedCount })
+    return interestedCount
+  }
+
+  private mapActivity(row: ActivityRow): Activity {
+    return {
+      id: String(row.id),
+      title: String(row.title ?? ''),
+      description: String(row.description ?? ''),
+      date: row.date ? String(row.date) : null,
+      location: String(row.location ?? ''),
+      minParticipants: row.min_participants != null ? Number(row.min_participants) : undefined,
+      maxParticipants: row.max_participants != null ? Number(row.max_participants) : null,
+      fee: String(row.fee ?? ''),
+      feeLevel: row.fee_level as Activity['feeLevel'],
+      notes: String(row.notes ?? ''),
+      organizerName: String(row.organizer_name ?? ''),
+      organizerWechat: String(row.organizer_wechat ?? ''),
+      organizerId: row.organizer_id ? String(row.organizer_id) : undefined,
+      sourceUrl: String(row.source_url ?? ''),
+      status: row.status as Activity['status'],
+      category: row.category as Activity['category'],
+      interestedCount: Number(row.interested_count ?? 0),
+      sourceProposalId: row.source_proposal_id ? String(row.source_proposal_id) : undefined,
+      linkedRecruitIds: (row.linked_recruit_ids as string[]) ?? [],
+      endedAt: row.ended_at ? String(row.ended_at) : undefined,
+      recap: row.recap ? String(row.recap) : undefined,
+      recapImages: row.recap_images ? String(row.recap_images) : undefined,
+      cancelReason: row.cancel_reason as Activity['cancelReason'],
+      cancelNote: row.cancel_note ? String(row.cancel_note) : undefined,
+      ticketPrices: row.ticket_prices ? String(row.ticket_prices) : undefined,
+      ticketUrl: row.ticket_url ? String(row.ticket_url) : undefined,
+      ticketDeadline: row.ticket_deadline ? String(row.ticket_deadline) : undefined,
+      ticketMethod: row.ticket_method as Activity['ticketMethod'],
+      refundPolicy: row.refund_policy ? String(row.refund_policy) : undefined,
+      difficulty: row.difficulty as Activity['difficulty'],
+      distanceAndDuration: row.distance_duration ? String(row.distance_duration) : undefined,
+      itinerary: row.itinerary ? String(row.itinerary) : undefined,
+      equipment: row.equipment ? String(row.equipment) : undefined,
+      transportation: row.transportation ? String(row.transportation) : undefined,
+      mealArrangement: row.meal_arrangement as Activity['mealArrangement'],
+      restaurantAddress: row.restaurant_address ? String(row.restaurant_address) : undefined,
+      perPersonCost: row.per_person_cost ? String(row.per_person_cost) : undefined,
+      reservationMethod: row.reservation_method as Activity['reservationMethod'],
+      requiresDeposit: Boolean(row.requires_deposit),
+      createdAt: String(row.created_at),
+    }
+  }
+
+  private unmapActivity(activity: Partial<Activity>): Record<string, unknown> {
+    const result: Record<string, unknown> = {}
+    if (activity.title !== undefined) result.title = activity.title
+    if (activity.description !== undefined) result.description = activity.description
+    if (activity.date !== undefined) result.date = activity.date
+    if (activity.location !== undefined) result.location = activity.location
+    if (activity.minParticipants !== undefined) result.min_participants = activity.minParticipants
+    if (activity.maxParticipants !== undefined) result.max_participants = activity.maxParticipants
+    if (activity.fee !== undefined) result.fee = activity.fee
+    if (activity.feeLevel !== undefined) result.fee_level = activity.feeLevel
+    if (activity.notes !== undefined) result.notes = activity.notes
+    if (activity.organizerName !== undefined) result.organizer_name = activity.organizerName
+    if (activity.organizerWechat !== undefined) result.organizer_wechat = activity.organizerWechat
+    if (activity.organizerId !== undefined) result.organizer_id = activity.organizerId
+    if (activity.sourceUrl !== undefined) result.source_url = activity.sourceUrl
+    if (activity.status !== undefined) result.status = activity.status
+    if (activity.category !== undefined) result.category = activity.category
+    if (activity.interestedCount !== undefined) result.interested_count = activity.interestedCount
+    if (activity.sourceProposalId !== undefined) result.source_proposal_id = activity.sourceProposalId
+    if (activity.linkedRecruitIds !== undefined) result.linked_recruit_ids = activity.linkedRecruitIds
+    if (activity.endedAt !== undefined) result.ended_at = activity.endedAt
+    if (activity.recap !== undefined) result.recap = activity.recap
+    if (activity.recapImages !== undefined) result.recap_images = activity.recapImages
+    if (activity.cancelReason !== undefined) result.cancel_reason = activity.cancelReason
+    if (activity.cancelNote !== undefined) result.cancel_note = activity.cancelNote
+    if (activity.ticketPrices !== undefined) result.ticket_prices = activity.ticketPrices
+    if (activity.ticketUrl !== undefined) result.ticket_url = activity.ticketUrl
+    if (activity.ticketDeadline !== undefined) result.ticket_deadline = activity.ticketDeadline
+    if (activity.ticketMethod !== undefined) result.ticket_method = activity.ticketMethod
+    if (activity.refundPolicy !== undefined) result.refund_policy = activity.refundPolicy
+    if (activity.difficulty !== undefined) result.difficulty = activity.difficulty
+    if (activity.distanceAndDuration !== undefined) result.distance_duration = activity.distanceAndDuration
+    if (activity.itinerary !== undefined) result.itinerary = activity.itinerary
+    if (activity.equipment !== undefined) result.equipment = activity.equipment
+    if (activity.transportation !== undefined) result.transportation = activity.transportation
+    if (activity.mealArrangement !== undefined) result.meal_arrangement = activity.mealArrangement
+    if (activity.restaurantAddress !== undefined) result.restaurant_address = activity.restaurantAddress
+    if (activity.perPersonCost !== undefined) result.per_person_cost = activity.perPersonCost
+    if (activity.reservationMethod !== undefined) result.reservation_method = activity.reservationMethod
+    if (activity.requiresDeposit !== undefined) result.requires_deposit = activity.requiresDeposit
+    return result
+  }
+
+  private mapRegistration(row: RegistrationRow): Registration {
+    return {
+      id: String(row.id),
+      activityId: String(row.activity_id),
+      userId: row.user_id ? String(row.user_id) : undefined,
+      name: String(row.name),
+      wechat: String(row.wechat),
+      participantCount: Number(row.participant_count ?? 1),
+      note: String(row.note ?? ''),
+      registeredAt: String(row.registered_at),
+    }
+  }
+
+  private unmapRegistration(r: Partial<Registration>): Record<string, unknown> {
+    const result: Record<string, unknown> = {}
+    if (r.activityId !== undefined) result.activity_id = r.activityId
+    if (r.userId !== undefined) result.user_id = r.userId
+    if (r.name !== undefined) result.name = r.name
+    if (r.wechat !== undefined) result.wechat = r.wechat
+    if (r.participantCount !== undefined) result.participant_count = r.participantCount
+    if (r.note !== undefined) result.note = r.note
+    return result
+  }
+
+  private mapInterest(row: InterestRow): Interest {
+    return {
+      id: String(row.id),
+      activityId: String(row.activity_id),
+      userId: row.user_id ? String(row.user_id) : undefined,
+      wechat: row.wechat ? String(row.wechat) : undefined,
+      createdAt: String(row.created_at),
+    }
+  }
+
+  private unmapInterest(i: Partial<Interest>): Record<string, unknown> {
+    const result: Record<string, unknown> = {}
+    if (i.activityId !== undefined) result.activity_id = i.activityId
+    if (i.userId !== undefined) result.user_id = i.userId
+    if (i.wechat !== undefined) result.wechat = i.wechat
+    return result
+  }
 }

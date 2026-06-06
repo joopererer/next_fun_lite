@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import type { ActivityWithCount } from '../../shared/types'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { isRegistrationFull } from '../lib/participants'
@@ -15,7 +15,7 @@ export function ActivityCard({ activity, registered = false }: Props) {
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
-      <Link to={`/event/${activity.id}`} className="block flex-1 group">
+      <Link href={`/event/${activity.id}`} className="block flex-1 group">
         <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
           {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
         </span>
@@ -41,7 +41,7 @@ export function ActivityCard({ activity, registered = false }: Props) {
         </div>
       ) : (
         <Link
-          to={`/event/${activity.id}`}
+          href={`/event/${activity.id}`}
           className={`mt-auto text-center rounded-xl py-2.5 font-medium transition-colors ${
             full ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'btn-primary block'
           }`}

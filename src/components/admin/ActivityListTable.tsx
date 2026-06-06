@@ -1,5 +1,7 @@
+'use client'
+
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import type { ActivityWithCount, ActivityStatus } from '../../../shared/types'
 import { getStatusLabel, isEndedCancelled, isTerminalStatus } from '../../lib/activityStatus'
 import { getCategoryLabel } from '../../lib/categories'
@@ -155,11 +157,11 @@ export function ActivityListTable({
                     : a.status === 'proposed' ? `${a.interestedCount} 感兴趣` : '-'}
                 </td>
                 <td className="py-3 whitespace-nowrap">
-                  <Link to={`/admin/activity/${a.id}`} className="text-green-600 hover:underline mr-2">
+                  <Link href={`/admin/activity/${a.id}`} className="text-green-600 hover:underline mr-2">
                     详情
                   </Link>
                   {!isTerminalStatus(a.status) && (
-                    <Link to={`/admin?tab=create&edit=${a.id}`} className="text-green-600 hover:underline mr-2">
+                    <Link href={`/admin?tab=create&edit=${a.id}`} className="text-green-600 hover:underline mr-2">
                       编辑
                     </Link>
                   )}

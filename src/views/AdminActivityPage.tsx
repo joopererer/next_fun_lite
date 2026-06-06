@@ -1,5 +1,8 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import type { ActivityWithCount, Registration } from '../../shared/types'
 import { ActivityForm } from '../components/admin/ActivityForm'
 import { AdminGate } from '../components/admin/AdminGate'
@@ -55,7 +58,7 @@ export function AdminActivityPage() {
       <AdminGate>
         <div className="text-center py-16">
           <p className="text-gray-500 mb-4">活动不存在</p>
-          <Link to="/admin" className="btn-primary">返回看板</Link>
+          <Link href="/admin" className="btn-primary">返回看板</Link>
         </div>
       </AdminGate>
     )
@@ -68,7 +71,7 @@ export function AdminActivityPage() {
       <div className="min-h-screen pb-12">
         <header className="bg-white border-b border-gray-100">
           <div className="max-w-3xl mx-auto px-4 py-4">
-            <Link to="/admin" className="text-sm text-gray-400 hover:text-green-600">← 返回看板</Link>
+            <Link href="/admin" className="text-sm text-gray-400 hover:text-green-600">← 返回看板</Link>
             <h1 className="text-xl font-bold mt-2">{activity.title}</h1>
             <p className="text-sm text-gray-500">{formatEventDate(activity.date)} · {activity.location}</p>
           </div>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import type { ActivityWithCount } from '../../shared/types'
 import { formatEventDate } from '../lib/user'
 
@@ -22,7 +22,7 @@ export function PastActivityCard({ activity }: Props) {
       {recapPreview && (
         <p className="text-sm text-gray-600 mb-2 line-clamp-2">「{recapPreview}」</p>
       )}
-      <Link to={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline">
+      <Link href={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline">
         查看详情
       </Link>
     </div>

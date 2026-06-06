@@ -1,3 +1,5 @@
+'use client'
+
 import type { Activity, TicketMethod } from '../../../shared/types'
 
 interface Props {

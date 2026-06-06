@@ -1,3 +1,5 @@
+'use client'
+
 import {
   DEFAULT_MAX_PARTICIPANTS,
   DEFAULT_MIN_PARTICIPANTS,

@@ -1,5 +1,7 @@
+'use client'
+
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import type { ActivityCategory, ActivityWithCount } from '../../shared/types'
 import { ActivityCard } from '../components/ActivityCard'
 import { CategoryFilter, matchesCategoryFilter } from '../components/CategoryFilter'
@@ -130,7 +132,7 @@ export function HomePage() {
                   <h2 className="section-title mb-0">💡 提议池</h2>
                   <p className="text-sm text-gray-500 mt-1">有好去处？告诉大家</p>
                 </div>
-                <Link to="/propose" className="btn-primary text-sm whitespace-nowrap">
+                <Link href="/propose" className="btn-primary text-sm whitespace-nowrap">
                   + 我有个提议
                 </Link>
               </div>

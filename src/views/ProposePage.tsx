@@ -1,19 +1,21 @@
+'use client'
+
+import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
 import { Header } from '../components/layout/Header'
-import { UserIdentityModal } from '../components/UserIdentityModal'
+import { SignInGate } from '../components/SignInGate'
 import type { ActivityCategory, FeeLevel, ParseResult } from '../../shared/types'
 import { api } from '../lib/api'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { FEE_LEVELS } from '../lib/feeLevel'
+import { getClerkDisplayName } from '../lib/displayName'
 import { applyParseResult } from '../lib/parseResult'
-import { getUser } from '../lib/user'
 
 type InputMode = 'link' | 'image' | 'manual'
 
 export function ProposePage() {
-  const navigate = useNavigate()
-  const user = getUser()
+  const { user: clerkUser } = useUser()
   const [mode, setMode] = useState<InputMode>('link')
   const [url, setUrl] = useState('')
   const [parsing, setParsing] = useState(false)
@@ -30,18 +32,17 @@ export function ProposePage() {
   const [feeLevel, setFeeLevel] = useState<FeeLevel>('unknown')
   const [feeDetail, setFeeDetail] = useState('')
   const [itinerary, setItinerary] = useState('')
-  const [organizerName, setOrganizerName] = useState(user?.name ?? '')
-  const [organizerWechat, setOrganizerWechat] = useState(user?.wechat ?? '')
+  const [organizerWechat, setOrganizerWechat] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [identityModal, setIdentityModal] = useState(false)
 
   useEffect(() => {
-    const u = getUser()
-    if (u) {
-      setOrganizerName(u.name)
-      setOrganizerWechat(u.wechat)
-    }
-  }, [])
+    if (!clerkUser) return
+    api.getProfile()
+      .then((p) => {
+        if (p?.wechat) setOrganizerWechat(p.wechat)
+      })
+      .catch(() => {})
+  }, [clerkUser])
 
   const applyParsed = (data: Partial<ParseResult> & { sourceUrl?: string }) => {
     applyParseResult(data, {
@@ -118,7 +119,6 @@ export function ProposePage() {
         sourceUrl: sourceUrl.trim(),
         category,
         feeLevel,
-        organizerName: organizerName.trim(),
         organizerWechat: organizerWechat.trim(),
         fee: feeDetail.trim(),
         itinerary: itinerary.trim() || undefined,
@@ -143,8 +143,8 @@ export function ProposePage() {
             大家会在首页看到你的提议。如果感兴趣的人多了，管理员会发起招募。
           </p>
           <div className="flex gap-3 justify-center">
-            <Link to="/" className="btn-primary">回到首页</Link>
-            <button type="button" className="btn-secondary" onClick={() => navigate(0)}>再提交一个</button>
+            <Link href="/" className="btn-primary">回到首页</Link>
+            <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>再提交一个</button>
           </div>
         </main>
       </div>
@@ -154,6 +154,7 @@ export function ProposePage() {
   return (
     <div className="min-h-screen pb-32">
       <Header />
+      <SignInGate message="登录后即可提交提议">
       <main className="max-w-lg mx-auto px-4 py-6 page-enter">
         <h1 className="text-2xl font-bold mb-1">分享一个好去处 💡</h1>
         <p className="text-gray-500 text-sm mb-6">有趣的活动、餐厅、景点都可以，大家一起决定要不要去</p>
@@ -297,16 +298,13 @@ export function ProposePage() {
         </div>
 
         <div className="border-t border-gray-100 pt-6 mb-8">
-          <h3 className="font-medium mb-3">留下联系方式（选填）</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">你的昵称</label>
-              <input className="input-field" value={organizerName} onChange={(e) => setOrganizerName(e.target.value)} placeholder="若成团可通知你" />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">微信号</label>
-              <input className="input-field" value={organizerWechat} onChange={(e) => setOrganizerWechat(e.target.value)} />
-            </div>
+          <h3 className="font-medium mb-3">联系方式</h3>
+          <p className="text-sm text-gray-500 mb-3">
+            以 <span className="font-medium text-gray-700">{getClerkDisplayName(clerkUser)}</span> 的身份提交
+          </p>
+          <div>
+            <label className="text-sm text-gray-600 mb-1 block">微信号（可选）</label>
+            <input className="input-field" value={organizerWechat} onChange={(e) => setOrganizerWechat(e.target.value)} placeholder="若成团方便联系你" />
           </div>
         </div>
 
@@ -314,7 +312,7 @@ export function ProposePage() {
           {submitting ? '提交中...' : '提交提议 🎉'}
         </button>
       </main>
-      <UserIdentityModal open={identityModal} onClose={() => setIdentityModal(false)} />
+      </SignInGate>
     </div>
   )
 }

@@ -1,4 +1,7 @@
+'use client'
+
 import QRCode from 'qrcode'
+import { useUser } from '@clerk/nextjs'
 import { useEffect, useRef, useState } from 'react'
 import type {
   Activity,
@@ -20,7 +23,8 @@ import {
   parseMaxParticipants,
   parseMinParticipants,
 } from '../../lib/participants'
-import { formatEventDate, getUser } from '../../lib/user'
+import { formatEventDate } from '../../lib/user'
+import { getClerkDisplayName } from '../../lib/displayName'
 import { ActivityParsePanel } from '../ActivityParsePanel'
 import { DiningFields } from './DiningFields'
 import { ParticipantLimitFields } from './ParticipantLimitFields'
@@ -42,6 +46,7 @@ interface Props {
 }
 
 export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess }: Props) {
+  const { isSignedIn, user: clerkUser } = useUser()
   const dynamicRef = useRef<HTMLDivElement>(null)
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -57,8 +62,8 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
   })
   const [fee, setFee] = useState(initial?.fee ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
-  const [organizerName, setOrganizerName] = useState(initial?.organizerName ?? getUser()?.name ?? '')
-  const [organizerWechat, setOrganizerWechat] = useState(initial?.organizerWechat ?? getUser()?.wechat ?? '')
+  const [organizerName, setOrganizerName] = useState(initial?.organizerName ?? '')
+  const [organizerWechat, setOrganizerWechat] = useState(initial?.organizerWechat ?? '')
   const [sourceUrl, setSourceUrl] = useState(initial?.sourceUrl ?? '')
   const [category, setCategory] = useState<ActivityCategory>(initial?.category ?? 'other')
   const [status, setStatus] = useState<ActivityStatus>(initial?.status ?? 'recruiting')
@@ -83,6 +88,16 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
   const [qrDataUrl, setQrDataUrl] = useState('')
 
   useEffect(() => {
+    if (!isSignedIn || !clerkUser) return
+    setOrganizerName(getClerkDisplayName(clerkUser))
+    api.getProfile()
+      .then((profile) => {
+        if (profile?.wechat) setOrganizerWechat(profile.wechat)
+      })
+      .catch(() => {})
+  }, [isSignedIn, clerkUser])
+
+  useEffect(() => {
     if (!initial) return
     setTitle(initial.title ?? '')
     setDescription(initial.description ?? '')
@@ -98,8 +113,8 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     )
     setFee(initial.fee ?? '')
     setNotes(initial.notes ?? '')
-    setOrganizerName(initial.organizerName ?? getUser()?.name ?? '')
-    setOrganizerWechat(initial.organizerWechat ?? getUser()?.wechat ?? '')
+    setOrganizerName(initial.organizerName ?? '')
+    setOrganizerWechat(initial.organizerWechat ?? '')
     setSourceUrl(initial.sourceUrl ?? '')
     setCategory(initial.category ?? 'other')
     setStatus(initial.status ?? 'recruiting')
@@ -208,8 +223,8 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
   }
 
   const handleSubmit = async () => {
-    if (!title.trim() || !organizerName.trim() || !organizerWechat.trim()) {
-      alert('请填写标题、发起人昵称和微信号')
+    if (!title.trim()) {
+      alert('请填写标题')
       return
     }
     if (!date || !location.trim()) {
@@ -399,14 +414,18 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-sm text-gray-600 mb-1 block">发起人昵称 *</label>
-          <input className="input-field" value={organizerName} onChange={(e) => setOrganizerName(e.target.value)} />
+          <label className="text-sm text-gray-600 mb-1 block">发起人</label>
+          {isSignedIn ? (
+            <div className="input-field bg-gray-50 text-gray-700">{organizerName || '你的账号'}</div>
+          ) : (
+            <input className="input-field" value={organizerName} onChange={(e) => setOrganizerName(e.target.value)} />
+          )}
         </div>
         <div>
-          <label className="text-sm text-gray-600 mb-1 block">发起人微信号 *</label>
-          <input className="input-field" value={organizerWechat} onChange={(e) => setOrganizerWechat(e.target.value)} />
+          <label className="text-sm text-gray-600 mb-1 block">微信号（可选）</label>
+          <input className="input-field" value={organizerWechat} onChange={(e) => setOrganizerWechat(e.target.value)} placeholder="方便组织者联系你" />
         </div>
       </div>
       <button type="button" className="btn-primary w-full" onClick={handleSubmit} disabled={submitting}>

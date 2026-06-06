@@ -32,6 +32,7 @@ export interface Activity {
   notes: string
   organizerName: string
   organizerWechat: string
+  organizerId?: string
   sourceUrl: string
   status: ActivityStatus
   category: ActivityCategory
@@ -65,6 +66,7 @@ export interface Activity {
 export interface Registration {
   id: string
   activityId: string
+  userId?: string
   name: string
   wechat: string
   participantCount: number
@@ -75,9 +77,19 @@ export interface Registration {
 export interface Interest {
   id: string
   activityId: string
-  name: string
-  wechat: string
+  userId?: string
+  name?: string
+  wechat?: string
   createdAt: string
+}
+
+export interface Profile {
+  id: string
+  nickname: string
+  wechat?: string
+  email?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ActivityWithCount extends Activity {
@@ -125,12 +137,16 @@ export type EnvConfig = {
   GOOGLE_SERVICE_ACCOUNT_JSON?: string
   SUPABASE_URL?: string
   SUPABASE_SERVICE_KEY?: string
+  SUPABASE_SERVICE_ROLE_KEY?: string
+  NEXT_PUBLIC_SUPABASE_URL?: string
   TENCENT_DOCS_APP_ID?: string
   TENCENT_DOCS_APP_SECRET?: string
   CLAUDE_API_KEY?: string
   ADMIN_PASSWORD?: string
   SITE_URL?: string
   PARSE_MODE?: string
+  CLERK_SECRET_KEY?: string
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?: string
 }
 
 export type CreateRecruitmentBody = Partial<Activity> & {
