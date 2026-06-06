@@ -332,7 +332,8 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
             <select className="input-field" value={status} onChange={(e) => setStatus(e.target.value as ActivityStatus)}>
               <option value="proposed">提议池</option>
               <option value="recruiting">招募中</option>
-              <option value="ended">已结束</option>
+              <option value="ended_success">已结束</option>
+              <option value="ended_cancelled">已取消</option>
             </select>
           </div>
         )}

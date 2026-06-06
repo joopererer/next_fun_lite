@@ -11,6 +11,7 @@ const ACTIVITY_HEADERS = [
   'difficulty', 'distance_and_duration', 'itinerary', 'equipment', 'transportation', 'meal_arrangement',
   'restaurant_address', 'per_person_cost', 'reservation_method', 'requires_deposit',
   'recap', 'recap_images',
+  'source_proposal_id', 'linked_recruit_ids', 'ended_at', 'cancel_reason', 'cancel_note',
 ] as const
 
 const REGISTRATION_HEADERS = [
@@ -64,6 +65,13 @@ function activityFromRow(row: string[]): Activity {
     requiresDeposit: r.requires_deposit === 'true' ? true : r.requires_deposit === 'false' ? false : undefined,
     recap: r.recap || undefined,
     recapImages: r.recap_images || undefined,
+    sourceProposalId: r.source_proposal_id || undefined,
+    linkedRecruitIds: r.linked_recruit_ids
+      ? r.linked_recruit_ids.split(',').map((s) => s.trim()).filter(Boolean)
+      : undefined,
+    endedAt: r.ended_at || undefined,
+    cancelReason: (r.cancel_reason as Activity['cancelReason']) || undefined,
+    cancelNote: r.cancel_note || undefined,
   }
 }
 
@@ -80,6 +88,11 @@ function activityToRow(a: Activity): string[] {
     a.restaurantAddress ?? '', a.perPersonCost ?? '', a.reservationMethod ?? '',
     a.requiresDeposit === true ? 'true' : a.requiresDeposit === false ? 'false' : '',
     a.recap ?? '', a.recapImages ?? '',
+    a.sourceProposalId ?? '',
+    (a.linkedRecruitIds ?? []).join(','),
+    a.endedAt ?? '',
+    a.cancelReason ?? '',
+    a.cancelNote ?? '',
   ]
 }
 
@@ -213,6 +226,21 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     const rows = await this.getSheetRows('activities')
     const row = rows.find((r) => r[0] === id)
     return row ? activityFromRow(row) : null
+  }
+
+  async getActivitiesByIds(ids: string[]): Promise<Activity[]> {
+    const unique = [...new Set(ids)]
+    const rows = await this.getSheetRows('activities')
+    const byId = new Map(rows.filter((r) => r[0]).map((r) => [r[0], activityFromRow(r)]))
+    return unique.map((id) => byId.get(id)).filter((a): a is Activity => a != null)
+  }
+
+  async addLinkedRecruit(proposalId: string, recruitId: string): Promise<void> {
+    const proposal = await this.getActivity(proposalId)
+    if (!proposal) throw new Error('Proposal not found')
+    const existing = proposal.linkedRecruitIds ?? []
+    if (existing.includes(recruitId)) return
+    await this.updateActivity(proposalId, { linkedRecruitIds: [...existing, recruitId] })
   }
 
   async createActivity(data: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> {

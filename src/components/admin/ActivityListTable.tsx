@@ -1,26 +1,41 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount, ActivityStatus } from '../../../shared/types'
+import { getStatusLabel, isEndedCancelled, isTerminalStatus } from '../../lib/activityStatus'
 import { getCategoryLabel } from '../../lib/categories'
 import { formatListDate } from '../../lib/user'
 
 type SortField = 'title' | 'status' | 'date' | 'location' | 'category' | 'registeredCount' | 'createdAt'
 type SortDir = 'asc' | 'desc'
 
+type StatusFilter = ActivityStatus | 'all'
+
 interface Props {
   activities: ActivityWithCount[]
-  statusFilter: ActivityStatus | 'all'
-  onStatusFilterChange: (s: ActivityStatus | 'all') => void
+  statusFilter: StatusFilter
+  onStatusFilterChange: (s: StatusFilter) => void
   onDelete: (id: string) => void
+  onRequestCancel: (activity: ActivityWithCount) => void
 }
 
-export function ActivityListTable({ activities, statusFilter, onStatusFilterChange, onDelete }: Props) {
+const FILTER_OPTIONS: StatusFilter[] = [
+  'all',
+  'proposed',
+  'recruiting',
+  'ended_success',
+  'ended_cancelled',
+]
+
+export function ActivityListTable({
+  activities,
+  statusFilter,
+  onStatusFilterChange,
+  onDelete,
+  onRequestCancel,
+}: Props) {
   const [query, setQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-
-  const statusLabel = (s: ActivityStatus) =>
-    s === 'proposed' ? '提议池' : s === 'recruiting' ? '招募中' : '已结束'
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
@@ -90,7 +105,7 @@ export function ActivityListTable({ activities, statusFilter, onStatusFilterChan
           onChange={(e) => setQuery(e.target.value)}
         />
         <div className="flex gap-2 flex-wrap">
-          {(['all', 'proposed', 'recruiting', 'ended'] as const).map((s) => (
+          {FILTER_OPTIONS.map((s) => (
             <button
               key={s}
               type="button"
@@ -99,7 +114,7 @@ export function ActivityListTable({ activities, statusFilter, onStatusFilterChan
               }`}
               onClick={() => onStatusFilterChange(s)}
             >
-              {s === 'all' ? '全部' : statusLabel(s)}
+              {s === 'all' ? '全部' : getStatusLabel(s)}
             </button>
           ))}
         </div>
@@ -129,7 +144,9 @@ export function ActivityListTable({ activities, statusFilter, onStatusFilterChan
               <tr key={a.id} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-3 pr-4 font-medium">{a.title}</td>
                 <td className="py-3 pr-4">{getCategoryLabel(a.category)}</td>
-                <td className="py-3 pr-4">{statusLabel(a.status)}</td>
+                <td className={`py-3 pr-4 ${isEndedCancelled(a.status) ? 'text-red-600' : ''}`}>
+                  {isEndedCancelled(a.status) ? '❌ ' : ''}{getStatusLabel(a.status)}
+                </td>
                 <td className="py-3 pr-4">{formatListDate(a.date)}</td>
                 <td className="py-3 pr-4">{a.location || '-'}</td>
                 <td className="py-3 pr-4">
@@ -141,9 +158,20 @@ export function ActivityListTable({ activities, statusFilter, onStatusFilterChan
                   <Link to={`/admin/activity/${a.id}`} className="text-green-600 hover:underline mr-2">
                     详情
                   </Link>
-                  <Link to={`/admin?tab=create&edit=${a.id}`} className="text-green-600 hover:underline mr-2">
-                    编辑
-                  </Link>
+                  {!isTerminalStatus(a.status) && (
+                    <Link to={`/admin?tab=create&edit=${a.id}`} className="text-green-600 hover:underline mr-2">
+                      编辑
+                    </Link>
+                  )}
+                  {(a.status === 'recruiting' || a.status === 'proposed') && (
+                    <button
+                      type="button"
+                      className="text-red-500 hover:underline mr-2"
+                      onClick={() => onRequestCancel(a)}
+                    >
+                      取消
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="text-red-500 hover:underline"

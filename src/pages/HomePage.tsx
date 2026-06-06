@@ -4,7 +4,9 @@ import type { ActivityCategory, ActivityWithCount } from '../../shared/types'
 import { ActivityCard } from '../components/ActivityCard'
 import { CategoryFilter, matchesCategoryFilter } from '../components/CategoryFilter'
 import { Header } from '../components/layout/Header'
+import { PastActivityCard } from '../components/PastActivityCard'
 import { ProposalCard } from '../components/ProposalCard'
+import { isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { api } from '../lib/api'
 import { getUser, isRegistered, setRegistered } from '../lib/user'
 
@@ -15,6 +17,7 @@ export function HomePage() {
   const [recruitingFilter, setRecruitingFilter] = useState<ActivityCategory[]>([])
   const [proposalFilter, setProposalFilter] = useState<ActivityCategory[]>([])
   const [registeredIds, setRegisteredIds] = useState<Set<string>>(new Set())
+  const [pastExpanded, setPastExpanded] = useState(false)
 
   const syncRegistrations = useCallback(async (list: ActivityWithCount[]) => {
     const user = getUser()
@@ -76,12 +79,15 @@ export function HomePage() {
     }
   }, [syncRegistrations])
 
-  const recruiting = activities
+  const visible = activities.filter((a) => !isEndedCancelled(a.status))
+
+  const recruiting = visible
     .filter((a) => a.status === 'recruiting')
     .filter((a) => matchesCategoryFilter(a.category, recruitingFilter))
-  const proposed = activities
+  const proposed = visible
     .filter((a) => a.status === 'proposed')
     .filter((a) => matchesCategoryFilter(a.category, proposalFilter))
+  const past = visible.filter((a) => isEndedSuccess(a.status))
 
   return (
     <div className="min-h-screen pb-12">
@@ -118,7 +124,7 @@ export function HomePage() {
               )}
             </section>
 
-            <section>
+            <section className="mb-10">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="section-title mb-0">💡 提议池</h2>
@@ -153,6 +159,26 @@ export function HomePage() {
                 </div>
               )}
             </section>
+
+            {past.length > 0 && (
+              <section>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 text-left w-full mb-3"
+                  onClick={() => setPastExpanded(!pastExpanded)}
+                >
+                  <h2 className="section-title mb-0">✅ 往期活动</h2>
+                  <span className="text-sm text-gray-400">{pastExpanded ? '▴' : '▾'}</span>
+                </button>
+                {pastExpanded && (
+                  <div className="space-y-3">
+                    {past.map((a) => (
+                      <PastActivityCard key={a.id} activity={a} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
           </>
         )}
       </main>

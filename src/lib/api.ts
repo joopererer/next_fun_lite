@@ -37,6 +37,10 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   getActivities: () => request<ActivityWithCount[]>('/api/activities'),
+  getActivitiesByIds: (ids: string[]) =>
+    request<ActivityWithCount[]>(
+      `/api/activities/by-ids?ids=${ids.map(encodeURIComponent).join(',')}`,
+    ),
   getActivity: (id: string) => request<ActivityWithCount>(`/api/activities/${id}`),
   createProposal: (data: Partial<Activity>) =>
     request<Activity>('/api/proposals', { method: 'POST', body: JSON.stringify(data) }),

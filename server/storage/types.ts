@@ -25,4 +25,7 @@ export interface StorageAdapter {
   findInterest(activityId: string, wechat: string): Promise<Interest | null>
   createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult>
   deleteInterest(activityId: string, wechat: string): Promise<InterestMutationResult>
+
+  getActivitiesByIds(ids: string[]): Promise<Activity[]>
+  addLinkedRecruit(proposalId: string, recruitId: string): Promise<void>
 }

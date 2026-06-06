@@ -1,4 +1,10 @@
-export type ActivityStatus = 'proposed' | 'recruiting' | 'ended'
+export type ActivityStatus =
+  | 'proposed'
+  | 'recruiting'
+  | 'ended_success'
+  | 'ended_cancelled'
+
+export type CancelReason = 'weather' | 'insufficient_participants' | 'venue' | 'other'
 
 export type ActivityCategory =
   | 'board_game'
@@ -49,6 +55,11 @@ export interface Activity {
   requiresDeposit?: boolean
   recap?: string
   recapImages?: string
+  sourceProposalId?: string
+  linkedRecruitIds?: string[]
+  endedAt?: string
+  cancelReason?: CancelReason
+  cancelNote?: string
 }
 
 export interface Registration {

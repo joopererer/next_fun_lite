@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getUser } from '../../lib/user'
+import { HeaderUserMenu } from './HeaderUserMenu'
 import { UserIdentityModal } from '../UserIdentityModal'
 
 export function Header() {
   const [modalOpen, setModalOpen] = useState(false)
-  const user = getUser()
 
   return (
     <>
@@ -15,13 +14,7 @@ export function Header() {
             <h1 className="text-lg font-bold text-green-700">🎉 Next Fun Lite</h1>
             <p className="text-xs text-gray-500">Next Fun Club · 巴黎</p>
           </Link>
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="text-sm text-green-700 font-medium px-3 py-1.5 rounded-lg hover:bg-green-50"
-          >
-            {user ? `你好，${user.name} ▾` : '你是？'}
-          </button>
+          <HeaderUserMenu onEditProfile={() => setModalOpen(true)} />
         </div>
       </header>
       <UserIdentityModal open={modalOpen} onClose={() => setModalOpen(false)} />

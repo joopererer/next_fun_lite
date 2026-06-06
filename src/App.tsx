@@ -3,6 +3,7 @@ import { AdminActivityPage } from './pages/AdminActivityPage'
 import { AdminPage } from './pages/AdminPage'
 import { EventPage } from './pages/EventPage'
 import { HomePage } from './pages/HomePage'
+import { MyRegistrationsPage } from './pages/MyRegistrationsPage'
 import { ProposePage } from './pages/ProposePage'
 import { RecruitNewPage } from './pages/RecruitNewPage'
 
@@ -12,6 +13,7 @@ function AnimatedRoutes() {
     <div key={location.pathname} className="page-enter">
       <Routes location={location}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/my" element={<MyRegistrationsPage />} />
         <Route path="/propose" element={<ProposePage />} />
         <Route path="/recruit/new" element={<RecruitNewPage />} />
         <Route path="/event/:id" element={<EventPage />} />

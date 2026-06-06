@@ -26,6 +26,7 @@ const EXTENDED_KEYS: (keyof Activity)[] = [
   'feeLevel', 'ticketPrices', 'ticketUrl', 'ticketDeadline', 'ticketMethod', 'refundPolicy',
   'difficulty', 'distanceAndDuration', 'itinerary', 'equipment', 'transportation', 'mealArrangement',
   'restaurantAddress', 'perPersonCost', 'reservationMethod', 'requiresDeposit', 'recap', 'recapImages',
+  'sourceProposalId', 'linkedRecruitIds', 'endedAt', 'cancelReason', 'cancelNote',
 ]
 
 export function pickExtendedFields(body: Partial<Activity>): Partial<Activity> {

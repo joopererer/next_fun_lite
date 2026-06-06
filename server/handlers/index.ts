@@ -5,6 +5,7 @@ import type {
   EnvConfig,
   InterestMutationResult,
 } from '../../shared/types'
+import { isTerminalStatus, normalizeActivityStatus } from '../../shared/activityStatus'
 import {
   buildAdminCreatePayload,
   buildProposalPayload,
@@ -27,7 +28,7 @@ function getEventUrl(env: EnvConfig, activityId: string): string {
 
 async function enrichActivity(storage: StorageAdapter, activity: Activity): Promise<ActivityWithCount> {
   const registeredCount = await getRegisteredCount(storage, activity.id)
-  return { ...activity, registeredCount }
+  return { ...activity, status: normalizeActivityStatus(activity.status), registeredCount }
 }
 
 export async function handleGetActivities(_request: Request, env: EnvConfig): Promise<Response> {
@@ -79,24 +80,37 @@ export async function handleCreateRecruitment(request: Request, env: EnvConfig):
   let activity: Activity
 
   if (body.sourceProposalId) {
-    const existing = await storage.getActivity(body.sourceProposalId)
-    if (!existing) return errorResponse('Proposal not found', 404)
-    if (existing.status !== 'proposed') return errorResponse('Activity is not a proposal')
-    activity = await storage.updateActivity(body.sourceProposalId, {
-      ...payload,
-      interestedCount: existing.interestedCount,
-    })
-  } else {
-    activity = await storage.createActivity({
-      ...(payload as Omit<Activity, 'id' | 'createdAt'>),
-      interestedCount: 0,
-    })
+    const proposal = await storage.getActivity(body.sourceProposalId)
+    if (!proposal) return errorResponse('Proposal not found', 404)
+    if (proposal.status !== 'proposed') return errorResponse('Activity is not a proposal')
+  }
+
+  activity = await storage.createActivity({
+    ...(payload as Omit<Activity, 'id' | 'createdAt'>),
+    interestedCount: 0,
+    sourceProposalId: body.sourceProposalId,
+  })
+
+  if (body.sourceProposalId) {
+    await storage.addLinkedRecruit(body.sourceProposalId, activity.id)
   }
 
   return jsonResponse(
     { activity, eventUrl: getEventUrl(env, activity.id) },
-    body.sourceProposalId ? 200 : 201
+    201,
   )
+}
+
+export async function handleGetActivitiesByIds(request: Request, env: EnvConfig): Promise<Response> {
+  const idsParam = new URL(request.url).searchParams.get('ids')
+  if (!idsParam) return errorResponse('Missing ids parameter')
+  const ids = idsParam.split(',').map((s) => s.trim()).filter(Boolean)
+  if (ids.length === 0) return jsonResponse([])
+
+  const storage = createStorageAdapter(env)
+  const activities = await storage.getActivitiesByIds(ids)
+  const enriched = await Promise.all(activities.map((a) => enrichActivity(storage, a)))
+  return jsonResponse(enriched)
 }
 
 export async function handleUpdateActivity(request: Request, env: EnvConfig, id: string): Promise<Response> {
@@ -162,8 +176,9 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
 
   const activity = await storage.getActivity(body.activityId)
   if (!activity) return errorResponse('Activity not found', 404)
-  if (activity.status === 'ended') return errorResponse('Activity has ended')
-  if (activity.status !== 'recruiting') return errorResponse('Activity is not open for registration')
+  const status = normalizeActivityStatus(activity.status)
+  if (isTerminalStatus(status)) return errorResponse('Activity has ended')
+  if (status !== 'recruiting') return errorResponse('Activity is not open for registration')
 
   const existing = await storage.findRegistration(body.activityId, body.wechat)
   if (existing) return errorResponse('Already registered', 409)

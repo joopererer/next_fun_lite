@@ -7,6 +7,7 @@ import {
   handleDeleteInterest,
   handleDeleteActivity,
   handleGetActivities,
+  handleGetActivitiesByIds,
   handleGetActivity,
   handleGetInterests,
   handleGetRegistrations,
@@ -24,6 +25,11 @@ const routes: Array<{
   handler: RouteHandler
 }> = [
   { method: 'GET', pattern: /^\/api\/activities$/, handler: (req, env) => handleGetActivities(req, env) },
+  {
+    method: 'GET',
+    pattern: /^\/api\/activities\/by-ids$/,
+    handler: (req, env) => handleGetActivitiesByIds(req, env),
+  },
   {
     method: 'GET',
     pattern: /^\/api\/activities\/([^/]+)$/,

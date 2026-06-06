@@ -1,23 +1,28 @@
 import { useDroppable } from '@dnd-kit/core'
-import type { ActivityWithCount, ActivityStatus } from '../../../shared/types'
+import type { ActivityWithCount } from '../../../shared/types'
+import { KANBAN_COLUMN_LABELS, type KanbanColumnId } from '../../lib/kanban'
 import { KanbanCard } from './KanbanCard'
 
-const COLUMN_LABELS: Record<ActivityStatus, string> = {
-  proposed: '💡 提议池',
-  recruiting: '🟢 招募中',
-  ended: '✅ 已结束',
-}
-
 interface Props {
-  status: ActivityStatus
+  column: KanbanColumnId
   activities: ActivityWithCount[]
   onDelete: (id: string) => void
-  onStatusChange: (id: string, status: ActivityStatus) => void
+  onStatusChange: (id: string, status: ActivityWithCount['status']) => void
+  onRequestEnd: (activity: ActivityWithCount) => void
+  onRequestCancel: (activity: ActivityWithCount) => void
   onRefresh?: () => void
 }
 
-export function KanbanColumn({ status, activities, onDelete, onStatusChange, onRefresh }: Props) {
-  const { setNodeRef, isOver } = useDroppable({ id: status })
+export function KanbanColumn({
+  column,
+  activities,
+  onDelete,
+  onStatusChange,
+  onRequestEnd,
+  onRequestCancel,
+  onRefresh,
+}: Props) {
+  const { setNodeRef, isOver } = useDroppable({ id: column })
 
   return (
     <div
@@ -27,7 +32,7 @@ export function KanbanColumn({ status, activities, onDelete, onStatusChange, onR
       }`}
     >
       <div className="flex items-center gap-2 mb-3 px-1">
-        <h3 className="font-semibold text-sm">{COLUMN_LABELS[status]}</h3>
+        <h3 className="font-semibold text-sm">{KANBAN_COLUMN_LABELS[column]}</h3>
         <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">
           {activities.length}
         </span>
@@ -37,9 +42,11 @@ export function KanbanColumn({ status, activities, onDelete, onStatusChange, onR
           <KanbanCard
             key={a.id}
             activity={a}
-            column={status}
+            column={column}
             onDelete={onDelete}
             onStatusChange={onStatusChange}
+            onRequestEnd={onRequestEnd}
+            onRequestCancel={onRequestCancel}
             onRefresh={onRefresh}
           />
         ))}

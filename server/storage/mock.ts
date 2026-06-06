@@ -65,6 +65,7 @@ function seedActivities(): Activity[] {
       interestedCount: 2,
       createdAt: daysAgo(1),
       feeLevel: 'unknown',
+      linkedRecruitIds: ['recr003', 'recr004'],
     },
     {
       id: 'recr001',
@@ -111,6 +112,42 @@ function seedActivities(): Activity[] {
       requiresDeposit: false,
     },
     {
+      id: 'recr003',
+      title: '卢浮宫周五夜场',
+      description: '卢浮宫每周五晚延长开放，一起慢慢欣赏名画。',
+      date: futureDate(7, 18),
+      location: 'Musée du Louvre',
+      maxParticipants: 10,
+      fee: '免费（26岁以下欧盟居民）',
+      notes: '需提前预约免费票',
+      organizerName: 'Lily',
+      organizerWechat: 'lily_art',
+      sourceUrl: 'https://www.louvre.fr/',
+      status: 'recruiting',
+      category: 'culture',
+      interestedCount: 0,
+      createdAt: daysAgo(4),
+      sourceProposalId: 'prop003',
+    },
+    {
+      id: 'recr004',
+      title: '卢浮宫周五夜场 第二期',
+      description: '卢浮宫夜场第二期招募，错过第一期的朋友欢迎加入。',
+      date: futureDate(21, 18),
+      location: 'Musée du Louvre',
+      maxParticipants: 10,
+      fee: '免费（26岁以下欧盟居民）',
+      notes: '',
+      organizerName: 'Lily',
+      organizerWechat: 'lily_art',
+      sourceUrl: 'https://www.louvre.fr/',
+      status: 'recruiting',
+      category: 'culture',
+      interestedCount: 0,
+      createdAt: daysAgo(2),
+      sourceProposalId: 'prop003',
+    },
+    {
       id: 'end001',
       title: 'Montmartre 摄影漫步',
       description: '已完成的活动：蒙马特高地街拍，Sacré-Cœur 日落，大家拍了很多好照片！',
@@ -122,12 +159,33 @@ function seedActivities(): Activity[] {
       organizerName: 'Tom',
       organizerWechat: 'tom_photo',
       sourceUrl: '',
-      status: 'ended',
+      status: 'ended_success',
       category: 'culture',
       interestedCount: 0,
       createdAt: daysAgo(30),
+      endedAt: daysAgo(14),
       recap: '蒙马特高地街拍圆满结束！Sacré-Cœur 日落超美，大家拍了很多好照片，下次再约～',
       recapImages: 'https://picsum.photos/400/300?random=1\nhttps://picsum.photos/400/300?random=2',
+    },
+    {
+      id: 'end002',
+      title: 'Versailles 一日游',
+      description: '原计划周末去凡尔赛宫，因天气取消。',
+      date: daysAgo(7),
+      location: 'Versailles',
+      maxParticipants: 15,
+      fee: '门票约 20€',
+      notes: '',
+      organizerName: 'James',
+      organizerWechat: 'james123',
+      sourceUrl: '',
+      status: 'ended_cancelled',
+      category: 'culture',
+      interestedCount: 0,
+      createdAt: daysAgo(20),
+      endedAt: daysAgo(8),
+      cancelReason: 'weather',
+      cancelNote: '巴黎近期持续降雨，下次天气好了再约！',
     },
   ]
 }
@@ -140,6 +198,7 @@ function seedRegistrations(): Registration[] {
     { id: 'reg004', activityId: 'recr001', name: 'Lily', wechat: 'lily_art', participantCount: 2, note: '素食', registeredAt: daysAgo(3) },
     { id: 'reg005', activityId: 'recr002', name: 'Amy', wechat: 'amy_vintage', participantCount: 1, note: '发起人', registeredAt: daysAgo(2) },
     { id: 'reg006', activityId: 'recr002', name: 'Tom', wechat: 'tom_photo', participantCount: 1, note: '', registeredAt: daysAgo(1) },
+    { id: 'reg007', activityId: 'end002', name: 'James', wechat: 'james123', participantCount: 1, note: '', registeredAt: daysAgo(10) },
   ]
 }
 
@@ -182,6 +241,22 @@ export class MockAdapter implements StorageAdapter {
 
   async getActivity(id: string): Promise<Activity | null> {
     return this.activities.find((a) => a.id === id) ?? null
+  }
+
+  async getActivitiesByIds(ids: string[]): Promise<Activity[]> {
+    const unique = [...new Set(ids)]
+    return unique
+      .map((id) => this.activities.find((a) => a.id === id))
+      .filter((a): a is Activity => a != null)
+  }
+
+  async addLinkedRecruit(proposalId: string, recruitId: string): Promise<void> {
+    const proposal = this.activities.find((a) => a.id === proposalId)
+    if (!proposal) throw new Error('Proposal not found')
+    const existing = proposal.linkedRecruitIds ?? []
+    if (!existing.includes(recruitId)) {
+      proposal.linkedRecruitIds = [...existing, recruitId]
+    }
   }
 
   async createActivity(data: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> {

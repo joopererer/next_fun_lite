@@ -5,8 +5,10 @@ import { ItineraryBlock } from '../components/ItineraryBlock'
 import { Header } from '../components/layout/Header'
 import { UserIdentityModal } from '../components/UserIdentityModal'
 import { api } from '../lib/api'
+import { getCancelReasonLabel, isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { isRegistrationFull } from '../lib/participants'
+import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
 import { formatEventDate, getUser, setInterest, setRegistered } from '../lib/user'
 import { CapacityBar } from '../components/CapacityBar'
 
@@ -30,6 +32,7 @@ export function EventPage() {
   const [interestLoading, setInterestLoading] = useState(false)
   const [myRegistration, setMyRegistration] = useState<Registration | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
+  const [sourceProposal, setSourceProposal] = useState<ActivityWithCount | null | undefined>(undefined)
 
   useEffect(() => {
     const user = getUser()
@@ -46,6 +49,14 @@ export function EventPage() {
         setActivity(a)
         setInterestCount(a.interestedCount ?? 0)
         setRegisteredCount(a.registeredCount)
+
+        if (a.sourceProposalId) {
+          api.getActivity(a.sourceProposalId)
+            .then((p) => setSourceProposal(p))
+            .catch(() => setSourceProposal(null))
+        } else {
+          setSourceProposal(undefined)
+        }
 
         const user = getUser()
         if (!user) {
@@ -138,6 +149,7 @@ export function EventPage() {
         prev ? { ...prev, registeredCount: res.registeredCount } : prev
       )
       setRegisteredCount(res.registeredCount)
+      addRegistrationId(id)
       setSuccess(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : '报名失败')
@@ -156,6 +168,7 @@ export function EventPage() {
       setMyRegistration(null)
       setSuccess(false)
       setRegistered(activity.id, false)
+      removeRegistrationId(activity.id)
       setActivity((prev) =>
         prev ? { ...prev, registeredCount: res.registeredCount } : prev
       )
@@ -226,9 +239,53 @@ export function EventPage() {
 
   const displayCount = activity.registeredCount ?? registeredCount
   const full = isRegistrationFull(displayCount, activity.maxParticipants)
-  const ended = activity.status === 'ended'
+  const endedSuccess = isEndedSuccess(activity.status)
+  const endedCancelled = isEndedCancelled(activity.status)
+  const ended = endedSuccess || endedCancelled
 
   const notes = activity.notes ? activity.notes.split('\n').filter(Boolean) : []
+
+  if (endedCancelled) {
+    return (
+      <div className="min-h-screen pb-16">
+        <Header />
+        <main className="max-w-lg mx-auto px-4 py-6 page-enter">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 text-red-900">
+            <p className="font-bold text-lg mb-3">❌ 本次活动已取消</p>
+            <p className="text-sm mb-1">原因：{getCancelReasonLabel(activity.cancelReason)}</p>
+            {activity.cancelNote && (
+              <p className="text-sm whitespace-pre-wrap mb-4 opacity-90">{activity.cancelNote}</p>
+            )}
+            <p className="text-sm mb-3">如有疑问请联系发起人：</p>
+            <p className="font-medium mb-3">{activity.organizerWechat}</p>
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              onClick={() => navigator.clipboard.writeText(activity.organizerWechat)}
+            >
+              复制微信号
+            </button>
+          </div>
+
+          <div className="opacity-60 pointer-events-none select-none">
+            <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
+              {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+            </span>
+            <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
+            <div className="space-y-2 text-sm text-gray-600 mb-6">
+              <p>📅 {formatEventDate(activity.date)}</p>
+              <p>📍 {activity.location || '地点待定'}</p>
+            </div>
+            {activity.description && (
+              <p className="text-gray-700 whitespace-pre-wrap mb-6">{activity.description}</p>
+            )}
+          </div>
+
+          <Link to="/" className="btn-primary block text-center w-full mt-6">回到首页</Link>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen pb-16">
@@ -293,7 +350,7 @@ export function EventPage() {
           </div>
         )}
 
-        {ended && activity.recap && (
+        {endedSuccess && activity.recap && (
           <div className="bg-purple-50 rounded-xl p-4 mb-8">
             <p className="font-medium text-purple-800 mb-2">📝 活动回顾</p>
             <p className="text-sm text-purple-900 whitespace-pre-wrap">{activity.recap}</p>
@@ -307,7 +364,22 @@ export function EventPage() {
           </div>
         )}
 
-        {ended ? (
+        {activity.status === 'recruiting' && activity.sourceProposalId && sourceProposal !== undefined && (
+          <div className="bg-blue-50 text-blue-800 text-sm rounded-xl p-3 mb-4">
+            {sourceProposal ? (
+              <>
+                💡 本次活动来源于提议「{sourceProposal.title}」{' '}
+                <Link to={`/event/${sourceProposal.id}`} className="text-green-700 underline">
+                  查看原提议
+                </Link>
+              </>
+            ) : (
+              '💡 本次活动来源于一个已删除的提议'
+            )}
+          </div>
+        )}
+
+        {endedSuccess ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
             本次活动已结束
           </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../shared/types'
 import { api } from '../lib/api'
+import { formatEventDate } from '../lib/user'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { getFeeLevelEmoji, getFeeLevelLabel } from '../lib/feeLevel'
 import { formatRelativeTime, getSourceIcon, getUser, setInterest } from '../lib/user'
@@ -19,7 +20,18 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [linkedRecruits, setLinkedRecruits] = useState<ActivityWithCount[]>([])
   const hot = count >= 5
+
+  useEffect(() => {
+    if (!expanded || !activity.linkedRecruitIds?.length) {
+      setLinkedRecruits([])
+      return
+    }
+    api.getActivitiesByIds(activity.linkedRecruitIds)
+      .then(setLinkedRecruits)
+      .catch(() => setLinkedRecruits([]))
+  }, [expanded, activity.id, activity.linkedRecruitIds])
 
   useEffect(() => {
     setCount(activity.interestedCount ?? 0)
@@ -117,6 +129,25 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
               </div>
             )}
             {activity.notes && <p className="whitespace-pre-wrap text-gray-500">{activity.notes}</p>}
+            {linkedRecruits.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-green-100">
+                <p className="text-sm font-medium text-green-800 mb-2">🟢 已有招募活动：</p>
+                <ul className="space-y-2">
+                  {linkedRecruits.map((r) => (
+                    <li key={r.id} className="text-sm">
+                      · {r.title}{' '}
+                      <span className="text-gray-500">
+                        {formatEventDate(r.date).replace(/ .*/, '')}{' '}
+                        {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}人
+                      </span>{' '}
+                      <Link to={`/event/${r.id}`} className="text-green-600 underline">
+                        去报名 →
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {activity.sourceUrl && (
               <a href={activity.sourceUrl} target="_blank" rel="noreferrer" className="text-green-600 underline block truncate">
                 🔗 参考链接

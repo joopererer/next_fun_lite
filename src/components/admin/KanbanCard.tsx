@@ -2,32 +2,65 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Link } from 'react-router-dom'
 import type { ActivityWithCount } from '../../../shared/types'
-import { RecapModal } from './RecapModal'
-import { CapacityBar } from '../CapacityBar'
-import { formatEventDate, formatRelativeTime } from '../../lib/user'
+import {
+  getAllowedTransitions,
+  getTransitionLabel,
+  isEndedCancelled,
+  isEndedSuccess,
+  isTerminalStatus,
+} from '../../lib/activityStatus'
+import type { KanbanColumnId } from '../../lib/kanban'
 import { getEventUrl } from '../../lib/api'
+import { formatEventDate, formatRelativeTime } from '../../lib/user'
+import { CapacityBar } from '../CapacityBar'
+import { RecapModal } from './RecapModal'
 
 interface Props {
   activity: ActivityWithCount
-  column: string
+  column: KanbanColumnId
   onDelete: (id: string) => void
   onStatusChange: (id: string, status: ActivityWithCount['status']) => void
+  onRequestEnd: (activity: ActivityWithCount) => void
+  onRequestCancel: (activity: ActivityWithCount) => void
   onRefresh?: () => void
 }
 
-export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefresh }: Props) {
+export function KanbanCard({
+  activity,
+  column,
+  onDelete,
+  onStatusChange,
+  onRequestEnd,
+  onRequestCancel,
+  onRefresh,
+}: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
     data: { column, activity },
   })
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-  }
+  const style = { transform: CSS.Translate.toString(transform) }
 
   const copyLink = () => {
     navigator.clipboard.writeText(getEventUrl(activity.id))
     alert('链接已复制')
+  }
+
+  const handleTransitionSelect = (value: string) => {
+    if (value === activity.status || !value) return
+    if (value === 'ended_success') {
+      onRequestEnd(activity)
+      return
+    }
+    if (value === 'ended_cancelled') {
+      onRequestCancel(activity)
+      return
+    }
+    if (value === 'recruiting' && activity.status === 'proposed') {
+      alert('请使用「转为招募 →」创建独立招募活动')
+      return
+    }
+    onStatusChange(activity.id, value as ActivityWithCount['status'])
   }
 
   if (isDragging) {
@@ -41,14 +74,22 @@ export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefre
     )
   }
 
+  const transitions = getAllowedTransitions(activity.status)
+  const terminal = isTerminalStatus(activity.status)
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 mb-3"
+      className={`bg-white rounded-xl p-3 shadow-sm border mb-3 ${
+        isEndedCancelled(activity.status) ? 'border-red-200' : 'border-gray-100'
+      }`}
     >
       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
         <h4 className="font-medium text-sm mb-1">{activity.title}</h4>
+        {isEndedCancelled(activity.status) && (
+          <p className="text-xs text-red-600 mb-1">❌ 已取消</p>
+        )}
         {column === 'proposed' ? (
           <>
             <p className="text-xs text-gray-400 mb-2">
@@ -61,13 +102,17 @@ export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefre
               <p className="text-xs text-amber-600 mb-1">⚠️ 缺时间/地点，不可直接拖入招募中</p>
             )}
           </>
-        ) : (
+        ) : column === 'recruiting' ? (
           <>
             <p className="text-xs text-gray-400 mb-2">
               {formatEventDate(activity.date)} · {activity.location || '—'}
             </p>
             <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
           </>
+        ) : (
+          <p className="text-xs text-gray-400 mb-2">
+            {formatEventDate(activity.date)} · {activity.location || '—'}
+          </p>
         )}
       </div>
 
@@ -100,18 +145,29 @@ export function KanbanCard({ activity, column, onDelete, onStatusChange, onRefre
             <Link to={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
               查看详情
             </Link>
-            <RecapModal activity={activity} onSaved={onRefresh} />
+            {isEndedSuccess(activity.status) && (
+              <RecapModal activity={activity} onSaved={onRefresh} />
+            )}
           </>
         )}
-        <select
-          className="text-xs px-1 py-1 border border-gray-200 rounded-lg"
-          value={activity.status}
-          onChange={(e) => onStatusChange(activity.id, e.target.value as ActivityWithCount['status'])}
-        >
-          <option value="proposed">提议池</option>
-          <option value="recruiting">招募中</option>
-          <option value="ended">已结束</option>
-        </select>
+        {!terminal && transitions.length > 0 && (
+          <select
+            className="text-xs px-1 py-1 border border-gray-200 rounded-lg"
+            value={activity.status}
+            onChange={(e) => handleTransitionSelect(e.target.value)}
+          >
+            <option value={activity.status}>状态</option>
+            {transitions.map((t) => (
+              <option
+                key={t}
+                value={t}
+                className={t === 'ended_cancelled' ? 'text-red-600' : undefined}
+              >
+                {getTransitionLabel(t)}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           type="button"
           className="text-xs px-2 py-1 text-red-500 hover:bg-red-50 rounded-lg ml-auto"
