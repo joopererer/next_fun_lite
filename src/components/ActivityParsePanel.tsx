@@ -102,7 +102,7 @@ export function ActivityParsePanel({ onParsed, className = '' }: Props) {
           <ImageUploadZone
             onFile={handleImageUpload}
             parsing={parsing}
-            hint="图片识别需配置 CLAUDE_API_KEY"
+            hint="配置 CLAUDE_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY 之一"
           />
         </div>
       )}

@@ -198,7 +198,7 @@ export function ProposePage() {
             <ImageUploadZone
               onFile={handleImageUpload}
               parsing={parsing}
-              hint="图片识别需配置 CLAUDE_API_KEY（当前仅支持 Claude，不支持 Gemini/ChatGPT）"
+              hint="图片/链接 AI 解析支持 Claude、OpenAI、Gemini，配置 API Key 并设置 PARSE_MODE"
             />
           </div>
         )}

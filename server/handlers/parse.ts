@@ -1,22 +1,7 @@
 import type { ApiParseResponse, EnvConfig } from '../../shared/types'
 import { parseActivityLink } from '../lib/linkImport/parseActivityLink'
+import { aiConfigHint, callParseAi, hasAnyAiKey, resolveParseProvider } from '../lib/parseAi'
 import { jsonResponse, parseBody } from '../lib/utils'
-
-const SYSTEM_PROMPT = `你是一个活动信息提取助手。从用户提供的网页文本或图片中提取活动/地点相关信息。
-
-只返回纯 JSON，不要有任何其他文字、解释或 markdown 代码块：
-{
-  "title": "活动或地点名称",
-  "description": "简介，保留重要细节，去除广告和无关内容，200字以内",
-  "date": "YYYY-MM-DDTHH:mm 或 null",
-  "location": "地点或集合地点",
-  "maxParticipants": null 或数字,
-  "fee": "费用说明，如无则 null",
-  "itinerary": "活动行程/时间安排，每行一个节点，如无则 null",
-  "notes": "注意事项，多条用换行分隔，如无则 null"
-}
-
-无法提取的字段值设为 null。日期转为 ISO 格式。内容为中文时保持中文输出。`
 
 const MOCK_DATA: ApiParseResponse = {
   success: true,
@@ -29,17 +14,6 @@ const MOCK_DATA: ApiParseResponse = {
     fee: null,
     notes: null,
   },
-}
-
-function extractJson(text: string): Record<string, unknown> {
-  const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-  try {
-    return JSON.parse(cleaned)
-  } catch {
-    const match = cleaned.match(/\{[\s\S]*\}/)
-    if (match) return JSON.parse(match[0])
-    throw new Error('Failed to parse JSON from Claude response')
-  }
 }
 
 async function fetchPageText(url: string): Promise<string> {
@@ -67,51 +41,21 @@ async function fetchPageText(url: string): Promise<string> {
   }
 }
 
-async function callClaude(
-  env: EnvConfig,
-  content: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>
-): Promise<ApiParseResponse> {
-  const apiKey = env.CLAUDE_API_KEY
-  if (!apiKey) {
-    return { ...MOCK_DATA, message: 'No API key, using mock data' }
-  }
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content }],
-    }),
-  })
-
-  if (!res.ok) {
-    const err = await res.text()
-    return { success: false, data: {}, message: `Claude API error: ${err}` }
-  }
-
-  const result = await res.json() as { content: Array<{ type: string; text?: string }> }
-  const text = result.content.find((c) => c.type === 'text')?.text ?? ''
-  const data = extractJson(text)
-  return { success: true, data: data as ApiParseResponse['data'] }
+function isMockMode(env: EnvConfig): boolean {
+  const mode = (env.PARSE_MODE ?? process.env.PARSE_MODE)?.toLowerCase()
+  if (mode === 'mock') return true
+  return !hasAnyAiKey(env)
 }
 
 export async function handleParse(request: Request, env: EnvConfig): Promise<Response> {
   const body = await parseBody<{ url?: string; imageBase64?: string; mimeType?: string }>(request)
-  const parseMode = env.PARSE_MODE ?? process.env.PARSE_MODE
 
-  if (parseMode === 'mock' || (!env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY)) {
+  if (isMockMode(env)) {
     if (body.imageBase64 && body.mimeType) {
       return jsonResponse({
         success: false,
         data: {},
-        message: '图片识别需配置 CLAUDE_API_KEY 并关闭 mock 模式（PARSE_MODE 留空或设为 claude）。当前仅支持 Claude API，不支持 Gemini/ChatGPT',
+        message: `图片识别需配置 AI Key 并设置 PARSE_MODE。${aiConfigHint()}`,
       })
     }
     if (body.url) {
@@ -128,15 +72,14 @@ export async function handleParse(request: Request, env: EnvConfig): Promise<Res
     return jsonResponse(MOCK_DATA)
   }
 
+  const provider = resolveParseProvider(env)
+
   try {
     if (body.imageBase64 && body.mimeType) {
-      const result = await callClaude(env, [{
-        type: 'image',
-        source: { type: 'base64', media_type: body.mimeType, data: body.imageBase64 },
-      }, {
-        type: 'text',
-        text: '请从这张图片中提取活动/地点信息。',
-      }])
+      const result = await callParseAi(env, {
+        imageBase64: body.imageBase64,
+        mimeType: body.mimeType,
+      })
       return jsonResponse(result)
     }
 
@@ -145,7 +88,7 @@ export async function handleParse(request: Request, env: EnvConfig): Promise<Res
         const structured = await parseActivityLink(body.url)
         if (structured.success) return jsonResponse(structured)
       } catch {
-        /* fall through to Claude */
+        /* fall through to AI */
       }
 
       let pageText: string
@@ -159,11 +102,13 @@ export async function handleParse(request: Request, env: EnvConfig): Promise<Res
         })
       }
 
-      const result = await callClaude(env, [{
-        type: 'text',
+      const result = await callParseAi(env, {
         text: `链接：${body.url}\n\n网页文本：\n${pageText}`,
-      }])
-      return jsonResponse(result)
+      })
+      return jsonResponse({
+        ...result,
+        message: result.message ?? (result.success ? `已通过 ${provider} 提取信息，请确认并补充` : undefined),
+      })
     }
 
     return jsonResponse({ success: false, data: {}, message: '请提供链接或图片' })

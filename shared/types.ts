@@ -148,6 +148,9 @@ export type EnvConfig = {
   TENCENT_DOCS_APP_ID?: string
   TENCENT_DOCS_APP_SECRET?: string
   CLAUDE_API_KEY?: string
+  OPENAI_API_KEY?: string
+  GEMINI_API_KEY?: string
+  GEMINI_MODEL?: string
   ADMIN_PASSWORD?: string
   SITE_URL?: string
   PARSE_MODE?: string
