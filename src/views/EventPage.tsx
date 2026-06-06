@@ -11,9 +11,8 @@ import { api } from '../lib/api'
 import { getCancelReasonLabel, isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { isRegistrationFull } from '../lib/participants'
-import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
 import { getClerkDisplayName } from '../lib/displayName'
-import { formatEventDate, setRegistered } from '../lib/user'
+import { formatEventDate } from '../lib/user'
 import { CapacityBar } from '../components/CapacityBar'
 
 export function EventPage() {
@@ -27,7 +26,6 @@ export function EventPage() {
   const [success, setSuccess] = useState(false)
   const [registeredCount, setRegisteredCount] = useState(0)
 
-  const [wechat, setWechat] = useState('')
   const [participantCount, setParticipantCount] = useState(1)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -38,15 +36,12 @@ export function EventPage() {
   const [cancelLoading, setCancelLoading] = useState(false)
   const [sourceProposal, setSourceProposal] = useState<ActivityWithCount | null | undefined>(undefined)
 
-  const displayName = getClerkDisplayName(clerkUser)
+  const displayName = profile?.nickname || getClerkDisplayName(clerkUser)
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return
     api.getProfile()
-      .then((p) => {
-        setProfile(p)
-        if (p?.wechat) setWechat(p.wechat)
-      })
+      .then((p) => setProfile(p))
       .catch(() => {})
   }, [isLoaded, isSignedIn])
 
@@ -79,12 +74,10 @@ export function EventPage() {
           setInterested(interests.some((i) => i.userId === clerkUser.id))
           if (regResult?.registration) {
             setMyRegistration(regResult.registration)
-            setRegistered(a.id, true)
             setParticipantCount(regResult.registration.participantCount)
             setNote(regResult.registration.note)
           } else {
             setMyRegistration(null)
-            setRegistered(a.id, false)
           }
         })
       })
@@ -123,25 +116,16 @@ export function EventPage() {
     }
     setSubmitting(true)
     try {
-      const payload: {
-        activityId: string
-        participantCount: number
-        note: string
-        wechat?: string
-      } = {
+      const res = await api.createRegistration({
         activityId: id,
         participantCount,
         note: note.trim(),
-      }
-      if (wechat.trim()) payload.wechat = wechat.trim()
-      const res = await api.createRegistration(payload)
+      })
       setMyRegistration(res.registration ?? null)
-      if (res.registration) setRegistered(id, true)
       setActivity((prev) =>
         prev ? { ...prev, registeredCount: res.registeredCount } : prev
       )
       setRegisteredCount(res.registeredCount)
-      addRegistrationId(id)
       setSuccess(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : '报名失败')
@@ -158,8 +142,6 @@ export function EventPage() {
       const res = await api.cancelRegistration({ activityId: activity.id })
       setMyRegistration(null)
       setSuccess(false)
-      setRegistered(activity.id, false)
-      removeRegistrationId(activity.id)
       setActivity((prev) =>
         prev ? { ...prev, registeredCount: res.registeredCount } : prev
       )
@@ -448,15 +430,9 @@ export function EventPage() {
               <div className="bg-green-50 rounded-xl p-4 text-sm text-gray-700">
                 <p>以 <span className="font-medium">{displayName}</span> 的身份报名</p>
                 {!profile?.wechat && (
-                  <div className="mt-3">
-                    <label className="text-sm text-gray-600 mb-1 block">微信号（可选，方便组织者联系）</label>
-                    <input
-                      className="input-field"
-                      value={wechat}
-                      onChange={(e) => setWechat(e.target.value)}
-                      placeholder="可在个人资料中补充"
-                    />
-                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    可在头像菜单 → 编辑资料 中补充微信号，方便组织者联系
+                  </p>
                 )}
               </div>
               <div>

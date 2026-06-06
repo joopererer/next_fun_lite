@@ -34,16 +34,20 @@ export async function handleUpsertProfile(request: Request, env: EnvConfig): Pro
   if (!userId) return errorResponse('Unauthorized', 401)
 
   const body = await parseBody<{ nickname?: string; wechat?: string }>(request)
-  if (!body.nickname?.trim()) return errorResponse('Missing nickname')
-
   const user = await currentUser()
   const email = user?.emailAddresses[0]?.emailAddress
+  const defaultNickname =
+    user?.fullName?.trim() ||
+    user?.firstName?.trim() ||
+    email ||
+    '用户'
+  const nickname = body.nickname?.trim() || defaultNickname
 
   const { data, error } = await getSupabaseClient(env)
     .from('profiles')
     .upsert({
       id: userId,
-      nickname: body.nickname.trim(),
+      nickname,
       wechat: body.wechat?.trim() || null,
       email: email ?? null,
     })

@@ -1,9 +1,9 @@
 -- Next Fun Lite v4 schema
--- Run in Supabase Dashboard → SQL Editor
+-- Run via: npm run db:setup  (requires SUPABASE_DB_URL or manual SQL Editor)
 
 create extension if not exists "uuid-ossp";
 
-create table profiles (
+create table if not exists profiles (
   id text primary key,
   nickname text not null,
   wechat text,
@@ -12,7 +12,7 @@ create table profiles (
   updated_at timestamptz default now()
 );
 
-create table activities (
+create table if not exists activities (
   id text primary key,
   title text not null,
   description text,
@@ -56,7 +56,7 @@ create table activities (
   updated_at timestamptz default now()
 );
 
-create table registrations (
+create table if not exists registrations (
   id text primary key,
   activity_id text not null references activities(id) on delete cascade,
   user_id text references profiles(id),
@@ -67,7 +67,7 @@ create table registrations (
   registered_at timestamptz default now()
 );
 
-create table interests (
+create table if not exists interests (
   id text primary key,
   activity_id text not null references activities(id) on delete cascade,
   user_id text references profiles(id),
@@ -76,14 +76,14 @@ create table interests (
   unique(activity_id, user_id)
 );
 
-create index on activities(status);
-create index on activities(category);
-create index on activities(created_at desc);
-create index on registrations(activity_id);
-create index on registrations(user_id);
-create index on registrations(wechat);
-create index on interests(activity_id);
-create index on interests(user_id);
+create index if not exists activities_status_idx on activities(status);
+create index if not exists activities_category_idx on activities(category);
+create index if not exists activities_created_at_idx on activities(created_at desc);
+create index if not exists registrations_activity_id_idx on registrations(activity_id);
+create index if not exists registrations_user_id_idx on registrations(user_id);
+create index if not exists registrations_wechat_idx on registrations(wechat);
+create index if not exists interests_activity_id_idx on interests(activity_id);
+create index if not exists interests_user_id_idx on interests(user_id);
 
 create or replace function update_updated_at()
 returns trigger as $$
@@ -93,10 +93,12 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists activities_updated_at on activities;
 create trigger activities_updated_at
   before update on activities
   for each row execute function update_updated_at();
 
+drop trigger if exists profiles_updated_at on profiles;
 create trigger profiles_updated_at
   before update on profiles
   for each row execute function update_updated_at();

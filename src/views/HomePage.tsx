@@ -1,5 +1,6 @@
 'use client'
 
+import { useUser } from '@clerk/nextjs'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityCategory, ActivityWithCount } from '../../shared/types'
@@ -10,9 +11,9 @@ import { PastActivityCard } from '../components/PastActivityCard'
 import { ProposalCard } from '../components/ProposalCard'
 import { isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { api } from '../lib/api'
-import { getUser, isRegistered, setRegistered } from '../lib/user'
 
 export function HomePage() {
+  const { isSignedIn, isLoaded } = useUser()
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -21,31 +22,18 @@ export function HomePage() {
   const [registeredIds, setRegisteredIds] = useState<Set<string>>(new Set())
   const [pastExpanded, setPastExpanded] = useState(false)
 
-  const syncRegistrations = useCallback(async (list: ActivityWithCount[]) => {
-    const user = getUser()
-    if (!user) {
+  const syncRegistrations = useCallback(async () => {
+    if (!isSignedIn) {
       setRegisteredIds(new Set())
       return
     }
-    const recruiting = list.filter((a) => a.status === 'recruiting')
-    if (recruiting.length === 0) {
+    try {
+      const { registrations } = await api.getMyRegistrations()
+      setRegisteredIds(new Set(Object.keys(registrations)))
+    } catch {
       setRegisteredIds(new Set())
-      return
     }
-    const results = await Promise.all(
-      recruiting.map((a) => api.getMyRegistration(a.id, user.wechat).catch(() => ({ registration: null })))
-    )
-    const ids = new Set<string>()
-    recruiting.forEach((a, i) => {
-      if (results[i].registration) {
-        ids.add(a.id)
-        setRegistered(a.id, true)
-      } else if (!isRegistered(a.id)) {
-        setRegistered(a.id, false)
-      }
-    })
-    setRegisteredIds(ids)
-  }, [])
+  }, [isSignedIn])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -53,7 +41,7 @@ export function HomePage() {
     api.getActivities()
       .then((list) => {
         setActivities(list)
-        return syncRegistrations(list)
+        return syncRegistrations()
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
@@ -62,11 +50,16 @@ export function HomePage() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
+    if (!isLoaded) return
+    syncRegistrations()
+  }, [isLoaded, isSignedIn, syncRegistrations])
+
+  useEffect(() => {
     const refresh = () => {
       api.getActivities()
         .then((list) => {
           setActivities(list)
-          syncRegistrations(list)
+          syncRegistrations()
         })
         .catch(() => {})
     }
@@ -119,7 +112,7 @@ export function HomePage() {
                     <ActivityCard
                       key={a.id}
                       activity={a}
-                      registered={registeredIds.has(a.id) || isRegistered(a.id)}
+                      registered={registeredIds.has(a.id)}
                     />
                   ))}
                 </div>

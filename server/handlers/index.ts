@@ -70,7 +70,7 @@ export async function handleCreateActivity(request: Request, env: EnvConfig, isP
     const profile = await getProfileForUser(userId, env)
     payload = {
       ...payload,
-      organizerName: payload.organizerName || displayName,
+      organizerName: payload.organizerName || profile?.nickname || displayName,
       organizerWechat: payload.organizerWechat || profile?.wechat || '',
       organizerId: userId,
     }
@@ -245,7 +245,7 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
   let name = body.name?.trim() ?? ''
   let wechat = body.wechat?.trim() ?? ''
   const profile = await getProfileForUser(userId, env)
-  if (!name) name = await getClerkDisplayName()
+  if (!name) name = profile?.nickname || (await getClerkDisplayName())
   if (!wechat) wechat = profile?.wechat ?? ''
 
   const userRegs = await storage.getRegistrationsByUser(userId)
