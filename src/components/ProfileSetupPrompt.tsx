@@ -2,15 +2,32 @@
 
 import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
+import type { Profile } from '../../shared/types'
 import { api } from '../lib/api'
 import { ProfileModal } from './ProfileModal'
+
+import { PROFILE_EDIT_EVENT } from '../lib/profileEvents'
 
 const SKIP_KEY = 'nfl_profile_setup_skipped'
 
 export function ProfileSetupPrompt() {
   const { isSignedIn, isLoaded, user } = useUser()
   const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<'setup' | 'edit'>('setup')
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [checked, setChecked] = useState(false)
+
+  useEffect(() => {
+    const onEdit = () => {
+      setMode('edit')
+      api.getProfile()
+        .then(setProfile)
+        .catch(() => setProfile(null))
+      setOpen(true)
+    }
+    window.addEventListener(PROFILE_EDIT_EVENT, onEdit)
+    return () => window.removeEventListener(PROFILE_EDIT_EVENT, onEdit)
+  }, [])
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) {
@@ -25,9 +42,13 @@ export function ProfileSetupPrompt() {
 
     let cancelled = false
     api.getProfile()
-      .then((profile) => {
+      .then((p) => {
         if (cancelled) return
-        if (!profile) setOpen(true)
+        if (!p) {
+          setMode('setup')
+          setProfile(null)
+          setOpen(true)
+        }
         setChecked(true)
       })
       .catch(() => {
@@ -44,9 +65,11 @@ export function ProfileSetupPrompt() {
   return (
     <ProfileModal
       open={open}
-      mode="setup"
+      mode={mode}
+      initialNickname={profile?.nickname}
+      initialWechat={profile?.wechat}
       onClose={() => {
-        sessionStorage.setItem(SKIP_KEY, '1')
+        if (mode === 'setup') sessionStorage.setItem(SKIP_KEY, '1')
         setOpen(false)
       }}
       onSaved={() => {

@@ -2,6 +2,7 @@
 
 import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../lib/api'
 import { getClerkDisplayName } from '../lib/displayName'
 
@@ -26,6 +27,11 @@ export function ProfileModal({
   const [nickname, setNickname] = useState('')
   const [wechat, setWechat] = useState('')
   const [saving, setSaving] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -33,7 +39,7 @@ export function ProfileModal({
     setWechat(initialWechat ?? '')
   }, [open, initialNickname, initialWechat, user])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
   const handleSave = async () => {
     setSaving(true)
@@ -51,19 +57,17 @@ export function ProfileModal({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl page-enter">
-        <h2 className="text-xl font-bold mb-1">
+        <h2 className="text-xl font-semibold mb-1">
           {mode === 'setup' ? '完善资料（可选）' : '编辑资料'}
         </h2>
-        <p className="text-sm text-gray-500 mb-5">
-          {mode === 'setup'
-            ? '设置昵称和微信号，方便活动组织者联系你。可跳过，之后可在头像菜单修改。'
-            : '微信号仅活动发起人和管理员可见，不会在公开页面显示。'}
+        <p className="text-gray-500 text-sm mb-5">
+          设置昵称和微信号，方便活动组织者联系你。之后可在头像菜单修改。
         </p>
 
-        <div className="space-y-4 mb-6">
+        <div className="space-y-3">
           <div>
             <label className="text-sm text-gray-600 mb-1 block">昵称</label>
             <input
@@ -85,22 +89,16 @@ export function ProfileModal({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <button type="button" className="btn-primary w-full" onClick={handleSave} disabled={saving}>
+        <div className="flex gap-3 mt-6">
+          <button type="button" className="btn-secondary flex-1" onClick={onClose}>
+            取消
+          </button>
+          <button type="button" className="btn-primary flex-1" onClick={handleSave} disabled={saving}>
             {saving ? '保存中...' : '保存'}
           </button>
-          {mode === 'setup' && (
-            <button type="button" className="btn-secondary w-full" onClick={onClose}>
-              跳过
-            </button>
-          )}
-          {mode === 'edit' && (
-            <button type="button" className="text-sm text-gray-500 py-2" onClick={onClose}>
-              取消
-            </button>
-          )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

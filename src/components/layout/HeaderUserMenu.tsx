@@ -2,23 +2,11 @@
 
 import { SignInButton, UserButton, useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { api } from '../../lib/api'
-import type { Profile } from '../../../shared/types'
-import { ProfileModal } from '../ProfileModal'
+import { PROFILE_EDIT_EVENT } from '../../lib/profileEvents'
 
 export function HeaderUserMenu() {
   const router = useRouter()
   const { isSignedIn } = useUser()
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [profile, setProfile] = useState<Profile | null>(null)
-
-  useEffect(() => {
-    if (!profileOpen || !isSignedIn) return
-    api.getProfile()
-      .then(setProfile)
-      .catch(() => setProfile(null))
-  }, [profileOpen, isSignedIn])
 
   if (!isSignedIn) {
     return (
@@ -34,29 +22,19 @@ export function HeaderUserMenu() {
   }
 
   return (
-    <>
-      <UserButton>
-        <UserButton.MenuItems>
-          <UserButton.Action
-            label="编辑资料"
-            labelIcon={<span aria-hidden>✏️</span>}
-            onClick={() => setProfileOpen(true)}
-          />
-          <UserButton.Action
-            label="我的报名"
-            labelIcon={<span aria-hidden>📋</span>}
-            onClick={() => router.push('/my')}
-          />
-        </UserButton.MenuItems>
-      </UserButton>
-      <ProfileModal
-        open={profileOpen}
-        mode="edit"
-        initialNickname={profile?.nickname}
-        initialWechat={profile?.wechat}
-        onClose={() => setProfileOpen(false)}
-        onSaved={() => setProfileOpen(false)}
-      />
-    </>
+    <UserButton>
+      <UserButton.MenuItems>
+        <UserButton.Action
+          label="编辑资料"
+          labelIcon={<span aria-hidden>✏️</span>}
+          onClick={() => window.dispatchEvent(new CustomEvent(PROFILE_EDIT_EVENT))}
+        />
+        <UserButton.Action
+          label="我的报名"
+          labelIcon={<span aria-hidden>📋</span>}
+          onClick={() => router.push('/my')}
+        />
+      </UserButton.MenuItems>
+    </UserButton>
   )
 }
