@@ -64,7 +64,9 @@ export function ProfileModal({
           {mode === 'setup' ? '完善资料（可选）' : '编辑资料'}
         </h2>
         <p className="text-gray-500 text-sm mb-5">
-          设置昵称和微信号，方便活动组织者联系你。之后可在头像菜单修改。
+          {mode === 'setup'
+            ? '设置昵称和微信号，方便活动组织者联系你。可稍后在头像菜单修改。'
+            : '修改后将用于之后的报名与提议。'}
         </p>
 
         <div className="space-y-3">
@@ -91,7 +93,7 @@ export function ProfileModal({
 
         <div className="flex gap-3 mt-6">
           <button type="button" className="btn-secondary flex-1" onClick={onClose}>
-            取消
+            {mode === 'setup' ? '跳过' : '取消'}
           </button>
           <button type="button" className="btn-primary flex-1" onClick={handleSave} disabled={saving}>
             {saving ? '保存中...' : '保存'}

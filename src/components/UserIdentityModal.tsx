@@ -27,7 +27,7 @@ export function UserIdentityModal({ open, onClose, onSave }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl page-enter">
-        <h2 className="text-xl font-semibold mb-1">欢迎来到 Next Fun Lite 👋</h2>
+        <h2 className="text-xl font-semibold mb-1">欢迎来到快乐制造局 👋</h2>
         <p className="text-gray-500 text-sm mb-5">你叫什么？（仅用于报名和提议，不会公开）</p>
         <div className="space-y-3">
           <div>
