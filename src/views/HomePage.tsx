@@ -7,10 +7,14 @@ import type { ActivityCategory, ActivityWithCount } from '../../shared/types'
 import { ActivityCard } from '../components/ActivityCard'
 import { CategoryFilter, matchesCategoryFilter } from '../components/CategoryFilter'
 import { Header } from '../components/layout/Header'
+import { Footer } from '../components/layout/Footer'
 import { PastActivityCard } from '../components/PastActivityCard'
 import { ProposalCard } from '../components/ProposalCard'
 import { isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { api } from '../lib/api'
+import { sortProposalsForHome } from '../lib/proposals'
+import { ACTIVITIES_CHANGED_EVENT } from '../lib/activityEvents'
+import { getGuestRegistrations } from '../lib/guestRegistrations'
 
 export function HomePage() {
   const { isSignedIn, isLoaded } = useUser()
@@ -23,15 +27,18 @@ export function HomePage() {
   const [pastExpanded, setPastExpanded] = useState(false)
 
   const syncRegistrations = useCallback(async () => {
+    const guestIds = getGuestRegistrations().map((r) => r.activityId)
     if (!isSignedIn) {
-      setRegisteredIds(new Set())
+      setRegisteredIds(new Set(guestIds))
       return
     }
     try {
       const { registrations } = await api.getMyRegistrations()
-      setRegisteredIds(new Set(Object.keys(registrations)))
+      const ids = new Set(Object.keys(registrations))
+      guestIds.forEach((gid) => ids.add(gid))
+      setRegisteredIds(ids)
     } catch {
-      setRegisteredIds(new Set())
+      setRegisteredIds(new Set(guestIds))
     }
   }, [isSignedIn])
 
@@ -67,9 +74,11 @@ export function HomePage() {
       if (document.visibilityState === 'visible') refresh()
     }
     window.addEventListener('pageshow', refresh)
+    window.addEventListener(ACTIVITIES_CHANGED_EVENT, refresh)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       window.removeEventListener('pageshow', refresh)
+      window.removeEventListener(ACTIVITIES_CHANGED_EVENT, refresh)
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [syncRegistrations])
@@ -79,15 +88,17 @@ export function HomePage() {
   const recruiting = visible
     .filter((a) => a.status === 'recruiting')
     .filter((a) => matchesCategoryFilter(a.category, recruitingFilter))
-  const proposed = visible
+  const proposedAll = visible
     .filter((a) => a.status === 'proposed')
     .filter((a) => matchesCategoryFilter(a.category, proposalFilter))
+  const proposed = sortProposalsForHome(proposedAll)
+  const proposedOverflow = proposedAll.length > proposed.length
   const past = visible.filter((a) => isEndedSuccess(a.status))
 
   return (
-    <div className="min-h-screen pb-12">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="max-w-3xl mx-auto px-4 py-6 page-enter">
+      <main className="flex-1 max-w-3xl mx-auto px-4 py-6 page-enter w-full">
         {loading ? (
           <div className="text-center text-gray-400 py-12">加载中...</div>
         ) : error ? (
@@ -151,6 +162,13 @@ export function HomePage() {
                       }}
                     />
                   ))}
+                  {proposedOverflow && (
+                    <div className="text-right pt-2">
+                      <Link href="/proposals" className="text-sm text-green-600 hover:underline">
+                        查看全部提议（共{proposedAll.length}条）→
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
             </section>
@@ -177,6 +195,7 @@ export function HomePage() {
           </>
         )}
       </main>
+      <Footer />
     </div>
   )
 }

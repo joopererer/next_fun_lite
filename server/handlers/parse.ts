@@ -107,10 +107,20 @@ export async function handleParse(request: Request, env: EnvConfig): Promise<Res
   const parseMode = env.PARSE_MODE ?? process.env.PARSE_MODE
 
   if (parseMode === 'mock' || (!env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY)) {
+    if (body.imageBase64 && body.mimeType) {
+      return jsonResponse({
+        success: false,
+        data: {},
+        message: '图片识别需配置 CLAUDE_API_KEY 并关闭 mock 模式（PARSE_MODE 留空或设为 claude）。当前仅支持 Claude API，不支持 Gemini/ChatGPT',
+      })
+    }
     if (body.url) {
       try {
         const structured = await parseActivityLink(body.url)
         if (structured.success) return jsonResponse(structured)
+        if (structured.message) {
+          return jsonResponse({ success: false, data: {}, message: structured.message })
+        }
       } catch {
         /* fall through to mock */
       }

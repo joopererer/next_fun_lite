@@ -9,6 +9,7 @@ import type {
   Registration,
   RegistrationMutationResult,
 } from '@/shared/types'
+import { getDeviceId } from '@/src/utils/device'
 
 const ADMIN_KEY = 'nfl_admin_password'
 
@@ -42,6 +43,11 @@ async function authHeaders(): Promise<HeadersInit> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+async function deviceHeaders(): Promise<HeadersInit> {
+  if (typeof window === 'undefined') return {}
+  return { 'X-Device-Id': getDeviceId() }
+}
+
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(url, {
     ...options,
@@ -49,6 +55,7 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
       'Content-Type': 'application/json',
       ...adminHeaders(),
       ...(await authHeaders()),
+      ...(await deviceHeaders()),
       ...options.headers,
     },
   })
@@ -62,6 +69,11 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 export interface MyRegistrationsResponse {
   registrations: Record<string, Registration>
   activities: ActivityWithCount[]
+}
+
+export interface RegistrationSummary {
+  total: number
+  previews: Array<{ name: string; avatarUrl: string | null }>
 }
 
 export const api = {
@@ -106,6 +118,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ ...data, action: 'remove' as const }),
     }),
+  cancelRegistrationById: (id: string) =>
+    request<RegistrationMutationResult>(`/api/registrations/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  getRegistrationSummary: (activityId: string) =>
+    request<RegistrationSummary>(`/api/activities/${activityId}/registrations/summary`),
   createInterest: (data: { activityId: string; name?: string; wechat?: string }) =>
     request<InterestMutationResult>('/api/interests', { method: 'POST', body: JSON.stringify(data) }),
   getInterests: (activityId: string) =>
@@ -122,4 +140,9 @@ export const api = {
 export function getEventUrl(id: string): string {
   if (typeof window === 'undefined') return `/event/${id}`
   return `${window.location.origin}/event/${id}`
+}
+
+export function getCancelUrl(token: string): string {
+  if (typeof window === 'undefined') return `/cancel/${token}`
+  return `${window.location.origin}/cancel/${token}`
 }

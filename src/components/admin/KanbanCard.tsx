@@ -83,7 +83,7 @@ export function KanbanCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white rounded-xl p-3 shadow-sm border mb-3 ${
+      className={`bg-white rounded-xl p-3 lg:p-4 shadow-sm border mb-3 lg:mb-4 ${
         isEndedCancelled(activity.status) ? 'border-red-200' : 'border-gray-100'
       }`}
     >

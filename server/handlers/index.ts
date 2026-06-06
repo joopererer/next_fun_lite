@@ -23,6 +23,8 @@ import {
   jsonResponse,
   parseBody,
 } from '../lib/utils'
+import { nanoid } from 'nanoid'
+import { clerkClient } from '@clerk/nextjs/server'
 
 function getEventUrl(env: EnvConfig, activityId: string): string {
   const base = env.SITE_URL?.replace(/\/$/, '') ?? ''
@@ -189,7 +191,7 @@ export async function handleGetMyRegistration(request: Request, env: EnvConfig, 
 
   if (userId) {
     const registrations = await storage.getRegistrationsByUser(userId)
-    registration = registrations.find((r) => r.activityId === activityId) ?? null
+    registration = registrations.find((r) => r.activityId === activityId && !r.cancelledAt) ?? null
   } else {
     const wechat = new URL(request.url).searchParams.get('wechat')
     if (!wechat) return errorResponse('Missing wechat')
@@ -216,7 +218,6 @@ export async function handleGetMyRegistrations(_request: Request, env: EnvConfig
 export async function handleCreateRegistration(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
   const userId = await getOptionalUserId()
-  if (!userId) return errorResponse('Unauthorized', 401)
 
   const body = await parseBody<{
     activityId: string
@@ -232,25 +233,37 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
   }
 
   if (body.action === 'remove') {
+    if (!userId) return errorResponse('Unauthorized', 401)
     const activity = await storage.getActivity(body.activityId)
     if (!activity) return errorResponse('Activity not found', 404)
 
     const registrations = await storage.getRegistrationsByUser(userId)
-    const existing = registrations.find((r) => r.activityId === body.activityId)
+    const existing = registrations.find((r) => r.activityId === body.activityId && !r.cancelledAt)
     if (!existing) return errorResponse('Not registered', 404)
-    const result = await storage.deleteRegistration(body.activityId, existing.wechat)
+    const result = await storage.cancelRegistration(existing.id, 'user')
     return jsonResponse(result)
   }
 
   let name = body.name?.trim() ?? ''
   let wechat = body.wechat?.trim() ?? ''
-  const profile = await getProfileForUser(userId, env)
-  if (!name) name = profile?.nickname || (await getClerkDisplayName())
-  if (!wechat) wechat = profile?.wechat ?? ''
+  let cancelToken: string | undefined
 
-  const userRegs = await storage.getRegistrationsByUser(userId)
-  if (userRegs.some((r) => r.activityId === body.activityId)) {
-    return errorResponse('Already registered', 409)
+  if (userId) {
+    const profile = await getProfileForUser(userId, env)
+    if (!name) name = profile?.nickname || (await getClerkDisplayName())
+    if (!wechat) wechat = profile?.wechat ?? ''
+
+    const userRegs = await storage.getRegistrationsByUser(userId)
+    if (userRegs.some((r) => r.activityId === body.activityId && !r.cancelledAt)) {
+      return errorResponse('Already registered', 409)
+    }
+  } else {
+    if (!name || !wechat) {
+      return errorResponse('Missing required fields: name, wechat')
+    }
+    const existing = await storage.findRegistrationByNameAndWechat(body.activityId, name, wechat)
+    if (existing) return errorResponse('Already registered', 409)
+    cancelToken = nanoid(16)
   }
 
   const activity = await storage.getActivity(body.activityId)
@@ -273,9 +286,66 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
     wechat: wechat || '—',
     participantCount,
     note: body.note ?? '',
+    cancelToken,
   })
   const registeredCount = await getRegisteredCount(storage, body.activityId)
-  return jsonResponse({ registration, registeredCount }, 201)
+  return jsonResponse({ success: true, registration, registeredCount, cancelToken }, 201)
+}
+
+export async function handleDeleteRegistration(_request: Request, env: EnvConfig, id: string): Promise<Response> {
+  const userId = await getOptionalUserId()
+  if (!userId) return errorResponse('Unauthorized', 401)
+
+  const storage = createStorageAdapter(env)
+  const registration = await storage.getRegistrationById(id)
+  if (!registration) return errorResponse('Registration not found', 404)
+  if (registration.userId !== userId) return errorResponse('Forbidden', 403)
+  if (registration.cancelledAt) return errorResponse('Already cancelled', 409)
+
+  const result = await storage.cancelRegistration(id, 'user')
+  return jsonResponse(result)
+}
+
+export async function handleGetRegistrationByToken(_request: Request, env: EnvConfig, token: string): Promise<Response> {
+  const storage = createStorageAdapter(env)
+  const registration = await storage.getRegistrationByToken(token)
+  if (!registration) return errorResponse('Invalid token', 404)
+
+  const activity = await storage.getActivity(registration.activityId)
+  if (!activity) return errorResponse('Activity not found', 404)
+
+  return jsonResponse({ registration, activity })
+}
+
+export async function handleCancelByToken(_request: Request, env: EnvConfig, token: string): Promise<Response> {
+  const storage = createStorageAdapter(env)
+  const registration = await storage.getRegistrationByToken(token)
+  if (!registration) return errorResponse('Invalid token', 404)
+  if (registration.cancelledAt) return errorResponse('Already cancelled', 409)
+
+  const result = await storage.cancelRegistration(registration.id, 'user')
+  return jsonResponse({ success: true, ...result })
+}
+
+export async function handleGetRegistrationSummary(_request: Request, env: EnvConfig, activityId: string): Promise<Response> {
+  const storage = createStorageAdapter(env)
+  const active = await storage.getActiveRegistrations(activityId)
+  const previews = await Promise.all(
+    active.slice(0, 5).map(async (r) => {
+      let avatarUrl: string | null = null
+      if (r.userId) {
+        try {
+          const client = await clerkClient()
+          const user = await client.users.getUser(r.userId)
+          avatarUrl = user.imageUrl ?? null
+        } catch {
+          avatarUrl = null
+        }
+      }
+      return { name: r.name, avatarUrl }
+    }),
+  )
+  return jsonResponse({ total: active.length, previews })
 }
 
 export async function handleGetInterests(_request: Request, env: EnvConfig, activityId: string): Promise<Response> {
@@ -287,6 +357,7 @@ export async function handleGetInterests(_request: Request, env: EnvConfig, acti
 export async function handleMutateInterest(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
   const userId = await getOptionalUserId()
+  const deviceId = request.headers.get('X-Device-Id')?.trim() || undefined
   const body = await parseBody<{
     activityId: string
     name?: string
@@ -298,30 +369,43 @@ export async function handleMutateInterest(request: Request, env: EnvConfig): Pr
     return errorResponse('Missing required fields')
   }
 
-  if (!userId) return errorResponse('Unauthorized', 401)
+  if (!userId && !deviceId) return errorResponse('Unauthorized', 401)
 
   const activity = await storage.getActivity(body.activityId)
   if (!activity) return errorResponse('Activity not found', 404)
   if (activity.status !== 'proposed') return errorResponse('Can only express interest in proposals')
 
   if (body.action === 'remove') {
-    const result = await storage.deleteInterestByUserId(body.activityId, userId)
+    const result = userId
+      ? await storage.deleteInterestByUserId(body.activityId, userId)
+      : await storage.deleteInterestByDeviceId(body.activityId, deviceId!)
     return jsonResponse(result)
   }
 
-  const existing = await storage.findInterestByUserId(body.activityId, userId)
+  if (userId) {
+    const existing = await storage.findInterestByUserId(body.activityId, userId)
+    if (existing) {
+      const interests = await storage.getInterests(body.activityId)
+      return jsonResponse({ interest: existing, interestedCount: interests.length } satisfies InterestMutationResult)
+    }
+    const result = await storage.createInterest({ activityId: body.activityId, userId })
+    return jsonResponse(result, 201)
+  }
+
+  const existing = await storage.findInterestByDeviceId(body.activityId, deviceId!)
   if (existing) {
     const interests = await storage.getInterests(body.activityId)
     return jsonResponse({ interest: existing, interestedCount: interests.length } satisfies InterestMutationResult)
   }
 
-  const result = await storage.createInterest({ activityId: body.activityId, userId })
+  const result = await storage.createInterest({ activityId: body.activityId, deviceId })
   return jsonResponse(result, 201)
 }
 
 export async function handleDeleteInterest(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
   const userId = await getOptionalUserId()
+  const deviceId = request.headers.get('X-Device-Id')?.trim() || undefined
   const url = new URL(request.url)
 
   let body: { activityId?: string; wechat?: string } = {}
@@ -340,8 +424,10 @@ export async function handleDeleteInterest(request: Request, env: EnvConfig): Pr
   const activity = await storage.getActivity(activityId)
   if (!activity) return errorResponse('Activity not found', 404)
 
-  if (!userId) return errorResponse('Unauthorized', 401)
+  if (!userId && !deviceId) return errorResponse('Unauthorized', 401)
 
-  const result = await storage.deleteInterestByUserId(activityId, userId)
+  const result = userId
+    ? await storage.deleteInterestByUserId(activityId, userId)
+    : await storage.deleteInterestByDeviceId(activityId, deviceId!)
   return jsonResponse(result)
 }

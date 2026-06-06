@@ -72,12 +72,16 @@ export interface Registration {
   participantCount: number
   note: string
   registeredAt: string
+  cancelToken?: string
+  cancelledAt?: string
+  cancelledBy?: 'user' | 'admin'
 }
 
 export interface Interest {
   id: string
   activityId: string
   userId?: string
+  deviceId?: string
   name?: string
   wechat?: string
   createdAt: string
@@ -99,6 +103,8 @@ export interface ActivityWithCount extends Activity {
 export interface RegistrationMutationResult {
   registration?: Registration
   registeredCount: number
+  cancelToken?: string
+  success?: boolean
 }
 
 export interface InterestMutationResult {

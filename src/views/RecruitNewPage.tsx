@@ -7,6 +7,7 @@ import type { ActivityWithCount } from '../../shared/types'
 import { Header } from '../components/layout/Header'
 import { SignInGate } from '../components/SignInGate'
 import { RecruitForm } from '../components/recruit/RecruitForm'
+import { Footer } from '../components/layout/Footer'
 import { api } from '../lib/api'
 
 export function RecruitNewPage() {
@@ -38,10 +39,10 @@ export function RecruitNewPage() {
     : undefined
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen flex flex-col pb-24">
       <Header />
       <SignInGate message="登录后即可发起招募">
-      <main className="max-w-lg mx-auto px-4 py-6 page-enter">
+      <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
         <h1 className="text-2xl font-bold mb-1">发起招募 🎯</h1>
         <p className="text-gray-500 text-sm mb-6">填写活动详情，创建公开报名链接</p>
 
@@ -69,6 +70,7 @@ export function RecruitNewPage() {
         )}
       </main>
       </SignInGate>
+      <Footer />
     </div>
   )
 }

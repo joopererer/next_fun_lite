@@ -8,6 +8,7 @@ import { ActivityForm } from '../components/admin/ActivityForm'
 import { AdminGate } from '../components/admin/AdminGate'
 import { api, getEventUrl } from '../lib/api'
 import { formatEventDate } from '../lib/user'
+import { Footer } from '../components/layout/Footer'
 
 export function AdminActivityPage() {
   const { id } = useParams<{ id: string }>()
@@ -68,16 +69,16 @@ export function AdminActivityPage() {
 
   return (
     <AdminGate>
-      <div className="min-h-screen pb-12">
+      <div className="min-h-screen flex flex-col pb-12">
         <header className="bg-white border-b border-gray-100">
-          <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <Link href="/admin" className="text-sm text-gray-400 hover:text-green-600">← 返回看板</Link>
             <h1 className="text-xl font-bold mt-2">{activity.title}</h1>
             <p className="text-sm text-gray-500">{formatEventDate(activity.date)} · {activity.location}</p>
           </div>
         </header>
 
-        <main className="max-w-3xl mx-auto px-4 py-6 page-enter space-y-8">
+        <main className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 page-enter space-y-8">
           <section>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">活动信息</h2>
@@ -152,6 +153,7 @@ export function AdminActivityPage() {
             )}
           </section>
         </main>
+        <Footer />
       </div>
     </AdminGate>
   )

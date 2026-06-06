@@ -64,16 +64,19 @@ create table if not exists registrations (
   wechat text not null,
   participant_count int default 1,
   note text,
-  registered_at timestamptz default now()
+  registered_at timestamptz default now(),
+  cancel_token text unique,
+  cancelled_at timestamptz,
+  cancelled_by text
 );
 
 create table if not exists interests (
   id text primary key,
   activity_id text not null references activities(id) on delete cascade,
   user_id text references profiles(id),
+  device_id text,
   wechat text,
-  created_at timestamptz default now(),
-  unique(activity_id, user_id)
+  created_at timestamptz default now()
 );
 
 create index if not exists activities_status_idx on activities(status);
@@ -84,6 +87,16 @@ create index if not exists registrations_user_id_idx on registrations(user_id);
 create index if not exists registrations_wechat_idx on registrations(wechat);
 create index if not exists interests_activity_id_idx on interests(activity_id);
 create index if not exists interests_user_id_idx on interests(user_id);
+create index if not exists interests_device_id_idx on interests(device_id);
+create index if not exists registrations_cancel_token_idx on registrations(cancel_token);
+
+create unique index if not exists interests_user_unique
+  on interests(activity_id, user_id)
+  where user_id is not null;
+
+create unique index if not exists interests_device_unique
+  on interests(activity_id, device_id)
+  where user_id is null and device_id is not null;
 
 create or replace function update_updated_at()
 returns trigger as $$

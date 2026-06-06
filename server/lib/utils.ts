@@ -14,7 +14,7 @@ export function checkAdminAuth(request: Request, env: EnvConfig): boolean {
 }
 
 export async function getRegisteredCount(storage: StorageAdapter, activityId: string): Promise<number> {
-  const registrations = await storage.getRegistrations(activityId)
+  const registrations = await storage.getActiveRegistrations(activityId)
   return registrations.reduce((sum, r) => sum + r.participantCount, 0)
 }
 

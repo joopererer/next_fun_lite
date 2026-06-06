@@ -1,9 +1,14 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityWithCount } from '../../shared/types'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { isRegistrationFull } from '../lib/participants'
 import { formatEventDate } from '../lib/user'
 import { CapacityBar } from './CapacityBar'
+import { RegistrationPreview } from './RegistrationPreview'
+import { api } from '../lib/api'
 
 interface Props {
   activity: ActivityWithCount
@@ -12,6 +17,19 @@ interface Props {
 
 export function ActivityCard({ activity, registered = false }: Props) {
   const full = !registered && isRegistrationFull(activity.registeredCount, activity.maxParticipants)
+  const [summary, setSummary] = useState<{ total: number; previews: Array<{ name: string; avatarUrl: string | null }> }>({
+    total: 0,
+    previews: [],
+  })
+  const [summaryLoading, setSummaryLoading] = useState(true)
+
+  useEffect(() => {
+    setSummaryLoading(true)
+    api.getRegistrationSummary(activity.id)
+      .then(setSummary)
+      .catch(() => setSummary({ total: 0, previews: [] }))
+      .finally(() => setSummaryLoading(false))
+  }, [activity.id, activity.registeredCount])
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
@@ -25,10 +43,17 @@ export function ActivityCard({ activity, registered = false }: Props) {
         <p className="text-sm text-gray-500 mb-2">
           {formatEventDate(activity.date)} · {activity.location || '地点待定'}
         </p>
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{activity.description}</p>
-        <div className="mb-3">
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.75rem]">
+          {activity.description || ' '}
+        </p>
+        <div className="mb-1">
           <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
         </div>
+        <RegistrationPreview
+          total={summary.total}
+          previews={summary.previews}
+          loading={summaryLoading}
+        />
         {activity.fee && (
           <p className="text-sm text-gray-600 mb-1">💰 {activity.fee}</p>
         )}

@@ -12,6 +12,7 @@ import { KanbanBoard } from '../components/admin/KanbanBoard'
 import { RecruitForm } from '../components/recruit/RecruitForm'
 import { isTerminalStatus } from '../lib/activityStatus'
 import { api } from '../lib/api'
+import { Footer } from '../components/layout/Footer'
 
 type Tab = 'kanban' | 'list' | 'create'
 
@@ -87,20 +88,20 @@ export function AdminPage() {
 
   return (
     <AdminGate>
-      <div className="min-h-screen pb-12">
+      <div className="min-h-screen flex flex-col pb-12">
         <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div>
               <h1 className="text-lg font-bold text-green-700">管理看板</h1>
               <Link href="/" className="text-xs text-gray-400 hover:text-green-600">← 回到首页</Link>
             </div>
           </div>
-          <div className="max-w-6xl mx-auto px-4 flex gap-1 border-t border-gray-50">
+          <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex gap-1 border-t border-gray-50 overflow-x-auto">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                   tab === t.id
                     ? 'border-green-600 text-green-700'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -113,7 +114,7 @@ export function AdminPage() {
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 py-6 page-enter">
+        <main className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 page-enter">
           {tab === 'kanban' && (
             <KanbanBoard
               activities={activities}
@@ -165,6 +166,7 @@ export function AdminPage() {
             }}
           />
         )}
+        <Footer />
       </div>
     </AdminGate>
   )

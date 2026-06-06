@@ -85,6 +85,37 @@ export class SupabaseAdapter implements StorageAdapter {
     return (data ?? []).map((row) => this.mapRegistration(row as RegistrationRow))
   }
 
+  async getActiveRegistrations(activityId: string): Promise<Registration[]> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('activity_id', activityId)
+      .is('cancelled_at', null)
+      .order('registered_at', { ascending: true })
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapRegistration(row as RegistrationRow))
+  }
+
+  async getRegistrationById(id: string): Promise<Registration | null> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async getRegistrationByToken(token: string): Promise<Registration | null> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('cancel_token', token)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
   async getRegistrationsByUser(userId: string): Promise<Registration[]> {
     const { data, error } = await this.db
       .from('registrations')
@@ -101,6 +132,24 @@ export class SupabaseAdapter implements StorageAdapter {
       .select('*')
       .eq('activity_id', activityId)
       .eq('wechat', wechat)
+      .is('cancelled_at', null)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async findRegistrationByNameAndWechat(
+    activityId: string,
+    name: string,
+    wechat: string,
+  ): Promise<Registration | null> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('wechat', wechat.trim())
+      .eq('name', name.trim())
+      .is('cancelled_at', null)
       .maybeSingle()
     if (error || !data) return null
     return this.mapRegistration(data as RegistrationRow)
@@ -115,6 +164,30 @@ export class SupabaseAdapter implements StorageAdapter {
       .single()
     if (error) throw error
     return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult> {
+    const existing = await this.getRegistrationById(id)
+    if (!existing) {
+      return { registration: undefined, registeredCount: 0 }
+    }
+    if (existing.cancelledAt) {
+      const registeredCount = await this.countActiveRegistrations(existing.activityId)
+      return { registration: existing, registeredCount }
+    }
+    const { data, error } = await this.db
+      .from('registrations')
+      .update({
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: cancelledBy,
+      })
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    const registration = this.mapRegistration(data as RegistrationRow)
+    const registeredCount = await this.countActiveRegistrations(existing.activityId)
+    return { registration, registeredCount }
   }
 
   async deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult> {
@@ -157,6 +230,17 @@ export class SupabaseAdapter implements StorageAdapter {
     return this.mapInterest(data as InterestRow)
   }
 
+  async findInterestByDeviceId(activityId: string, deviceId: string): Promise<Interest | null> {
+    const { data, error } = await this.db
+      .from('interests')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('device_id', deviceId)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapInterest(data as InterestRow)
+  }
+
   async createInterest(input: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> {
     const id = nanoid(8)
     const { data, error } = await this.db
@@ -194,9 +278,25 @@ export class SupabaseAdapter implements StorageAdapter {
     return { interest: existing ?? undefined, interestedCount }
   }
 
-  private async countRegistrations(activityId: string): Promise<number> {
-    const registrations = await this.getRegistrations(activityId)
+  async deleteInterestByDeviceId(activityId: string, deviceId: string): Promise<InterestMutationResult> {
+    const existing = await this.findInterestByDeviceId(activityId, deviceId)
+    const { error } = await this.db
+      .from('interests')
+      .delete()
+      .eq('activity_id', activityId)
+      .eq('device_id', deviceId)
+    if (error) throw error
+    const interestedCount = await this.syncInterestedCount(activityId)
+    return { interest: existing ?? undefined, interestedCount }
+  }
+
+  private async countActiveRegistrations(activityId: string): Promise<number> {
+    const registrations = await this.getActiveRegistrations(activityId)
     return registrations.reduce((sum, r) => sum + r.participantCount, 0)
+  }
+
+  private async countRegistrations(activityId: string): Promise<number> {
+    return this.countActiveRegistrations(activityId)
   }
 
   private async syncInterestedCount(activityId: string): Promise<number> {
@@ -308,6 +408,9 @@ export class SupabaseAdapter implements StorageAdapter {
       participantCount: Number(row.participant_count ?? 1),
       note: String(row.note ?? ''),
       registeredAt: String(row.registered_at),
+      cancelToken: row.cancel_token ? String(row.cancel_token) : undefined,
+      cancelledAt: row.cancelled_at ? String(row.cancelled_at) : undefined,
+      cancelledBy: row.cancelled_by as Registration['cancelledBy'],
     }
   }
 
@@ -319,6 +422,7 @@ export class SupabaseAdapter implements StorageAdapter {
     if (r.wechat !== undefined) result.wechat = r.wechat
     if (r.participantCount !== undefined) result.participant_count = r.participantCount
     if (r.note !== undefined) result.note = r.note
+    if (r.cancelToken !== undefined) result.cancel_token = r.cancelToken
     return result
   }
 
@@ -327,6 +431,7 @@ export class SupabaseAdapter implements StorageAdapter {
       id: String(row.id),
       activityId: String(row.activity_id),
       userId: row.user_id ? String(row.user_id) : undefined,
+      deviceId: row.device_id ? String(row.device_id) : undefined,
       wechat: row.wechat ? String(row.wechat) : undefined,
       createdAt: String(row.created_at),
     }
@@ -336,6 +441,7 @@ export class SupabaseAdapter implements StorageAdapter {
     const result: Record<string, unknown> = {}
     if (i.activityId !== undefined) result.activity_id = i.activityId
     if (i.userId !== undefined) result.user_id = i.userId
+    if (i.deviceId !== undefined) result.device_id = i.deviceId
     if (i.wechat !== undefined) result.wechat = i.wechat
     return result
   }

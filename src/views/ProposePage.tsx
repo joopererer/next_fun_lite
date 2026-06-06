@@ -4,6 +4,7 @@ import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/layout/Header'
+import { Footer } from '../components/layout/Footer'
 import { SignInGate } from '../components/SignInGate'
 import type { ActivityCategory, FeeLevel, ParseResult } from '../../shared/types'
 import { api } from '../lib/api'
@@ -11,6 +12,7 @@ import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { FEE_LEVELS } from '../lib/feeLevel'
 import { getClerkDisplayName } from '../lib/displayName'
 import { applyParseResult } from '../lib/parseResult'
+import { ImageUploadZone } from '../components/ImageUploadZone'
 
 type InputMode = 'link' | 'image' | 'manual'
 
@@ -71,7 +73,7 @@ export function ProposePage() {
       const res = await api.parse({ url: url.trim() })
       setParseSuccess(res.success)
       setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
-      applyParsed({ ...res.data, sourceUrl: url.trim() })
+      if (res.success) applyParsed({ ...res.data, sourceUrl: url.trim() })
     } catch {
       setParseSuccess(false)
       setParseMessage('解析失败，请手动填写或上传截图')
@@ -81,11 +83,8 @@ export function ProposePage() {
   }
 
   const handleImageUpload = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      alert('图片最大 5MB')
-      return
-    }
     setParsing(true)
+    setParseMessage('')
     const reader = new FileReader()
     reader.onload = async () => {
       const base64 = (reader.result as string).split(',')[1]
@@ -93,7 +92,7 @@ export function ProposePage() {
         const res = await api.parse({ imageBase64: base64, mimeType: file.type })
         setParseSuccess(res.success)
         setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
-        applyParsed(res.data)
+        if (res.success) applyParsed(res.data)
       } catch {
         setParseSuccess(false)
         setParseMessage('解析失败，请手动填写')
@@ -134,9 +133,9 @@ export function ProposePage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="max-w-lg mx-auto px-4 py-16 text-center page-enter">
+        <main className="flex-1 max-w-lg mx-auto px-4 py-16 text-center page-enter w-full">
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-2xl font-bold mb-3">提议已收到！</h2>
           <p className="text-gray-500 mb-8">
@@ -147,12 +146,13 @@ export function ProposePage() {
             <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>再提交一个</button>
           </div>
         </main>
+        <Footer />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen flex flex-col pb-32">
       <Header />
       <SignInGate message="登录后即可提交提议">
       <main className="max-w-lg mx-auto px-4 py-6 page-enter">
@@ -195,16 +195,11 @@ export function ProposePage() {
 
         {mode === 'image' && (
           <div className="mb-6">
-            <label className="block border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-green-400 transition-colors">
-              <input
-                type="file"
-                accept="image/jpeg,image/png"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-              />
-              <p className="text-gray-500">拖拽或点击上传截图 / 海报</p>
-              <p className="text-xs text-gray-400 mt-1">支持 JPG、PNG，最大 5MB</p>
-            </label>
+            <ImageUploadZone
+              onFile={handleImageUpload}
+              parsing={parsing}
+              hint="图片识别需配置 CLAUDE_API_KEY（当前仅支持 Claude，不支持 Gemini/ChatGPT）"
+            />
           </div>
         )}
 
@@ -313,6 +308,7 @@ export function ProposePage() {
         </button>
       </main>
       </SignInGate>
+      <Footer />
     </div>
   )
 }

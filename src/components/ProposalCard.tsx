@@ -9,6 +9,7 @@ import { formatEventDate } from '../lib/user'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { getFeeLevelEmoji, getFeeLevelLabel } from '../lib/feeLevel'
 import { formatRelativeTime, getSourceIcon } from '../lib/user'
+import { getDeviceId } from '../utils/device'
 import { ItineraryBlock } from './ItineraryBlock'
 
 interface Props {
@@ -40,19 +41,22 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
   }, [activity.id, activity.interestedCount])
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || !clerkUser?.id) {
-      setInterested(false)
-      return
-    }
+    if (!isLoaded) return
+    const deviceId = getDeviceId()
     api.getInterests(activity.id)
       .then((interests) => {
-        setInterested(interests.some((i) => i.userId === clerkUser.id))
+        if (isSignedIn && clerkUser?.id) {
+          setInterested(interests.some((i) => i.userId === clerkUser.id))
+        } else if (deviceId) {
+          setInterested(interests.some((i) => i.deviceId === deviceId))
+        } else {
+          setInterested(false)
+        }
       })
       .catch(() => setInterested(false))
   }, [activity.id, isLoaded, isSignedIn, clerkUser?.id])
 
   const toggleInterest = async () => {
-    if (!isSignedIn) return
     if (loading) return
     setLoading(true)
     try {
@@ -147,29 +151,18 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
       </button>
       <p className="text-sm text-green-700 mb-3">💡 {count}人感兴趣</p>
       <div className="flex gap-2">
-        {isSignedIn ? (
-          <button
-            type="button"
-            className={`flex-1 rounded-xl py-2 text-sm font-medium border transition-colors ${
-              interested
-                ? 'border-gray-300 bg-gray-100 text-gray-600'
-                : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
-            }`}
-            onClick={toggleInterest}
-            disabled={loading}
-          >
-            {loading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
-          </button>
-        ) : (
-          <SignInButton mode="modal">
-            <button
-              type="button"
-              className="flex-1 rounded-xl py-2 text-sm font-medium border border-gray-200 hover:border-green-300 hover:bg-green-50"
-            >
-              ❤️ 我也感兴趣
-            </button>
-          </SignInButton>
-        )}
+        <button
+          type="button"
+          className={`flex-1 rounded-xl py-2 text-sm font-medium border transition-colors ${
+            interested
+              ? 'border-gray-300 bg-gray-100 text-gray-600'
+              : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
+          }`}
+          onClick={toggleInterest}
+          disabled={loading}
+        >
+          {loading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
+        </button>
         {isSignedIn ? (
           <Link
             href={`/recruit/new?from=${activity.id}`}

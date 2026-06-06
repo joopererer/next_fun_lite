@@ -115,7 +115,7 @@ export function KanbanBoard({
       onDragStart={(e: DragStartEvent) => setActiveId(e.active.id as string)}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex flex-col gap-4 pb-4 md:grid md:grid-cols-2 xl:grid-cols-4 xl:gap-6">
         {KANBAN_COLUMNS.map((column) => (
           <KanbanColumn
             key={column}

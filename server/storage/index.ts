@@ -5,11 +5,13 @@ import { SupabaseAdapter } from './supabase'
 import { TencentDocsAdapter } from './tencentDocs'
 import type { StorageAdapter } from './types'
 
-let mockInstance: MockAdapter | null = null
+const globalForMock = globalThis as typeof globalThis & { __nflMockAdapter?: MockAdapter }
 
 function getMockAdapter(): MockAdapter {
-  if (!mockInstance) mockInstance = new MockAdapter()
-  return mockInstance
+  if (!globalForMock.__nflMockAdapter) {
+    globalForMock.__nflMockAdapter = new MockAdapter()
+  }
+  return globalForMock.__nflMockAdapter
 }
 
 export function createStorageAdapter(env?: EnvConfig): StorageAdapter {

@@ -5,6 +5,10 @@ import {
   handleMutateInterest,
   handleCreateRegistration,
   handleDeleteInterest,
+  handleDeleteRegistration,
+  handleGetRegistrationByToken,
+  handleCancelByToken,
+  handleGetRegistrationSummary,
   handleDeleteActivity,
   handleGetActivities,
   handleGetActivitiesByIds,
@@ -68,6 +72,26 @@ const routes: Array<{
   },
   { method: 'POST', pattern: /^\/api\/registrations$/, handler: (req, env) => handleCreateRegistration(req, env) },
   {
+    method: 'DELETE',
+    pattern: /^\/api\/registrations\/([^/]+)$/,
+    handler: (req, env, p) => handleDeleteRegistration(req, env, p.id),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/cancel\/([^/]+)$/,
+    handler: (req, env, p) => handleGetRegistrationByToken(req, env, p.id),
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/cancel\/([^/]+)$/,
+    handler: (req, env, p) => handleCancelByToken(req, env, p.id),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/activities\/([^/]+)\/registrations\/summary$/,
+    handler: (req, env, p) => handleGetRegistrationSummary(req, env, p.id),
+  },
+  {
     method: 'GET',
     pattern: /^\/api\/activities\/([^/]+)\/interests$/,
     handler: (req, env, p) => handleGetInterests(req, env, p.id),
@@ -100,7 +124,7 @@ export async function handleApiRequest(request: Request, env: EnvConfig): Promis
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password, X-Device-Id, Authorization',
       },
     })
   }
