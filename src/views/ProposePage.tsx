@@ -1,15 +1,16 @@
 'use client'
 
 import { useUser } from '@clerk/nextjs'
+import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/layout/Header'
 import { Footer } from '../components/layout/Footer'
 import { SignInGate } from '../components/SignInGate'
 import type { SimilarProposalMatch } from '../../shared/activityDedupe'
-import type { ActivityCategory, FeeLevel, ParseResult } from '../../shared/types'
+import type { Activity, ActivityCategory, FeeLevel, ParseResult } from '../../shared/types'
 import { SimilarProposalsDialog } from '../components/SimilarProposalsDialog'
-import { api } from '../lib/api'
+import { api, getEventUrl } from '../lib/api'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../lib/validateSchedule'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { FEE_LEVELS } from '../lib/feeLevel'
@@ -26,7 +27,9 @@ export function ProposePage() {
   const [parsing, setParsing] = useState(false)
   const [parseMessage, setParseMessage] = useState('')
   const [parseSuccess, setParseSuccess] = useState<boolean | null>(null)
-  const [submitted, setSubmitted] = useState(false)
+  const [created, setCreated] = useState<Activity | null>(null)
+  const [eventUrl, setEventUrl] = useState('')
+  const [qrDataUrl, setQrDataUrl] = useState('')
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -129,8 +132,16 @@ export function ProposePage() {
   const submitProposal = async () => {
     setSubmitting(true)
     try {
-      await api.createProposal(buildProposalPayload())
-      setSubmitted(true)
+      const activity = await api.createProposal(buildProposalPayload())
+      const url = getEventUrl(activity.id)
+      setCreated(activity)
+      setEventUrl(url)
+      try {
+        const qr = await QRCode.toDataURL(url, { width: 200 })
+        setQrDataUrl(qr)
+      } catch {
+        setQrDataUrl('')
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : '提交失败')
     } finally {
@@ -173,19 +184,45 @@ export function ProposePage() {
     setSimilarDialogOpen(false)
   }
 
-  if (submitted) {
+  if (created) {
+    const url = eventUrl || getEventUrl(created.id)
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 max-w-lg mx-auto px-4 py-16 text-center page-enter w-full">
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-2xl font-bold mb-3">提议已收到！</h2>
-          <p className="text-gray-500 mb-8">
-            大家会在首页看到你的提议。如果感兴趣的人多了，管理员会发起招募。
+          <p className="text-gray-500 mb-6">
+            大家会在首页看到你的提议。感兴趣的人多了，管理员会发起招募。
           </p>
+          <p className="text-sm text-gray-600 mb-2 break-all">提议链接：{url}</p>
+          <div className="flex gap-3 justify-center mb-4 flex-wrap">
+            <button type="button" className="btn-primary" onClick={() => navigator.clipboard.writeText(url)}>
+              复制链接
+            </button>
+            {created.organizerWechat && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => navigator.clipboard.writeText(created.organizerWechat)}
+              >
+                复制微信号
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 mb-4">分享到微信群，让朋友扫码查看或表达兴趣</p>
+          {qrDataUrl && (
+            <div className="mb-8">
+              <p className="text-sm text-gray-500 mb-2">提议二维码</p>
+              <img src={qrDataUrl} alt="QR Code" className="mx-auto rounded-xl" />
+            </div>
+          )}
           <div className="flex gap-3 justify-center">
             <Link href="/" className="btn-primary">回到首页</Link>
-            <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>再提交一个</button>
+            <Link href={`/event/${created.id}`} className="btn-secondary">查看提议</Link>
+            <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
+              再提交一个
+            </button>
           </div>
         </main>
         <Footer />
