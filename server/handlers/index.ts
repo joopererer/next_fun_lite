@@ -6,6 +6,8 @@ import type {
   InterestMutationResult,
   Registration,
 } from '../../shared/types'
+import { findSimilarProposals } from '../../shared/activityDedupe'
+import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../shared/validateSchedule'
 import { canRegister, isProposalExpired } from '../../shared/activityPhase'
 import { isTerminalStatus, normalizeActivityStatus } from '../../shared/activityStatus'
 import {
@@ -71,6 +73,10 @@ export async function handleCreateActivity(request: Request, env: EnvConfig, isP
     const userId = await getOptionalUserId()
     if (!userId) return errorResponse('Unauthorized', 401)
 
+    if (isEndTimeInPast(body.dateEnd)) {
+      return errorResponse(PAST_END_TIME_MESSAGE, 400)
+    }
+
     let payload = buildProposalPayload(body)
     const displayName = await getClerkDisplayName()
     const profile = await getProfileForUser(userId, env)
@@ -99,6 +105,10 @@ export async function handleCreateRecruitment(request: Request, env: EnvConfig):
     payload = buildRecruitmentPayload(body)
   } catch (err) {
     return errorResponse(err instanceof Error ? err.message : 'Invalid payload')
+  }
+
+  if (isEndTimeInPast(payload.dateEnd)) {
+    return errorResponse(PAST_END_TIME_MESSAGE, 400)
   }
 
   if (!payload.title || !payload.category || !payload.date || !payload.location) {
@@ -166,6 +176,9 @@ export async function handleUpdateActivity(request: Request, env: EnvConfig, id:
   if (!checkAdminAuth(request, env)) return errorResponse('Unauthorized', 401)
   const storage = createStorageAdapter(env)
   const body = await parseBody<Partial<Activity>>(request)
+  if (body.dateEnd !== undefined && isEndTimeInPast(body.dateEnd)) {
+    return errorResponse(PAST_END_TIME_MESSAGE, 400)
+  }
   try {
     const activity = await storage.updateActivity(id, body)
     return jsonResponse(await enrichActivity(storage, activity))
@@ -439,4 +452,20 @@ export async function handleDeleteInterest(request: Request, env: EnvConfig): Pr
     ? await storage.deleteInterestByUserId(activityId, userId)
     : await storage.deleteInterestByDeviceId(activityId, deviceId!)
   return jsonResponse(result)
+}
+
+export async function handleFindSimilarProposals(request: Request, env: EnvConfig): Promise<Response> {
+  const userId = await getOptionalUserId()
+  if (!userId) return errorResponse('Unauthorized', 401)
+
+  const url = new URL(request.url)
+  const title = url.searchParams.get('title') ?? ''
+  const location = url.searchParams.get('location') ?? undefined
+  const sourceUrl = url.searchParams.get('sourceUrl') ?? undefined
+
+  const storage = createStorageAdapter(env)
+  const activities = await storage.getActivities()
+  const proposals = activities.filter((a) => a.status === 'proposed')
+  const matches = findSimilarProposals(proposals, { title, location, sourceUrl })
+  return jsonResponse({ matches })
 }

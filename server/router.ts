@@ -17,6 +17,7 @@ import {
   handleGetRegistrations,
   handleGetMyRegistration,
   handleUpdateActivity,
+  handleFindSimilarProposals,
 } from './handlers'
 import { handleParse } from './handlers/parse'
 import { errorResponse } from './lib/utils'
@@ -43,6 +44,11 @@ const routes: Array<{
     method: 'POST',
     pattern: /^\/api\/activities$/,
     handler: (req, env) => handleCreateActivity(req, env, false),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/proposals\/similar$/,
+    handler: (req, env) => handleFindSimilarProposals(req, env),
   },
   {
     method: 'POST',

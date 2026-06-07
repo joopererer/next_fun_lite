@@ -9,6 +9,7 @@ import type {
   Registration,
   RegistrationMutationResult,
 } from '@/shared/types'
+import type { SimilarProposalMatch } from '@/shared/activityDedupe'
 import { getDeviceId } from '@/src/utils/device'
 
 const ADMIN_KEY = 'nfl_admin_password'
@@ -85,6 +86,12 @@ export const api = {
   getActivity: (id: string) => request<ActivityWithCount>(`/api/activities/${id}`),
   createProposal: (data: Partial<Activity>) =>
     request<Activity>('/api/proposals', { method: 'POST', body: JSON.stringify(data) }),
+  findSimilarProposals: (params: { title: string; location?: string; sourceUrl?: string }) => {
+    const q = new URLSearchParams({ title: params.title })
+    if (params.location) q.set('location', params.location)
+    if (params.sourceUrl) q.set('sourceUrl', params.sourceUrl)
+    return request<{ matches: SimilarProposalMatch[] }>(`/api/proposals/similar?${q.toString()}`)
+  },
   createRecruitment: (data: Partial<Activity> & { sourceProposalId?: string }) =>
     request<RecruitmentResponse>('/api/recruitments', { method: 'POST', body: JSON.stringify(data) }),
   createActivity: (data: Partial<Activity>) =>

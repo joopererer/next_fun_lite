@@ -6,8 +6,11 @@ import Link from 'next/link'
 import { Header } from '../components/layout/Header'
 import { Footer } from '../components/layout/Footer'
 import { SignInGate } from '../components/SignInGate'
+import type { SimilarProposalMatch } from '../../shared/activityDedupe'
 import type { ActivityCategory, FeeLevel, ParseResult } from '../../shared/types'
+import { SimilarProposalsDialog } from '../components/SimilarProposalsDialog'
 import { api } from '../lib/api'
+import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../lib/validateSchedule'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { FEE_LEVELS } from '../lib/feeLevel'
 import { getClerkDisplayName } from '../lib/displayName'
@@ -37,6 +40,9 @@ export function ProposePage() {
   const [itinerary, setItinerary] = useState('')
   const [organizerWechat, setOrganizerWechat] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [checkingSimilar, setCheckingSimilar] = useState(false)
+  const [similarMatches, setSimilarMatches] = useState<SimilarProposalMatch[]>([])
+  const [similarDialogOpen, setSimilarDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!clerkUser) return
@@ -105,33 +111,66 @@ export function ProposePage() {
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      alert('请填写活动/地点名称')
-      return
-    }
+  const buildProposalPayload = () => ({
+    title: title.trim(),
+    description: description.trim(),
+    date: dateHint ? null : null,
+    location: location.trim(),
+    sourceUrl: sourceUrl.trim(),
+    category,
+    feeLevel,
+    organizerWechat: organizerWechat.trim(),
+    fee: feeDetail.trim(),
+    itinerary: itinerary.trim() || undefined,
+    notes: dateHint ? `大概时间：${dateHint}` : '',
+    dateEnd: dateEnd ? new Date(dateEnd).toISOString() : null,
+  })
+
+  const submitProposal = async () => {
     setSubmitting(true)
     try {
-      await api.createProposal({
-        title: title.trim(),
-        description: description.trim(),
-        date: dateHint ? null : null,
-        location: location.trim(),
-        sourceUrl: sourceUrl.trim(),
-        category,
-        feeLevel,
-        organizerWechat: organizerWechat.trim(),
-        fee: feeDetail.trim(),
-        itinerary: itinerary.trim() || undefined,
-        notes: dateHint ? `大概时间：${dateHint}` : '',
-        dateEnd: dateEnd ? new Date(dateEnd).toISOString() : null,
-      })
+      await api.createProposal(buildProposalPayload())
       setSubmitted(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : '提交失败')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      alert('请填写活动/地点名称')
+      return
+    }
+    if (isEndTimeInPast(dateEnd || undefined)) {
+      alert(PAST_END_TIME_MESSAGE)
+      return
+    }
+
+    setCheckingSimilar(true)
+    try {
+      const { matches } = await api.findSimilarProposals({
+        title: title.trim(),
+        location: location.trim() || undefined,
+        sourceUrl: sourceUrl.trim() || undefined,
+      })
+      if (matches.length > 0) {
+        setSimilarMatches(matches)
+        setSimilarDialogOpen(true)
+        return
+      }
+      await submitProposal()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '检查相似提议失败，请稍后重试')
+    } finally {
+      setCheckingSimilar(false)
+    }
+  }
+
+  const handleConfirmSimilar = async () => {
+    await submitProposal()
+    setSimilarDialogOpen(false)
   }
 
   if (submitted) {
@@ -311,11 +350,23 @@ export function ProposePage() {
           </div>
         </div>
 
-        <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? '提交中...' : '提交提议 🎉'}
+        <button
+          type="button"
+          className="btn-primary w-full text-lg"
+          onClick={handleSubmit}
+          disabled={submitting || checkingSimilar}
+        >
+          {checkingSimilar ? '检查中...' : submitting ? '提交中...' : '提交提议 🎉'}
         </button>
       </main>
       </SignInGate>
+      <SimilarProposalsDialog
+        open={similarDialogOpen}
+        matches={similarMatches}
+        onConfirm={handleConfirmSimilar}
+        onCancel={() => setSimilarDialogOpen(false)}
+        confirming={submitting}
+      />
       <Footer />
     </div>
   )

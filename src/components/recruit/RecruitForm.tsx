@@ -25,6 +25,7 @@ import {
 } from '../../lib/participants'
 import { formatEventDate } from '../../lib/user'
 import { getClerkDisplayName } from '../../lib/displayName'
+import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../lib/validateSchedule'
 import { ActivityParsePanel } from '../ActivityParsePanel'
 import { DiningFields } from './DiningFields'
 import { ParticipantLimitFields } from './ParticipantLimitFields'
@@ -242,6 +243,10 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     const max = parseMaxParticipants(maxParticipants)
     if (max != null && min > max) {
       alert('最少人数不能大于最多人数')
+      return
+    }
+    if (isEndTimeInPast(dateEnd || undefined)) {
+      alert(PAST_END_TIME_MESSAGE)
       return
     }
     setSubmitting(true)
