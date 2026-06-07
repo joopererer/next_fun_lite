@@ -29,6 +29,7 @@ export function ProposePage() {
   const [description, setDescription] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
   const [dateHint, setDateHint] = useState('')
+  const [dateEnd, setDateEnd] = useState('')
   const [location, setLocation] = useState('')
   const [category, setCategory] = useState<ActivityCategory>('other')
   const [feeLevel, setFeeLevel] = useState<FeeLevel>('unknown')
@@ -53,6 +54,7 @@ export function ProposePage() {
       setLocation,
       setSourceUrl,
       setDateHint,
+      setDateEnd,
       setCategory,
       setFeeLevel,
       setFee: setFeeDetail,
@@ -122,6 +124,7 @@ export function ProposePage() {
         fee: feeDetail.trim(),
         itinerary: itinerary.trim() || undefined,
         notes: dateHint ? `大概时间：${dateHint}` : '',
+        dateEnd: dateEnd ? new Date(dateEnd).toISOString() : null,
       })
       setSubmitted(true)
     } catch (err) {
@@ -235,6 +238,11 @@ export function ProposePage() {
           <div>
             <label className="text-sm text-gray-600 mb-1 block">大概时间（选填）</label>
             <input className="input-field" placeholder="如「周末」「下午」" value={dateHint} onChange={(e) => setDateHint(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm text-gray-600 mb-1 block">信息有效期至（选填）</label>
+            <input type="datetime-local" className="input-field" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+            <p className="text-xs text-gray-400 mt-1">如展览结束日；过期后显示标签，由管理员或提议人处理</p>
           </div>
           <div>
             <label className="text-sm text-gray-600 mb-1 block">活动类型</label>

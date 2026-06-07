@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityWithCount } from '../../shared/types'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
-import { isRegistrationFull } from '../lib/participants'
+import { canRegister, getRegistrationButtonLabel } from '../lib/activityPhase'
 import { formatEventDate } from '../lib/user'
 import { CapacityBar } from './CapacityBar'
 import { RegistrationPreview } from './RegistrationPreview'
+import { ActivityBadge } from './ActivityBadge'
 import { api } from '../lib/api'
 
 interface Props {
@@ -16,7 +17,8 @@ interface Props {
 }
 
 export function ActivityCard({ activity, registered = false }: Props) {
-  const full = !registered && isRegistrationFull(activity.registeredCount, activity.maxParticipants)
+  const open = canRegister(activity)
+  const buttonLabel = getRegistrationButtonLabel(activity, registered)
   const [summary, setSummary] = useState<{ total: number; previews: Array<{ name: string; avatarUrl: string | null }> }>({
     total: 0,
     previews: [],
@@ -34,9 +36,12 @@ export function ActivityCard({ activity, registered = false }: Props) {
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
       <Link href={`/event/${activity.id}`} className="block flex-1 group">
-        <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
-          {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
-        </span>
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block">
+            {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+          </span>
+          <ActivityBadge activity={activity} />
+        </div>
         <h3 className="font-semibold text-base mb-1 group-hover:text-green-700 transition-colors">
           {activity.title}
         </h3>
@@ -68,10 +73,10 @@ export function ActivityCard({ activity, registered = false }: Props) {
         <Link
           href={`/event/${activity.id}`}
           className={`mt-auto text-center rounded-xl py-2.5 font-medium transition-colors ${
-            full ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'btn-primary block'
+            !open ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'btn-primary block'
           }`}
         >
-          {full ? '已满' : '我要报名'}
+          {buttonLabel}
         </Link>
       )}
     </div>

@@ -25,6 +25,8 @@ export interface Activity {
   title: string
   description: string
   date: string | null
+  dateEnd?: string | null
+  registrationDeadline?: string | null
   location: string
   minParticipants?: number | null
   maxParticipants: number | null

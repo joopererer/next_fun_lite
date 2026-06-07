@@ -10,6 +10,8 @@ import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { getFeeLevelEmoji, getFeeLevelLabel } from '../lib/feeLevel'
 import { formatRelativeTime, getSourceIcon } from '../lib/user'
 import { getDeviceId } from '../utils/device'
+import { isProposalExpired } from '../lib/activityPhase'
+import { ActivityBadge } from './ActivityBadge'
 import { ItineraryBlock } from './ItineraryBlock'
 
 interface Props {
@@ -25,6 +27,7 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
   const [loading, setLoading] = useState(false)
   const [linkedRecruits, setLinkedRecruits] = useState<ActivityWithCount[]>([])
   const hot = count >= 5
+  const expired = isProposalExpired(activity)
 
   useEffect(() => {
     if (!expanded || !activity.linkedRecruitIds?.length) {
@@ -57,7 +60,7 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
   }, [activity.id, isLoaded, isSignedIn, clerkUser?.id])
 
   const toggleInterest = async () => {
-    if (loading) return
+    if (loading || expired) return
     setLoading(true)
     try {
       const res = interested
@@ -82,10 +85,11 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
         </span>
       )}
       <Link href={`/event/${activity.id}`} className="block group">
-        <div className="flex items-start gap-2 mb-1">
+        <div className="flex items-start gap-2 mb-1 flex-wrap">
           <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full shrink-0">
             {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
           </span>
+          <ActivityBadge activity={activity} />
         </div>
         <h3 className="font-semibold text-base mb-1 group-hover:text-green-700 transition-colors">
           {getSourceIcon(activity.sourceUrl)} {activity.title}
@@ -159,9 +163,9 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
               : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
           }`}
           onClick={toggleInterest}
-          disabled={loading}
+          disabled={loading || expired}
         >
-          {loading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
+          {loading ? '...' : expired ? '信息已过期' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
         </button>
         {isSignedIn ? (
           <Link

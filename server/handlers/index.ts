@@ -6,12 +6,14 @@ import type {
   InterestMutationResult,
   Registration,
 } from '../../shared/types'
+import { canRegister, isProposalExpired } from '../../shared/activityPhase'
 import { isTerminalStatus, normalizeActivityStatus } from '../../shared/activityStatus'
 import {
   buildAdminCreatePayload,
   buildProposalPayload,
   buildRecruitmentPayload,
 } from '../lib/activityPayload'
+import { autoEndExpiredRecruitments, getActivityAfterLifecycle } from '../lib/activityLifecycle'
 import { createStorageAdapter } from '../storage'
 import type { StorageAdapter } from '../storage/types'
 import { getOptionalUserId, getClerkDisplayName } from '../lib/clerkAuth'
@@ -47,6 +49,7 @@ async function enrichActivity(storage: StorageAdapter, activity: Activity): Prom
 
 export async function handleGetActivities(_request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
+  await autoEndExpiredRecruitments(storage)
   const activities = await storage.getActivities()
   const enriched = await Promise.all(activities.map((a) => enrichActivity(storage, a)))
   return jsonResponse(enriched)
@@ -54,8 +57,9 @@ export async function handleGetActivities(_request: Request, env: EnvConfig): Pr
 
 export async function handleGetActivity(request: Request, env: EnvConfig, id: string): Promise<Response> {
   const storage = createStorageAdapter(env)
-  const activity = await storage.getActivity(id)
+  let activity = await storage.getActivity(id)
   if (!activity) return errorResponse('Activity not found', 404)
+  activity = await getActivityAfterLifecycle(storage, activity)
   return jsonResponse(await enrichActivity(storage, activity))
 }
 
@@ -272,8 +276,12 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
   if (isTerminalStatus(status)) return errorResponse('Activity has ended')
   if (status !== 'recruiting') return errorResponse('Activity is not open for registration')
 
-  const participantCount = body.participantCount ?? 1
   const currentCount = await getRegisteredCount(storage, body.activityId)
+  if (!canRegister({ ...activity, registeredCount: currentCount })) {
+    return errorResponse('Registration is closed', 409)
+  }
+
+  const participantCount = body.participantCount ?? 1
 
   if (activity.maxParticipants !== null && currentCount + participantCount > activity.maxParticipants) {
     return errorResponse('Capacity exceeded')
@@ -374,6 +382,7 @@ export async function handleMutateInterest(request: Request, env: EnvConfig): Pr
   const activity = await storage.getActivity(body.activityId)
   if (!activity) return errorResponse('Activity not found', 404)
   if (activity.status !== 'proposed') return errorResponse('Can only express interest in proposals')
+  if (isProposalExpired(activity)) return errorResponse('Proposal has expired', 409)
 
   if (body.action === 'remove') {
     const result = userId

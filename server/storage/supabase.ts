@@ -316,6 +316,8 @@ export class SupabaseAdapter implements StorageAdapter {
       title: String(row.title ?? ''),
       description: String(row.description ?? ''),
       date: row.date ? String(row.date) : null,
+      dateEnd: row.date_end ? String(row.date_end) : undefined,
+      registrationDeadline: row.registration_deadline ? String(row.registration_deadline) : undefined,
       location: String(row.location ?? ''),
       minParticipants: row.min_participants != null ? Number(row.min_participants) : undefined,
       maxParticipants: row.max_participants != null ? Number(row.max_participants) : null,
@@ -360,6 +362,8 @@ export class SupabaseAdapter implements StorageAdapter {
     if (activity.title !== undefined) result.title = activity.title
     if (activity.description !== undefined) result.description = activity.description
     if (activity.date !== undefined) result.date = activity.date
+    if (activity.dateEnd !== undefined) result.date_end = activity.dateEnd
+    if (activity.registrationDeadline !== undefined) result.registration_deadline = activity.registrationDeadline
     if (activity.location !== undefined) result.location = activity.location
     if (activity.minParticipants !== undefined) result.min_participants = activity.minParticipants
     if (activity.maxParticipants !== undefined) result.max_participants = activity.maxParticipants

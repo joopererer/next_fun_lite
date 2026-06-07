@@ -16,6 +16,7 @@ export interface ParseFormSetters {
   setNotes?: (v: string) => void
   setMaxParticipants?: (v: string) => void
   setDate?: (v: string) => void
+  setDateEnd?: (v: string) => void
   setDateHint?: (v: string) => void
   setCategory?: (v: ActivityCategory) => void
   setFeeLevel?: (v: FeeLevel) => void
@@ -39,6 +40,7 @@ export function applyParseResult(
 
   if (data.date && !options?.dateHintOnly) {
     setters.setDate?.(toDatetimeLocalValue(data.date))
+    if (data.dateEnd) setters.setDateEnd?.(toDatetimeLocalValue(data.dateEnd))
   }
 
   if (data.date && options?.dateHintOnly) {
@@ -62,6 +64,13 @@ export function applyParseResult(
       }
     }
     if (hint) setters.setDateHint?.(hint)
+    if (end && !Number.isNaN(endDate!.getTime())) {
+      setters.setDateEnd?.(toDatetimeLocalValue(end))
+    }
+  }
+
+  if (data.dateEnd && options?.dateHintOnly && !data.date) {
+    setters.setDateEnd?.(toDatetimeLocalValue(data.dateEnd))
   }
 
   if (options?.dateHintOnly && data.notes?.includes('活动时间：')) {

@@ -51,6 +51,8 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [date, setDate] = useState(initial?.date?.slice(0, 16) ?? '')
+  const [dateEnd, setDateEnd] = useState(initial?.dateEnd?.slice(0, 16) ?? '')
+  const [registrationDeadline, setRegistrationDeadline] = useState(initial?.registrationDeadline?.slice(0, 16) ?? '')
   const [location, setLocation] = useState(initial?.location ?? '')
   const [minParticipants, setMinParticipants] = useState(
     String(initial?.minParticipants ?? DEFAULT_MIN_PARTICIPANTS),
@@ -102,6 +104,8 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     setTitle(initial.title ?? '')
     setDescription(initial.description ?? '')
     setDate(initial.date?.slice(0, 16) ?? '')
+    setDateEnd(initial.dateEnd?.slice(0, 16) ?? '')
+    setRegistrationDeadline(initial.registrationDeadline?.slice(0, 16) ?? '')
     setLocation(initial.location ?? '')
     setMinParticipants(String(initial.minParticipants ?? DEFAULT_MIN_PARTICIPANTS))
     setMaxParticipants(
@@ -181,6 +185,7 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
       setNotes,
       setMaxParticipants: (v) => setMaxParticipants(clampParticipantInput(String(v))),
       setDate,
+      setDateEnd,
       setCategory,
       setItinerary,
     }, { getNotes: () => notes })
@@ -194,6 +199,8 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     title: title.trim(),
     description: description.trim(),
     date: date ? new Date(date).toISOString() : null,
+    dateEnd: dateEnd ? new Date(dateEnd).toISOString() : null,
+    registrationDeadline: registrationDeadline ? new Date(registrationDeadline).toISOString() : null,
     location: location.trim(),
     minParticipants: min,
     maxParticipants: max,
@@ -352,6 +359,18 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
             </select>
           </div>
         )}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm text-gray-600 mb-1 block">结束时间（选填）</label>
+          <input type="datetime-local" className="input-field" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+          <p className="text-xs text-gray-400 mt-1">留空则开始日当天 23:59（巴黎时间）视为结束</p>
+        </div>
+        <div>
+          <label className="text-sm text-gray-600 mb-1 block">报名截止（选填）</label>
+          <input type="datetime-local" className="input-field" value={registrationDeadline} onChange={(e) => setRegistrationDeadline(e.target.value)} />
+          <p className="text-xs text-gray-400 mt-1">留空则活动开始前均可报名</p>
+        </div>
       </div>
       <div>
         <label className="text-sm text-gray-600 mb-1 block">地点 *</label>

@@ -23,6 +23,7 @@ function normalizeMaxParticipants(body: Partial<Activity>): number | null {
 }
 
 const EXTENDED_KEYS: (keyof Activity)[] = [
+  'dateEnd', 'registrationDeadline',
   'feeLevel', 'ticketPrices', 'ticketUrl', 'ticketDeadline', 'ticketMethod', 'refundPolicy',
   'difficulty', 'distanceAndDuration', 'itinerary', 'equipment', 'transportation', 'mealArrangement',
   'restaurantAddress', 'perPersonCost', 'reservationMethod', 'requiresDeposit', 'recap', 'recapImages',
@@ -51,6 +52,8 @@ export function buildRecruitmentPayload(body: CreateRecruitmentBody): Partial<Ac
     title: body.title?.trim() ?? '',
     description: body.description?.trim() ?? '',
     date: body.date ?? null,
+    dateEnd: body.dateEnd ?? null,
+    registrationDeadline: body.registrationDeadline ?? null,
     location: body.location?.trim() ?? '',
     minParticipants,
     maxParticipants,

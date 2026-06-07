@@ -13,11 +13,12 @@ import { RegistrationPreview } from '../components/RegistrationPreview'
 import { api, getCancelUrl } from '../lib/api'
 import { getCancelReasonLabel, isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
-import { isRegistrationFull } from '../lib/participants'
 import { getClerkDisplayName } from '../lib/displayName'
 import { formatEventDate } from '../lib/user'
 import { CapacityBar } from '../components/CapacityBar'
+import { ActivityBadge } from '../components/ActivityBadge'
 import { getDeviceId } from '../utils/device'
+import { canRegister, getRegistrationButtonLabel, isInProgress, isProposalExpired } from '../lib/activityPhase'
 import { notifyActivitiesChanged } from '../lib/activityEvents'
 import { saveGuestRegistration, removeGuestRegistration, getGuestRegistrations } from '../lib/guestRegistrations'
 import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
@@ -154,6 +155,10 @@ export function EventPage() {
 
   const submitRegistration = async (data: { name?: string; wechat?: string }) => {
     if (!id || !activity || activity.status !== 'recruiting' || myRegistration) return
+    if (!canRegister({ ...activity, registeredCount: activity.registeredCount })) {
+      alert('报名已结束')
+      return
+    }
     if (activity.maxParticipants != null && activity.registeredCount + participantCount > activity.maxParticipants) {
       alert('名额不足')
       return
@@ -315,7 +320,13 @@ export function EventPage() {
   }
 
   const displayCount = activity.registeredCount ?? registeredCount
-  const full = isRegistrationFull(displayCount, activity.maxParticipants)
+  const registrationOpen = canRegister({ ...activity, registeredCount: displayCount })
+  const inProgress = isInProgress(activity)
+  const proposalExpired = activity.status === 'proposed' && isProposalExpired(activity)
+  const registerButtonLabel = getRegistrationButtonLabel(
+    { ...activity, registeredCount: displayCount },
+    Boolean(myRegistration),
+  )
   const endedSuccess = isEndedSuccess(activity.status)
   const endedCancelled = isEndedCancelled(activity.status)
 
@@ -364,11 +375,26 @@ export function EventPage() {
         <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
           {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
         </span>
+        <div className="mb-2">
+          <ActivityBadge activity={{ ...activity, registeredCount: displayCount }} />
+        </div>
         <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
 
-        {activity.status === 'proposed' && (
+        {inProgress && (
+          <div className="bg-blue-50 text-blue-800 text-sm rounded-xl p-3 mb-4">
+            🔵 活动正在进行中
+          </div>
+        )}
+
+        {activity.status === 'proposed' && !proposalExpired && (
           <div className="bg-blue-50 text-blue-800 text-sm rounded-xl p-3 mb-4">
             💡 这是一个提议，尚未开始招募。感兴趣的人多了，管理员会发起正式活动。
+          </div>
+        )}
+
+        {proposalExpired && (
+          <div className="bg-amber-50 text-amber-800 text-sm rounded-xl p-3 mb-4">
+            ⚠️ 该提议信息可能已过期，仅供参考。如需更新请联系提议人或管理员。
           </div>
         )}
 
@@ -458,9 +484,9 @@ export function EventPage() {
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
             本次活动已结束
           </div>
-        ) : full ? (
+        ) : !registrationOpen && activity.status === 'recruiting' && !myRegistration ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500 font-medium">
-            已满
+            {registerButtonLabel}
           </div>
         ) : activity.status === 'proposed' ? (
           <div className="space-y-4">
@@ -472,9 +498,9 @@ export function EventPage() {
                   : 'btn-primary'
               }`}
               onClick={toggleInterest}
-              disabled={interestLoading}
+              disabled={interestLoading || proposalExpired}
             >
-              {interestLoading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
+              {interestLoading ? '...' : proposalExpired ? '信息已过期' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
             </button>
             <Link href="/" className="btn-secondary block text-center">回到首页</Link>
           </div>
@@ -511,8 +537,9 @@ export function EventPage() {
               type="button"
               className="btn-primary w-full text-lg"
               onClick={() => setShowRegistrationModal(true)}
+              disabled={!registrationOpen}
             >
-              我要报名
+              {registerButtonLabel}
             </button>
           </div>
         ) : (
@@ -559,8 +586,8 @@ export function EventPage() {
             </div>
 
             <div className="sticky bottom-0 bg-warm-bg pt-3 pb-safe -mx-4 px-4">
-              <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? '提交中...' : '提交报名'}
+              <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting || !registrationOpen}>
+                {submitting ? '提交中...' : registerButtonLabel === '我要报名' ? '提交报名' : registerButtonLabel}
               </button>
             </div>
           </>

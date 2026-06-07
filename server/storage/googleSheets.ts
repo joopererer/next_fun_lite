@@ -4,7 +4,7 @@ import type { Activity, ActivityCategory, EnvConfig, Interest, Registration } fr
 import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
 const ACTIVITY_HEADERS = [
-  'id', 'title', 'description', 'date', 'location', 'max_participants', 'min_participants',
+  'id', 'title', 'description', 'date', 'date_end', 'registration_deadline', 'location', 'max_participants', 'min_participants',
   'fee', 'notes', 'organizer_name', 'organizer_wechat', 'source_url',
   'category', 'status', 'interested_count', 'created_at',
   'fee_level', 'ticket_prices', 'ticket_url', 'ticket_deadline', 'ticket_method', 'refund_policy',
@@ -36,6 +36,8 @@ function activityFromRow(row: string[]): Activity {
     title: r.title,
     description: r.description,
     date: r.date || null,
+    dateEnd: r.date_end || undefined,
+    registrationDeadline: r.registration_deadline || undefined,
     location: r.location,
     maxParticipants: r.max_participants ? parseInt(r.max_participants, 10) : null,
     minParticipants: r.min_participants ? parseInt(r.min_participants, 10) : undefined,
@@ -78,7 +80,7 @@ function activityFromRow(row: string[]): Activity {
 
 function activityToRow(a: Activity): string[] {
   return [
-    a.id, a.title, a.description, a.date ?? '', a.location,
+    a.id, a.title, a.description, a.date ?? '', a.dateEnd ?? '', a.registrationDeadline ?? '', a.location,
     a.maxParticipants?.toString() ?? '', a.minParticipants?.toString() ?? '', a.fee, a.notes,
     a.organizerName, a.organizerWechat, a.sourceUrl, a.category, a.status,
     a.interestedCount.toString(), a.createdAt,

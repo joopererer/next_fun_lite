@@ -17,6 +17,8 @@ create table if not exists activities (
   title text not null,
   description text,
   date timestamptz,
+  date_end timestamptz,
+  registration_deadline timestamptz,
   location text,
   min_participants int,
   max_participants int,
