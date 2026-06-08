@@ -27,12 +27,12 @@ export function KanbanColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[240px] bg-gray-50 rounded-2xl p-3 transition-colors flex flex-col ${
+      className={`min-w-0 bg-gray-50 rounded-2xl p-4 lg:p-5 transition-colors flex flex-col min-h-[200px] ${
         isOver ? 'bg-green-50 ring-2 ring-green-300' : ''
       }`}
     >
-      <div className="flex items-center gap-2 mb-3 px-1">
-        <h3 className="font-semibold text-sm">{KANBAN_COLUMN_LABELS[column]}</h3>
+      <div className="flex items-center gap-2 mb-4 px-1">
+        <h3 className="font-semibold text-sm lg:text-base">{KANBAN_COLUMN_LABELS[column]}</h3>
         <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">
           {activities.length}
         </span>

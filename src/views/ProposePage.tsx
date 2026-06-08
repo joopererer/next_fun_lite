@@ -1,16 +1,23 @@
 'use client'
 
 import { useUser } from '@clerk/nextjs'
+import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/layout/Header'
+import { Footer } from '../components/layout/Footer'
 import { SignInGate } from '../components/SignInGate'
-import type { ActivityCategory, FeeLevel, ParseResult } from '../../shared/types'
-import { api } from '../lib/api'
+import type { SimilarProposalMatch } from '../../shared/activityDedupe'
+import type { Activity, ActivityCategory, FeeLevel, OrganizerContactType, ParseResult } from '../../shared/types'
+import { OrganizerContactFields } from '../components/contact/OrganizerContactFields'
+import { SimilarProposalsDialog } from '../components/SimilarProposalsDialog'
+import { api, getEventUrl } from '../lib/api'
+import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../lib/validateSchedule'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { FEE_LEVELS } from '../lib/feeLevel'
 import { getClerkDisplayName } from '../lib/displayName'
 import { applyParseResult } from '../lib/parseResult'
+import { ImageUploadZone } from '../components/ImageUploadZone'
 
 type InputMode = 'link' | 'image' | 'manual'
 
@@ -21,25 +28,39 @@ export function ProposePage() {
   const [parsing, setParsing] = useState(false)
   const [parseMessage, setParseMessage] = useState('')
   const [parseSuccess, setParseSuccess] = useState<boolean | null>(null)
-  const [submitted, setSubmitted] = useState(false)
+  const [created, setCreated] = useState<Activity | null>(null)
+  const [eventUrl, setEventUrl] = useState('')
+  const [qrDataUrl, setQrDataUrl] = useState('')
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
   const [dateHint, setDateHint] = useState('')
+  const [dateEnd, setDateEnd] = useState('')
   const [location, setLocation] = useState('')
   const [category, setCategory] = useState<ActivityCategory>('other')
   const [feeLevel, setFeeLevel] = useState<FeeLevel>('unknown')
   const [feeDetail, setFeeDetail] = useState('')
   const [itinerary, setItinerary] = useState('')
-  const [organizerWechat, setOrganizerWechat] = useState('')
+  const [organizerContactType, setOrganizerContactType] = useState<OrganizerContactType>('private')
+  const [organizerContact, setOrganizerContact] = useState('')
+  const [organizerContactLabel, setOrganizerContactLabel] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [checkingSimilar, setCheckingSimilar] = useState(false)
+  const [similarMatches, setSimilarMatches] = useState<SimilarProposalMatch[]>([])
+  const [similarDialogOpen, setSimilarDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!clerkUser) return
     api.getProfile()
       .then((p) => {
-        if (p?.wechat) setOrganizerWechat(p.wechat)
+        if (p?.wechat) {
+          setOrganizerContactType('wechat')
+          setOrganizerContact(p.wechat)
+        } else if (p?.email) {
+          setOrganizerContactType('email')
+          setOrganizerContact(p.email)
+        }
       })
       .catch(() => {})
   }, [clerkUser])
@@ -51,6 +72,7 @@ export function ProposePage() {
       setLocation,
       setSourceUrl,
       setDateHint,
+      setDateEnd,
       setCategory,
       setFeeLevel,
       setFee: setFeeDetail,
@@ -71,7 +93,7 @@ export function ProposePage() {
       const res = await api.parse({ url: url.trim() })
       setParseSuccess(res.success)
       setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
-      applyParsed({ ...res.data, sourceUrl: url.trim() })
+      if (res.success) applyParsed({ ...res.data, sourceUrl: url.trim() })
     } catch {
       setParseSuccess(false)
       setParseMessage('解析失败，请手动填写或上传截图')
@@ -81,11 +103,8 @@ export function ProposePage() {
   }
 
   const handleImageUpload = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      alert('图片最大 5MB')
-      return
-    }
     setParsing(true)
+    setParseMessage('')
     const reader = new FileReader()
     reader.onload = async () => {
       const base64 = (reader.result as string).split(',')[1]
@@ -93,7 +112,7 @@ export function ProposePage() {
         const res = await api.parse({ imageBase64: base64, mimeType: file.type })
         setParseSuccess(res.success)
         setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
-        applyParsed(res.data)
+        if (res.success) applyParsed(res.data)
       } catch {
         setParseSuccess(false)
         setParseMessage('解析失败，请手动填写')
@@ -104,27 +123,37 @@ export function ProposePage() {
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      alert('请填写活动/地点名称')
-      return
-    }
+  const buildProposalPayload = () => ({
+    title: title.trim(),
+    description: description.trim(),
+    date: dateHint ? null : null,
+    location: location.trim(),
+    sourceUrl: sourceUrl.trim(),
+    category,
+    feeLevel,
+    organizerContactType,
+    organizerContact: organizerContactType === 'private' ? '' : organizerContact.trim(),
+    organizerContactLabel: organizerContactType === 'other' ? organizerContactLabel.trim() : undefined,
+    organizerWechat: organizerContactType === 'wechat' ? organizerContact.trim() : '',
+    fee: feeDetail.trim(),
+    itinerary: itinerary.trim() || undefined,
+    notes: dateHint ? `大概时间：${dateHint}` : '',
+    dateEnd: dateEnd ? new Date(dateEnd).toISOString() : null,
+  })
+
+  const submitProposal = async () => {
     setSubmitting(true)
     try {
-      await api.createProposal({
-        title: title.trim(),
-        description: description.trim(),
-        date: dateHint ? null : null,
-        location: location.trim(),
-        sourceUrl: sourceUrl.trim(),
-        category,
-        feeLevel,
-        organizerWechat: organizerWechat.trim(),
-        fee: feeDetail.trim(),
-        itinerary: itinerary.trim() || undefined,
-        notes: dateHint ? `大概时间：${dateHint}` : '',
-      })
-      setSubmitted(true)
+      const activity = await api.createProposal(buildProposalPayload())
+      const url = getEventUrl(activity.id)
+      setCreated(activity)
+      setEventUrl(url)
+      try {
+        const qr = await QRCode.toDataURL(url, { width: 200 })
+        setQrDataUrl(qr)
+      } catch {
+        setQrDataUrl('')
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : '提交失败')
     } finally {
@@ -132,27 +161,89 @@ export function ProposePage() {
     }
   }
 
-  if (submitted) {
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      alert('请填写活动/地点名称')
+      return
+    }
+    if (isEndTimeInPast(dateEnd || undefined)) {
+      alert(PAST_END_TIME_MESSAGE)
+      return
+    }
+
+    setCheckingSimilar(true)
+    try {
+      const { matches } = await api.findSimilarProposals({
+        title: title.trim(),
+        location: location.trim() || undefined,
+        sourceUrl: sourceUrl.trim() || undefined,
+      })
+      if (matches.length > 0) {
+        setSimilarMatches(matches)
+        setSimilarDialogOpen(true)
+        return
+      }
+      await submitProposal()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '检查相似提议失败，请稍后重试')
+    } finally {
+      setCheckingSimilar(false)
+    }
+  }
+
+  const handleConfirmSimilar = async () => {
+    await submitProposal()
+    setSimilarDialogOpen(false)
+  }
+
+  if (created) {
+    const url = eventUrl || getEventUrl(created.id)
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="max-w-lg mx-auto px-4 py-16 text-center page-enter">
+        <main className="flex-1 max-w-lg mx-auto px-4 py-16 text-center page-enter w-full">
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-2xl font-bold mb-3">提议已收到！</h2>
-          <p className="text-gray-500 mb-8">
-            大家会在首页看到你的提议。如果感兴趣的人多了，管理员会发起招募。
+          <p className="text-gray-500 mb-6">
+            大家会在首页看到你的提议。感兴趣的人多了，管理员会发起招募。
           </p>
+          <p className="text-sm text-gray-600 mb-2 break-all">提议链接：{url}</p>
+          <div className="flex gap-3 justify-center mb-4 flex-wrap">
+            <button type="button" className="btn-primary" onClick={() => navigator.clipboard.writeText(url)}>
+              复制链接
+            </button>
+            {created.organizerContactType === 'wechat' && created.organizerContact && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => navigator.clipboard.writeText(created.organizerContact!)}
+              >
+                复制微信号
+              </button>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 mb-4">分享到微信群，让朋友扫码查看或表达兴趣</p>
+          {qrDataUrl && (
+            <div className="mb-8">
+              <p className="text-sm text-gray-500 mb-2">提议二维码</p>
+              <img src={qrDataUrl} alt="QR Code" className="mx-auto rounded-xl" />
+            </div>
+          )}
           <div className="flex gap-3 justify-center">
             <Link href="/" className="btn-primary">回到首页</Link>
-            <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>再提交一个</button>
+            <Link href={`/event/${created.id}`} className="btn-secondary">查看提议</Link>
+            <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
+              再提交一个
+            </button>
           </div>
         </main>
+        <Footer />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen flex flex-col pb-32">
       <Header />
       <SignInGate message="登录后即可提交提议">
       <main className="max-w-lg mx-auto px-4 py-6 page-enter">
@@ -195,16 +286,11 @@ export function ProposePage() {
 
         {mode === 'image' && (
           <div className="mb-6">
-            <label className="block border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-green-400 transition-colors">
-              <input
-                type="file"
-                accept="image/jpeg,image/png"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-              />
-              <p className="text-gray-500">拖拽或点击上传截图 / 海报</p>
-              <p className="text-xs text-gray-400 mt-1">支持 JPG、PNG，最大 5MB</p>
-            </label>
+            <ImageUploadZone
+              onFile={handleImageUpload}
+              parsing={parsing}
+              hint="图片/链接 AI 解析支持 Claude、OpenAI、Gemini，配置 API Key 并设置 PARSE_MODE"
+            />
           </div>
         )}
 
@@ -240,6 +326,11 @@ export function ProposePage() {
           <div>
             <label className="text-sm text-gray-600 mb-1 block">大概时间（选填）</label>
             <input className="input-field" placeholder="如「周末」「下午」" value={dateHint} onChange={(e) => setDateHint(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm text-gray-600 mb-1 block">信息有效期至（选填）</label>
+            <input type="datetime-local" className="input-field" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+            <p className="text-xs text-gray-400 mt-1">如展览结束日；过期后显示标签，由管理员或提议人处理</p>
           </div>
           <div>
             <label className="text-sm text-gray-600 mb-1 block">活动类型</label>
@@ -302,17 +393,34 @@ export function ProposePage() {
           <p className="text-sm text-gray-500 mb-3">
             以 <span className="font-medium text-gray-700">{getClerkDisplayName(clerkUser)}</span> 的身份提交
           </p>
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block">微信号（可选）</label>
-            <input className="input-field" value={organizerWechat} onChange={(e) => setOrganizerWechat(e.target.value)} placeholder="若成团方便联系你" />
-          </div>
+          <OrganizerContactFields
+            contactType={organizerContactType}
+            contact={organizerContact}
+            contactLabel={organizerContactLabel}
+            onTypeChange={setOrganizerContactType}
+            onContactChange={setOrganizerContact}
+            onLabelChange={setOrganizerContactLabel}
+          />
         </div>
 
-        <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? '提交中...' : '提交提议 🎉'}
+        <button
+          type="button"
+          className="btn-primary w-full text-lg"
+          onClick={handleSubmit}
+          disabled={submitting || checkingSimilar}
+        >
+          {checkingSimilar ? '检查中...' : submitting ? '提交中...' : '提交提议 🎉'}
         </button>
       </main>
       </SignInGate>
+      <SimilarProposalsDialog
+        open={similarDialogOpen}
+        matches={similarMatches}
+        onConfirm={handleConfirmSimilar}
+        onCancel={() => setSimilarDialogOpen(false)}
+        confirming={submitting}
+      />
+      <Footer />
     </div>
   )
 }

@@ -17,6 +17,8 @@ create table if not exists activities (
   title text not null,
   description text,
   date timestamptz,
+  date_end timestamptz,
+  registration_deadline timestamptz,
   location text,
   min_participants int,
   max_participants int,
@@ -25,6 +27,17 @@ create table if not exists activities (
   notes text,
   organizer_name text,
   organizer_wechat text,
+  organizer_contact_type text default 'wechat',
+  organizer_contact text,
+  organizer_contact_label text,
+  meeting_location text,
+  meeting_time text,
+  post_type text default 'activity',
+  info_start_time timestamptz,
+  info_deadline timestamptz,
+  info_price text,
+  info_action_label text,
+  info_action_url text,
   organizer_id text references profiles(id),
   source_url text,
   status text default 'proposed',
@@ -62,20 +75,28 @@ create table if not exists registrations (
   user_id text references profiles(id),
   name text not null,
   wechat text not null,
+  contact_type text default 'wechat',
+  contact_value text not null default '',
+  contact_label text,
   participant_count int default 1,
   note text,
-  registered_at timestamptz default now()
+  registered_at timestamptz default now(),
+  cancel_token text unique,
+  cancelled_at timestamptz,
+  cancelled_by text
 );
 
 create table if not exists interests (
   id text primary key,
   activity_id text not null references activities(id) on delete cascade,
   user_id text references profiles(id),
+  device_id text,
   wechat text,
-  created_at timestamptz default now(),
-  unique(activity_id, user_id)
+  created_at timestamptz default now()
 );
 
+create index if not exists activities_post_type_idx on activities(post_type);
+create index if not exists activities_info_deadline_idx on activities(info_deadline);
 create index if not exists activities_status_idx on activities(status);
 create index if not exists activities_category_idx on activities(category);
 create index if not exists activities_created_at_idx on activities(created_at desc);
@@ -84,6 +105,16 @@ create index if not exists registrations_user_id_idx on registrations(user_id);
 create index if not exists registrations_wechat_idx on registrations(wechat);
 create index if not exists interests_activity_id_idx on interests(activity_id);
 create index if not exists interests_user_id_idx on interests(user_id);
+create index if not exists interests_device_id_idx on interests(device_id);
+create index if not exists registrations_cancel_token_idx on registrations(cancel_token);
+
+create unique index if not exists interests_user_unique
+  on interests(activity_id, user_id)
+  where user_id is not null;
+
+create unique index if not exists interests_device_unique
+  on interests(activity_id, device_id)
+  where user_id is null and device_id is not null;
 
 create or replace function update_updated_at()
 returns trigger as $$

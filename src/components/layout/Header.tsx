@@ -9,7 +9,6 @@ export function Header() {
       <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="block">
           <h1 className="text-lg font-bold text-green-700">🎉 快乐制造局</h1>
-          <p className="text-xs text-gray-500">Next Fun Club · 巴黎</p>
         </Link>
         <HeaderUserMenu />
       </div>

@@ -9,6 +9,9 @@ import type {
   Registration,
   RegistrationMutationResult,
 } from '@/shared/types'
+import type { SimilarProposalMatch } from '@/shared/activityDedupe'
+import type { ParsedImportRow } from '@/shared/excelImport'
+import { getDeviceId } from '@/src/utils/device'
 
 const ADMIN_KEY = 'nfl_admin_password'
 
@@ -42,6 +45,11 @@ async function authHeaders(): Promise<HeadersInit> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+async function deviceHeaders(): Promise<HeadersInit> {
+  if (typeof window === 'undefined') return {}
+  return { 'X-Device-Id': getDeviceId() }
+}
+
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(url, {
     ...options,
@@ -49,6 +57,7 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
       'Content-Type': 'application/json',
       ...adminHeaders(),
       ...(await authHeaders()),
+      ...(await deviceHeaders()),
       ...options.headers,
     },
   })
@@ -64,6 +73,11 @@ export interface MyRegistrationsResponse {
   activities: ActivityWithCount[]
 }
 
+export interface RegistrationSummary {
+  total: number
+  previews: Array<{ name: string; avatarUrl: string | null }>
+}
+
 export const api = {
   getActivities: () => request<ActivityWithCount[]>('/api/activities'),
   getActivitiesByIds: (ids: string[]) =>
@@ -73,6 +87,14 @@ export const api = {
   getActivity: (id: string) => request<ActivityWithCount>(`/api/activities/${id}`),
   createProposal: (data: Partial<Activity>) =>
     request<Activity>('/api/proposals', { method: 'POST', body: JSON.stringify(data) }),
+  createInfo: (data: Partial<Activity>) =>
+    request<Activity>('/api/info', { method: 'POST', body: JSON.stringify(data) }),
+  findSimilarProposals: (params: { title: string; location?: string; sourceUrl?: string }) => {
+    const q = new URLSearchParams({ title: params.title })
+    if (params.location) q.set('location', params.location)
+    if (params.sourceUrl) q.set('sourceUrl', params.sourceUrl)
+    return request<{ matches: SimilarProposalMatch[] }>(`/api/proposals/similar?${q.toString()}`)
+  },
   createRecruitment: (data: Partial<Activity> & { sourceProposalId?: string }) =>
     request<RecruitmentResponse>('/api/recruitments', { method: 'POST', body: JSON.stringify(data) }),
   createActivity: (data: Partial<Activity>) =>
@@ -97,6 +119,9 @@ export const api = {
     activityId: string
     name?: string
     wechat?: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue?: string
+    contactLabel?: string
     participantCount: number
     note: string
   }) =>
@@ -106,6 +131,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ ...data, action: 'remove' as const }),
     }),
+  cancelRegistrationById: (id: string) =>
+    request<RegistrationMutationResult>(`/api/registrations/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  getRegistrationSummary: (activityId: string) =>
+    request<RegistrationSummary>(`/api/activities/${activityId}/registrations/summary`),
   createInterest: (data: { activityId: string; name?: string; wechat?: string }) =>
     request<InterestMutationResult>('/api/interests', { method: 'POST', body: JSON.stringify(data) }),
   getInterests: (activityId: string) =>
@@ -117,9 +148,21 @@ export const api = {
     }),
   parse: (data: { url?: string; imageBase64?: string; mimeType?: string }) =>
     request<ApiParseResponse>('/api/parse', { method: 'POST', body: JSON.stringify(data) }),
+  adminImport: (rows: ParsedImportRow[]) =>
+    request<{
+      imported: number
+      registrationsCreated: number
+      skipped: number
+      failed: Array<{ title: string; error: string }>
+    }>('/api/admin/import', { method: 'POST', body: JSON.stringify({ rows }) }),
 }
 
 export function getEventUrl(id: string): string {
   if (typeof window === 'undefined') return `/event/${id}`
   return `${window.location.origin}/event/${id}`
+}
+
+export function getCancelUrl(token: string): string {
+  if (typeof window === 'undefined') return `/cancel/${token}`
+  return `${window.location.origin}/cancel/${token}`
 }

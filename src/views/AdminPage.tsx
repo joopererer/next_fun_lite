@@ -1,8 +1,9 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Activity, ActivityStatus, ActivityWithCount } from '../../shared/types'
 import { ActivityListTable } from '../components/admin/ActivityListTable'
 import { AdminGate } from '../components/admin/AdminGate'
@@ -10,19 +11,26 @@ import { CancelActivityModal } from '../components/admin/CancelActivityModal'
 import { EndActivityModal } from '../components/admin/EndActivityModal'
 import { KanbanBoard } from '../components/admin/KanbanBoard'
 import { RecruitForm } from '../components/recruit/RecruitForm'
+
+const ImportTab = dynamic(
+  () => import('../components/admin/ImportTab').then((m) => m.ImportTab),
+  { ssr: false, loading: () => <p className="text-gray-400 text-sm py-8">加载导入工具...</p> },
+)
 import { isTerminalStatus } from '../lib/activityStatus'
 import { api } from '../lib/api'
+import { Footer } from '../components/layout/Footer'
 
-type Tab = 'kanban' | 'list' | 'create'
+type Tab = 'kanban' | 'list' | 'create' | 'import'
 
 export function AdminPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const initialTab = (searchParams.get('tab') as Tab) || 'kanban'
   const editId = searchParams.get('edit')
 
   const [tab, setTab] = useState<Tab>(initialTab)
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
-  const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'all' | 'info'>('all')
   const [editActivity, setEditActivity] = useState<ActivityWithCount | null>(null)
   const [endModalActivity, setEndModalActivity] = useState<ActivityWithCount | null>(null)
   const [cancelModalActivity, setCancelModalActivity] = useState<ActivityWithCount | null>(null)
@@ -32,6 +40,21 @@ export function AdminPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('tab') as Tab | null
+    if (fromUrl && ['kanban', 'list', 'create', 'import'].includes(fromUrl)) {
+      setTab(fromUrl)
+    }
+  }, [searchParams])
+
+  const navigateTab = (next: Tab) => {
+    setTab(next)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', next)
+    if (next !== 'create') params.delete('edit')
+    router.replace(`/admin?${params.toString()}`, { scroll: false })
+  }
 
   useEffect(() => {
     if (editId) {
@@ -83,29 +106,30 @@ export function AdminPage() {
     { id: 'kanban', label: '看板视图' },
     { id: 'list', label: '列表视图' },
     { id: 'create', label: editId ? '编辑活动' : '新建活动' },
+    { id: 'import', label: '📥 导入' },
   ]
 
   return (
     <AdminGate>
-      <div className="min-h-screen pb-12">
+      <div className="min-h-screen flex flex-col pb-12">
         <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div>
               <h1 className="text-lg font-bold text-green-700">管理看板</h1>
               <Link href="/" className="text-xs text-gray-400 hover:text-green-600">← 回到首页</Link>
             </div>
           </div>
-          <div className="max-w-6xl mx-auto px-4 flex gap-1 border-t border-gray-50">
+          <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex gap-1 border-t border-gray-50 overflow-x-auto">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0 ${
                   tab === t.id
                     ? 'border-green-600 text-green-700'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
-                onClick={() => setTab(t.id)}
+                onClick={() => navigateTab(t.id)}
               >
                 {t.label}
               </button>
@@ -113,7 +137,7 @@ export function AdminPage() {
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 py-6 page-enter">
+        <main className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 page-enter">
           {tab === 'kanban' && (
             <KanbanBoard
               activities={activities}
@@ -141,6 +165,13 @@ export function AdminPage() {
               onSuccess={load}
             />
           )}
+          {tab === 'import' && (
+            <ImportTab
+              activities={activities}
+              onImported={load}
+              onNavigate={(target) => navigateTab(target)}
+            />
+          )}
         </main>
 
         {endModalActivity && (
@@ -165,6 +196,7 @@ export function AdminPage() {
             }}
           />
         )}
+        <Footer />
       </div>
     </AdminGate>
   )

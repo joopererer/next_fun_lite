@@ -8,6 +8,8 @@ import { ActivityForm } from '../components/admin/ActivityForm'
 import { AdminGate } from '../components/admin/AdminGate'
 import { api, getEventUrl } from '../lib/api'
 import { formatEventDate } from '../lib/user'
+import { formatOrganizerContactLine, formatRegistrationContactLine } from '../lib/contact'
+import { Footer } from '../components/layout/Footer'
 
 export function AdminActivityPage() {
   const { id } = useParams<{ id: string }>()
@@ -34,7 +36,7 @@ export function AdminActivityPage() {
     const totalPeople = registrations.reduce((s, r) => s + r.participantCount, 0)
     const lines = registrations.map((r, i) => {
       const note = r.note ? ` 备注：${r.note}` : ''
-      return `${i + 1}. ${r.name}（微信：${r.wechat}）×${r.participantCount}${note}`
+      return `${i + 1}. ${r.name}（${formatRegistrationContactLine(r)}）×${r.participantCount}${note}`
     })
     const text = [
       `【${activity.title}】报名名单`,
@@ -68,16 +70,16 @@ export function AdminActivityPage() {
 
   return (
     <AdminGate>
-      <div className="min-h-screen pb-12">
+      <div className="min-h-screen flex flex-col pb-12">
         <header className="bg-white border-b border-gray-100">
-          <div className="max-w-3xl mx-auto px-4 py-4">
+          <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <Link href="/admin" className="text-sm text-gray-400 hover:text-green-600">← 返回看板</Link>
             <h1 className="text-xl font-bold mt-2">{activity.title}</h1>
             <p className="text-sm text-gray-500">{formatEventDate(activity.date)} · {activity.location}</p>
           </div>
         </header>
 
-        <main className="max-w-3xl mx-auto px-4 py-6 page-enter space-y-8">
+        <main className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 page-enter space-y-8">
           <section>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">活动信息</h2>
@@ -96,7 +98,9 @@ export function AdminActivityPage() {
                 <p>{activity.description || '暂无简介'}</p>
                 {activity.fee && <p>💰 {activity.fee}</p>}
                 {activity.notes && <p className="whitespace-pre-wrap text-gray-600">{activity.notes}</p>}
-                <p className="text-gray-400">发起人：{activity.organizerName} · {activity.organizerWechat}</p>
+                <p className="text-gray-400">
+                  发起人：{activity.organizerName} · {formatOrganizerContactLine(activity)}
+                </p>
                 <button
                   type="button"
                   className="text-green-600 text-sm"
@@ -124,7 +128,7 @@ export function AdminActivityPage() {
                     <thead>
                       <tr className="border-b text-left text-gray-500">
                         <th className="py-2 pr-3">姓名</th>
-                        <th className="py-2 pr-3">微信</th>
+                        <th className="py-2 pr-3">联系方式</th>
                         <th className="py-2 pr-3">人数</th>
                         <th className="py-2 pr-3">备注</th>
                         <th className="py-2">时间</th>
@@ -134,7 +138,7 @@ export function AdminActivityPage() {
                       {registrations.map((r) => (
                         <tr key={r.id} className="border-b border-gray-50">
                           <td className="py-2.5 pr-3">{r.name}</td>
-                          <td className="py-2.5 pr-3">{r.wechat}</td>
+                          <td className="py-2.5 pr-3">{formatRegistrationContactLine(r)}</td>
                           <td className="py-2.5 pr-3">{r.participantCount}</td>
                           <td className="py-2.5 pr-3">{r.note || '-'}</td>
                           <td className="py-2.5 text-gray-400">
@@ -152,6 +156,7 @@ export function AdminActivityPage() {
             )}
           </section>
         </main>
+        <Footer />
       </div>
     </AdminGate>
   )

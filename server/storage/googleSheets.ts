@@ -4,7 +4,7 @@ import type { Activity, ActivityCategory, EnvConfig, Interest, Registration } fr
 import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
 const ACTIVITY_HEADERS = [
-  'id', 'title', 'description', 'date', 'location', 'max_participants', 'min_participants',
+  'id', 'title', 'description', 'date', 'date_end', 'registration_deadline', 'location', 'max_participants', 'min_participants',
   'fee', 'notes', 'organizer_name', 'organizer_wechat', 'source_url',
   'category', 'status', 'interested_count', 'created_at',
   'fee_level', 'ticket_prices', 'ticket_url', 'ticket_deadline', 'ticket_method', 'refund_policy',
@@ -16,9 +16,10 @@ const ACTIVITY_HEADERS = [
 
 const REGISTRATION_HEADERS = [
   'id', 'activity_id', 'name', 'wechat', 'participant_count', 'note', 'registered_at', 'user_id',
+  'cancel_token', 'cancelled_at', 'cancelled_by',
 ] as const
 
-const INTEREST_HEADERS = ['id', 'activity_id', 'name', 'wechat', 'created_at', 'user_id'] as const
+const INTEREST_HEADERS = ['id', 'activity_id', 'name', 'wechat', 'created_at', 'user_id', 'device_id'] as const
 
 function rowToObject<T extends Record<string, string>>(headers: readonly string[], row: string[]): T {
   const obj: Record<string, string> = {}
@@ -35,6 +36,8 @@ function activityFromRow(row: string[]): Activity {
     title: r.title,
     description: r.description,
     date: r.date || null,
+    dateEnd: r.date_end || undefined,
+    registrationDeadline: r.registration_deadline || undefined,
     location: r.location,
     maxParticipants: r.max_participants ? parseInt(r.max_participants, 10) : null,
     minParticipants: r.min_participants ? parseInt(r.min_participants, 10) : undefined,
@@ -77,7 +80,7 @@ function activityFromRow(row: string[]): Activity {
 
 function activityToRow(a: Activity): string[] {
   return [
-    a.id, a.title, a.description, a.date ?? '', a.location,
+    a.id, a.title, a.description, a.date ?? '', a.dateEnd ?? '', a.registrationDeadline ?? '', a.location,
     a.maxParticipants?.toString() ?? '', a.minParticipants?.toString() ?? '', a.fee, a.notes,
     a.organizerName, a.organizerWechat, a.sourceUrl, a.category, a.status,
     a.interestedCount.toString(), a.createdAt,
@@ -107,13 +110,16 @@ function registrationFromRow(row: string[]): Registration {
     participantCount: parseInt(r.participant_count, 10) || 1,
     note: r.note,
     registeredAt: r.registered_at,
+    cancelToken: r.cancel_token || undefined,
+    cancelledAt: r.cancelled_at || undefined,
+    cancelledBy: (r.cancelled_by as Registration['cancelledBy']) || undefined,
   }
 }
 
 function registrationToRow(r: Registration): string[] {
   return [
     r.id, r.activityId, r.name, r.wechat, r.participantCount.toString(), r.note, r.registeredAt,
-    r.userId ?? '',
+    r.userId ?? '', r.cancelToken ?? '', r.cancelledAt ?? '', r.cancelledBy ?? '',
   ]
 }
 
@@ -123,6 +129,7 @@ function interestFromRow(row: string[]): Interest {
     id: r.id,
     activityId: r.activity_id,
     userId: r.user_id || undefined,
+    deviceId: r.device_id || undefined,
     name: r.name || undefined,
     wechat: r.wechat || undefined,
     createdAt: r.created_at,
@@ -130,7 +137,7 @@ function interestFromRow(row: string[]): Interest {
 }
 
 function interestToRow(i: Interest): string[] {
-  return [i.id, i.activityId, i.name ?? '', i.wechat ?? '', i.createdAt, i.userId ?? '']
+  return [i.id, i.activityId, i.name ?? '', i.wechat ?? '', i.createdAt, i.userId ?? '', i.deviceId ?? '']
 }
 
 export class GoogleSheetsAdapter implements StorageAdapter {
@@ -286,6 +293,26 @@ export class GoogleSheetsAdapter implements StorageAdapter {
       .sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime())
   }
 
+  async getActiveRegistrations(activityId: string): Promise<Registration[]> {
+    const all = await this.getRegistrations(activityId)
+    return all.filter((r) => !r.cancelledAt)
+  }
+
+  async getRegistrationById(id: string): Promise<Registration | null> {
+    const rows = await this.getSheetRows('registrations')
+    const row = rows.find((r) => r[0] === id)
+    return row ? registrationFromRow(row) : null
+  }
+
+  async getRegistrationByToken(token: string): Promise<Registration | null> {
+    const rows = await this.getSheetRows('registrations')
+    const row = rows.find((r) => {
+      const reg = registrationFromRow(r)
+      return reg.cancelToken === token
+    })
+    return row ? registrationFromRow(row) : null
+  }
+
   async getRegistrationsByUser(userId: string): Promise<Registration[]> {
     const rows = await this.getSheetRows('registrations')
     return rows
@@ -296,13 +323,40 @@ export class GoogleSheetsAdapter implements StorageAdapter {
 
   async findRegistration(activityId: string, wechat: string): Promise<Registration | null> {
     const rows = await this.getSheetRows('registrations')
-    const row = rows.find((r) => r[1] === activityId && r[3] === wechat)
+    const row = rows.find((r) => {
+      const reg = registrationFromRow(r)
+      return reg.activityId === activityId && reg.wechat === wechat && !reg.cancelledAt
+    })
     return row ? registrationFromRow(row) : null
   }
 
-  private async countRegistrations(activityId: string): Promise<number> {
-    const registrations = await this.getRegistrations(activityId)
+  async findRegistrationByNameAndWechat(
+    activityId: string,
+    name: string,
+    wechat: string,
+  ): Promise<Registration | null> {
+    const rows = await this.getSheetRows('registrations')
+    const n = name.trim().toLowerCase()
+    const w = wechat.trim().toLowerCase()
+    const row = rows.find((r) => {
+      const reg = registrationFromRow(r)
+      return (
+        reg.activityId === activityId &&
+        !reg.cancelledAt &&
+        reg.name.trim().toLowerCase() === n &&
+        reg.wechat.trim().toLowerCase() === w
+      )
+    })
+    return row ? registrationFromRow(row) : null
+  }
+
+  private async countActiveRegistrations(activityId: string): Promise<number> {
+    const registrations = await this.getActiveRegistrations(activityId)
     return registrations.reduce((sum, r) => sum + r.participantCount, 0)
+  }
+
+  private async countRegistrations(activityId: string): Promise<number> {
+    return this.countActiveRegistrations(activityId)
   }
 
   async createRegistration(data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> {
@@ -313,6 +367,21 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     }
     await this.appendRow('registrations', registrationToRow(registration))
     return registration
+  }
+
+  async cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult> {
+    const existing = await this.getRegistrationById(id)
+    if (!existing) return { registration: undefined, registeredCount: 0 }
+    if (existing.cancelledAt) {
+      return { registration: existing, registeredCount: await this.countActiveRegistrations(existing.activityId) }
+    }
+    const updated: Registration = {
+      ...existing,
+      cancelledAt: new Date().toISOString(),
+      cancelledBy,
+    }
+    await this.updateRowById('registrations', id, registrationToRow(updated))
+    return { registration: updated, registeredCount: await this.countActiveRegistrations(existing.activityId) }
   }
 
   async deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult> {
@@ -346,6 +415,15 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     return row ? interestFromRow(row) : null
   }
 
+  async findInterestByDeviceId(activityId: string, deviceId: string): Promise<Interest | null> {
+    const rows = await this.getSheetRows('interests')
+    const row = rows.find((r) => {
+      const interest = interestFromRow(r)
+      return interest.activityId === activityId && interest.deviceId === deviceId
+    })
+    return row ? interestFromRow(row) : null
+  }
+
   private async syncInterestedCount(activityId: string): Promise<number> {
     const interests = await this.getInterests(activityId)
     const count = interests.length
@@ -356,6 +434,11 @@ export class GoogleSheetsAdapter implements StorageAdapter {
   async createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> {
     if (data.userId) {
       const existing = await this.findInterestByUserId(data.activityId, data.userId)
+      if (existing) {
+        return { interest: existing, interestedCount: (await this.getActivity(data.activityId))?.interestedCount ?? 0 }
+      }
+    } else if (data.deviceId) {
+      const existing = await this.findInterestByDeviceId(data.activityId, data.deviceId)
       if (existing) {
         return { interest: existing, interestedCount: (await this.getActivity(data.activityId))?.interestedCount ?? 0 }
       }
@@ -387,6 +470,16 @@ export class GoogleSheetsAdapter implements StorageAdapter {
 
   async deleteInterestByUserId(activityId: string, userId: string): Promise<InterestMutationResult> {
     const existing = await this.findInterestByUserId(activityId, userId)
+    if (!existing) {
+      return { interestedCount: (await this.getActivity(activityId))?.interestedCount ?? 0 }
+    }
+    await this.deleteRowById('interests', existing.id)
+    const interestedCount = await this.syncInterestedCount(activityId)
+    return { interest: existing, interestedCount }
+  }
+
+  async deleteInterestByDeviceId(activityId: string, deviceId: string): Promise<InterestMutationResult> {
+    const existing = await this.findInterestByDeviceId(activityId, deviceId)
     if (!existing) {
       return { interestedCount: (await this.getActivity(activityId))?.interestedCount ?? 0 }
     }

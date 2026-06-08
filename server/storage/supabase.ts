@@ -85,6 +85,37 @@ export class SupabaseAdapter implements StorageAdapter {
     return (data ?? []).map((row) => this.mapRegistration(row as RegistrationRow))
   }
 
+  async getActiveRegistrations(activityId: string): Promise<Registration[]> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('activity_id', activityId)
+      .is('cancelled_at', null)
+      .order('registered_at', { ascending: true })
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapRegistration(row as RegistrationRow))
+  }
+
+  async getRegistrationById(id: string): Promise<Registration | null> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async getRegistrationByToken(token: string): Promise<Registration | null> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .select('*')
+      .eq('cancel_token', token)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
   async getRegistrationsByUser(userId: string): Promise<Registration[]> {
     const { data, error } = await this.db
       .from('registrations')
@@ -101,20 +132,64 @@ export class SupabaseAdapter implements StorageAdapter {
       .select('*')
       .eq('activity_id', activityId)
       .eq('wechat', wechat)
+      .is('cancelled_at', null)
       .maybeSingle()
     if (error || !data) return null
     return this.mapRegistration(data as RegistrationRow)
   }
 
-  async createRegistration(input: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> {
-    const id = nanoid(8)
+  async findRegistrationByNameAndWechat(
+    activityId: string,
+    name: string,
+    wechat: string,
+  ): Promise<Registration | null> {
     const { data, error } = await this.db
       .from('registrations')
-      .insert({ id, ...this.unmapRegistration(input) })
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('wechat', wechat.trim())
+      .eq('name', name.trim())
+      .is('cancelled_at', null)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async createRegistration(input: Omit<Registration, 'id' | 'registeredAt'> & { registeredAt?: string }): Promise<Registration> {
+    const id = nanoid(8)
+    const row = this.unmapRegistration(input)
+    if (input.registeredAt) row.registered_at = input.registeredAt
+    const { data, error } = await this.db
+      .from('registrations')
+      .insert({ id, ...row })
       .select()
       .single()
     if (error) throw error
     return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult> {
+    const existing = await this.getRegistrationById(id)
+    if (!existing) {
+      return { registration: undefined, registeredCount: 0 }
+    }
+    if (existing.cancelledAt) {
+      const registeredCount = await this.countActiveRegistrations(existing.activityId)
+      return { registration: existing, registeredCount }
+    }
+    const { data, error } = await this.db
+      .from('registrations')
+      .update({
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: cancelledBy,
+      })
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    const registration = this.mapRegistration(data as RegistrationRow)
+    const registeredCount = await this.countActiveRegistrations(existing.activityId)
+    return { registration, registeredCount }
   }
 
   async deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult> {
@@ -157,6 +232,17 @@ export class SupabaseAdapter implements StorageAdapter {
     return this.mapInterest(data as InterestRow)
   }
 
+  async findInterestByDeviceId(activityId: string, deviceId: string): Promise<Interest | null> {
+    const { data, error } = await this.db
+      .from('interests')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('device_id', deviceId)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapInterest(data as InterestRow)
+  }
+
   async createInterest(input: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult> {
     const id = nanoid(8)
     const { data, error } = await this.db
@@ -194,9 +280,25 @@ export class SupabaseAdapter implements StorageAdapter {
     return { interest: existing ?? undefined, interestedCount }
   }
 
-  private async countRegistrations(activityId: string): Promise<number> {
-    const registrations = await this.getRegistrations(activityId)
+  async deleteInterestByDeviceId(activityId: string, deviceId: string): Promise<InterestMutationResult> {
+    const existing = await this.findInterestByDeviceId(activityId, deviceId)
+    const { error } = await this.db
+      .from('interests')
+      .delete()
+      .eq('activity_id', activityId)
+      .eq('device_id', deviceId)
+    if (error) throw error
+    const interestedCount = await this.syncInterestedCount(activityId)
+    return { interest: existing ?? undefined, interestedCount }
+  }
+
+  private async countActiveRegistrations(activityId: string): Promise<number> {
+    const registrations = await this.getActiveRegistrations(activityId)
     return registrations.reduce((sum, r) => sum + r.participantCount, 0)
+  }
+
+  private async countRegistrations(activityId: string): Promise<number> {
+    return this.countActiveRegistrations(activityId)
   }
 
   private async syncInterestedCount(activityId: string): Promise<number> {
@@ -216,6 +318,8 @@ export class SupabaseAdapter implements StorageAdapter {
       title: String(row.title ?? ''),
       description: String(row.description ?? ''),
       date: row.date ? String(row.date) : null,
+      dateEnd: row.date_end ? String(row.date_end) : undefined,
+      registrationDeadline: row.registration_deadline ? String(row.registration_deadline) : undefined,
       location: String(row.location ?? ''),
       minParticipants: row.min_participants != null ? Number(row.min_participants) : undefined,
       maxParticipants: row.max_participants != null ? Number(row.max_participants) : null,
@@ -224,6 +328,17 @@ export class SupabaseAdapter implements StorageAdapter {
       notes: String(row.notes ?? ''),
       organizerName: String(row.organizer_name ?? ''),
       organizerWechat: String(row.organizer_wechat ?? ''),
+      organizerContactType: row.organizer_contact_type as Activity['organizerContactType'],
+      organizerContact: row.organizer_contact ? String(row.organizer_contact) : undefined,
+      organizerContactLabel: row.organizer_contact_label ? String(row.organizer_contact_label) : undefined,
+      meetingLocation: row.meeting_location ? String(row.meeting_location) : undefined,
+      meetingTime: row.meeting_time ? String(row.meeting_time) : undefined,
+      postType: (row.post_type as Activity['postType']) ?? 'activity',
+      infoStartTime: row.info_start_time ? String(row.info_start_time) : undefined,
+      infoDeadline: row.info_deadline ? String(row.info_deadline) : undefined,
+      infoPrice: row.info_price ? String(row.info_price) : undefined,
+      infoActionLabel: row.info_action_label ? String(row.info_action_label) : undefined,
+      infoActionUrl: row.info_action_url ? String(row.info_action_url) : undefined,
       organizerId: row.organizer_id ? String(row.organizer_id) : undefined,
       sourceUrl: String(row.source_url ?? ''),
       status: row.status as Activity['status'],
@@ -260,6 +375,8 @@ export class SupabaseAdapter implements StorageAdapter {
     if (activity.title !== undefined) result.title = activity.title
     if (activity.description !== undefined) result.description = activity.description
     if (activity.date !== undefined) result.date = activity.date
+    if (activity.dateEnd !== undefined) result.date_end = activity.dateEnd
+    if (activity.registrationDeadline !== undefined) result.registration_deadline = activity.registrationDeadline
     if (activity.location !== undefined) result.location = activity.location
     if (activity.minParticipants !== undefined) result.min_participants = activity.minParticipants
     if (activity.maxParticipants !== undefined) result.max_participants = activity.maxParticipants
@@ -268,6 +385,17 @@ export class SupabaseAdapter implements StorageAdapter {
     if (activity.notes !== undefined) result.notes = activity.notes
     if (activity.organizerName !== undefined) result.organizer_name = activity.organizerName
     if (activity.organizerWechat !== undefined) result.organizer_wechat = activity.organizerWechat
+    if (activity.organizerContactType !== undefined) result.organizer_contact_type = activity.organizerContactType
+    if (activity.organizerContact !== undefined) result.organizer_contact = activity.organizerContact
+    if (activity.organizerContactLabel !== undefined) result.organizer_contact_label = activity.organizerContactLabel
+    if (activity.meetingLocation !== undefined) result.meeting_location = activity.meetingLocation
+    if (activity.meetingTime !== undefined) result.meeting_time = activity.meetingTime
+    if (activity.postType !== undefined) result.post_type = activity.postType
+    if (activity.infoStartTime !== undefined) result.info_start_time = activity.infoStartTime
+    if (activity.infoDeadline !== undefined) result.info_deadline = activity.infoDeadline
+    if (activity.infoPrice !== undefined) result.info_price = activity.infoPrice
+    if (activity.infoActionLabel !== undefined) result.info_action_label = activity.infoActionLabel
+    if (activity.infoActionUrl !== undefined) result.info_action_url = activity.infoActionUrl
     if (activity.organizerId !== undefined) result.organizer_id = activity.organizerId
     if (activity.sourceUrl !== undefined) result.source_url = activity.sourceUrl
     if (activity.status !== undefined) result.status = activity.status
@@ -305,9 +433,15 @@ export class SupabaseAdapter implements StorageAdapter {
       userId: row.user_id ? String(row.user_id) : undefined,
       name: String(row.name),
       wechat: String(row.wechat),
+      contactType: (row.contact_type as Registration['contactType']) ?? 'wechat',
+      contactValue: row.contact_value != null ? String(row.contact_value) : String(row.wechat ?? ''),
+      contactLabel: row.contact_label ? String(row.contact_label) : undefined,
       participantCount: Number(row.participant_count ?? 1),
       note: String(row.note ?? ''),
       registeredAt: String(row.registered_at),
+      cancelToken: row.cancel_token ? String(row.cancel_token) : undefined,
+      cancelledAt: row.cancelled_at ? String(row.cancelled_at) : undefined,
+      cancelledBy: row.cancelled_by as Registration['cancelledBy'],
     }
   }
 
@@ -317,8 +451,12 @@ export class SupabaseAdapter implements StorageAdapter {
     if (r.userId !== undefined) result.user_id = r.userId
     if (r.name !== undefined) result.name = r.name
     if (r.wechat !== undefined) result.wechat = r.wechat
+    if (r.contactType !== undefined) result.contact_type = r.contactType
+    if (r.contactValue !== undefined) result.contact_value = r.contactValue
+    if (r.contactLabel !== undefined) result.contact_label = r.contactLabel
     if (r.participantCount !== undefined) result.participant_count = r.participantCount
     if (r.note !== undefined) result.note = r.note
+    if (r.cancelToken !== undefined) result.cancel_token = r.cancelToken
     return result
   }
 
@@ -327,6 +465,7 @@ export class SupabaseAdapter implements StorageAdapter {
       id: String(row.id),
       activityId: String(row.activity_id),
       userId: row.user_id ? String(row.user_id) : undefined,
+      deviceId: row.device_id ? String(row.device_id) : undefined,
       wechat: row.wechat ? String(row.wechat) : undefined,
       createdAt: String(row.created_at),
     }
@@ -336,6 +475,7 @@ export class SupabaseAdapter implements StorageAdapter {
     const result: Record<string, unknown> = {}
     if (i.activityId !== undefined) result.activity_id = i.activityId
     if (i.userId !== undefined) result.user_id = i.userId
+    if (i.deviceId !== undefined) result.device_id = i.deviceId
     if (i.wechat !== undefined) result.wechat = i.wechat
     return result
   }

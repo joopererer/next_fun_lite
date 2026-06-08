@@ -18,10 +18,16 @@ export interface StorageAdapter {
   deleteActivity(id: string): Promise<void>
 
   getRegistrations(activityId: string): Promise<Registration[]>
+  getActiveRegistrations(activityId: string): Promise<Registration[]>
   getRegistrationsByUser(userId: string): Promise<Registration[]>
+  getRegistrationById(id: string): Promise<Registration | null>
+  getRegistrationByToken(token: string): Promise<Registration | null>
   findRegistration(activityId: string, wechat: string): Promise<Registration | null>
+  findRegistrationByNameAndWechat(activityId: string, name: string, wechat: string): Promise<Registration | null>
   findInterestByUserId(activityId: string, userId: string): Promise<Interest | null>
-  createRegistration(data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration>
+  findInterestByDeviceId(activityId: string, deviceId: string): Promise<Interest | null>
+  createRegistration(data: Omit<Registration, 'id' | 'registeredAt'> & { registeredAt?: string }): Promise<Registration>
+  cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult>
   deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult>
 
   getInterests(activityId: string): Promise<Interest[]>
@@ -29,6 +35,7 @@ export interface StorageAdapter {
   createInterest(data: Omit<Interest, 'id' | 'createdAt'>): Promise<InterestMutationResult>
   deleteInterest(activityId: string, wechat: string): Promise<InterestMutationResult>
   deleteInterestByUserId(activityId: string, userId: string): Promise<InterestMutationResult>
+  deleteInterestByDeviceId(activityId: string, deviceId: string): Promise<InterestMutationResult>
 
   getActivitiesByIds(ids: string[]): Promise<Activity[]>
   addLinkedRecruit(proposalId: string, recruitId: string): Promise<void>

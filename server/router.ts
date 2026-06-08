@@ -5,6 +5,10 @@ import {
   handleMutateInterest,
   handleCreateRegistration,
   handleDeleteInterest,
+  handleDeleteRegistration,
+  handleGetRegistrationByToken,
+  handleCancelByToken,
+  handleGetRegistrationSummary,
   handleDeleteActivity,
   handleGetActivities,
   handleGetActivitiesByIds,
@@ -13,6 +17,9 @@ import {
   handleGetRegistrations,
   handleGetMyRegistration,
   handleUpdateActivity,
+  handleFindSimilarProposals,
+  handleCreateInfo,
+  handleAdminImport,
 } from './handlers'
 import { handleParse } from './handlers/parse'
 import { errorResponse } from './lib/utils'
@@ -41,11 +48,18 @@ const routes: Array<{
     handler: (req, env) => handleCreateActivity(req, env, false),
   },
   {
+    method: 'GET',
+    pattern: /^\/api\/proposals\/similar$/,
+    handler: (req, env) => handleFindSimilarProposals(req, env),
+  },
+  {
     method: 'POST',
     pattern: /^\/api\/proposals$/,
     handler: (req, env) => handleCreateActivity(req, env, true),
   },
   { method: 'POST', pattern: /^\/api\/recruitments$/, handler: (req, env) => handleCreateRecruitment(req, env) },
+  { method: 'POST', pattern: /^\/api\/info$/, handler: (req, env) => handleCreateInfo(req, env) },
+  { method: 'POST', pattern: /^\/api\/admin\/import$/, handler: (req, env) => handleAdminImport(req, env) },
   {
     method: 'PATCH',
     pattern: /^\/api\/activities\/([^/]+)$/,
@@ -67,6 +81,26 @@ const routes: Array<{
     handler: (req, env, p) => handleGetRegistrations(req, env, p.id),
   },
   { method: 'POST', pattern: /^\/api\/registrations$/, handler: (req, env) => handleCreateRegistration(req, env) },
+  {
+    method: 'DELETE',
+    pattern: /^\/api\/registrations\/([^/]+)$/,
+    handler: (req, env, p) => handleDeleteRegistration(req, env, p.id),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/cancel\/([^/]+)$/,
+    handler: (req, env, p) => handleGetRegistrationByToken(req, env, p.id),
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/cancel\/([^/]+)$/,
+    handler: (req, env, p) => handleCancelByToken(req, env, p.id),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/api\/activities\/([^/]+)\/registrations\/summary$/,
+    handler: (req, env, p) => handleGetRegistrationSummary(req, env, p.id),
+  },
   {
     method: 'GET',
     pattern: /^\/api\/activities\/([^/]+)\/interests$/,
@@ -100,7 +134,7 @@ export async function handleApiRequest(request: Request, env: EnvConfig): Promis
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password, X-Device-Id, Authorization',
       },
     })
   }

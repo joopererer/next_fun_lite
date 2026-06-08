@@ -9,10 +9,13 @@ import type {
   ActivityStatus,
   Difficulty,
   MealArrangement,
+  OrganizerContactType,
   ParseResult,
   ReservationMethod,
   TicketMethod,
 } from '../../../shared/types'
+import { resolveOrganizerContact } from '../../../shared/contact'
+import { OrganizerContactFields } from '../contact/OrganizerContactFields'
 import { api, getEventUrl } from '../../lib/api'
 import { ACTIVITY_CATEGORIES } from '../../lib/categories'
 import { applyParseResult } from '../../lib/parseResult'
@@ -25,6 +28,8 @@ import {
 } from '../../lib/participants'
 import { formatEventDate } from '../../lib/user'
 import { getClerkDisplayName } from '../../lib/displayName'
+import { buildRecruitGroupMessage } from '../../lib/recruitShareMessage'
+import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../lib/validateSchedule'
 import { ActivityParsePanel } from '../ActivityParsePanel'
 import { DiningFields } from './DiningFields'
 import { ParticipantLimitFields } from './ParticipantLimitFields'
@@ -37,21 +42,46 @@ function hasTicketKeywords(title: string, description: string): boolean {
   return TICKET_KEYWORD.test(`${title} ${description}`)
 }
 
+function initOrganizerContact(initial?: Partial<Activity>) {
+  const resolved = resolveOrganizerContact(initial ?? {})
+  return {
+    type: resolved.type,
+    contact: resolved.contact,
+    label: resolved.label ?? '',
+  }
+}
+
 interface Props {
   mode: 'public' | 'admin'
   initial?: Partial<Activity>
   sourceProposalId?: string
+  sourceInfoId?: string
+  sourceProposalTitle?: string
+  sourceInterestedCount?: number
   editId?: string
   onSuccess?: (activity: Activity) => void
 }
 
-export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess }: Props) {
+export function RecruitForm({
+  mode,
+  initial,
+  sourceProposalId,
+  sourceInfoId,
+  sourceProposalTitle,
+  sourceInterestedCount,
+  editId,
+  onSuccess,
+}: Props) {
   const { isSignedIn, user: clerkUser } = useUser()
   const dynamicRef = useRef<HTMLDivElement>(null)
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [date, setDate] = useState(initial?.date?.slice(0, 16) ?? '')
+  const [dateEnd, setDateEnd] = useState(initial?.dateEnd?.slice(0, 16) ?? '')
+  const [registrationDeadline, setRegistrationDeadline] = useState(initial?.registrationDeadline?.slice(0, 16) ?? '')
   const [location, setLocation] = useState(initial?.location ?? '')
+  const [meetingLocation, setMeetingLocation] = useState(initial?.meetingLocation ?? '')
+  const [meetingTime, setMeetingTime] = useState(initial?.meetingTime ?? '')
   const [minParticipants, setMinParticipants] = useState(
     String(initial?.minParticipants ?? DEFAULT_MIN_PARTICIPANTS),
   )
@@ -63,7 +93,13 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
   const [fee, setFee] = useState(initial?.fee ?? '')
   const [notes, setNotes] = useState(initial?.notes ?? '')
   const [organizerName, setOrganizerName] = useState(initial?.organizerName ?? '')
-  const [organizerWechat, setOrganizerWechat] = useState(initial?.organizerWechat ?? '')
+  const [organizerContactType, setOrganizerContactType] = useState<OrganizerContactType>(
+    () => initOrganizerContact(initial).type,
+  )
+  const [organizerContact, setOrganizerContact] = useState(() => initOrganizerContact(initial).contact)
+  const [organizerContactLabel, setOrganizerContactLabel] = useState(
+    () => initOrganizerContact(initial).label,
+  )
   const [sourceUrl, setSourceUrl] = useState(initial?.sourceUrl ?? '')
   const [category, setCategory] = useState<ActivityCategory>(initial?.category ?? 'other')
   const [status, setStatus] = useState<ActivityStatus>(initial?.status ?? 'recruiting')
@@ -92,7 +128,13 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     setOrganizerName(getClerkDisplayName(clerkUser))
     api.getProfile()
       .then((profile) => {
-        if (profile?.wechat) setOrganizerWechat(profile.wechat)
+        if (profile?.wechat) {
+          setOrganizerContactType('wechat')
+          setOrganizerContact(profile.wechat)
+        } else if (profile?.email) {
+          setOrganizerContactType('email')
+          setOrganizerContact(profile.email)
+        }
       })
       .catch(() => {})
   }, [isSignedIn, clerkUser])
@@ -102,7 +144,11 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     setTitle(initial.title ?? '')
     setDescription(initial.description ?? '')
     setDate(initial.date?.slice(0, 16) ?? '')
+    setDateEnd(initial.dateEnd?.slice(0, 16) ?? '')
+    setRegistrationDeadline(initial.registrationDeadline?.slice(0, 16) ?? '')
     setLocation(initial.location ?? '')
+    setMeetingLocation(initial.meetingLocation ?? '')
+    setMeetingTime(initial.meetingTime ?? '')
     setMinParticipants(String(initial.minParticipants ?? DEFAULT_MIN_PARTICIPANTS))
     setMaxParticipants(
       initial.maxParticipants === null
@@ -114,7 +160,10 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     setFee(initial.fee ?? '')
     setNotes(initial.notes ?? '')
     setOrganizerName(initial.organizerName ?? '')
-    setOrganizerWechat(initial.organizerWechat ?? '')
+    const contact = initOrganizerContact(initial)
+    setOrganizerContactType(contact.type)
+    setOrganizerContact(contact.contact)
+    setOrganizerContactLabel(contact.label)
     setSourceUrl(initial.sourceUrl ?? '')
     setCategory(initial.category ?? 'other')
     setStatus(initial.status ?? 'recruiting')
@@ -181,6 +230,7 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
       setNotes,
       setMaxParticipants: (v) => setMaxParticipants(clampParticipantInput(String(v))),
       setDate,
+      setDateEnd,
       setCategory,
       setItinerary,
     }, { getNotes: () => notes })
@@ -194,13 +244,20 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     title: title.trim(),
     description: description.trim(),
     date: date ? new Date(date).toISOString() : null,
+    dateEnd: dateEnd ? new Date(dateEnd).toISOString() : null,
+    registrationDeadline: registrationDeadline ? new Date(registrationDeadline).toISOString() : null,
     location: location.trim(),
+    meetingLocation: meetingLocation.trim() || undefined,
+    meetingTime: meetingTime.trim() || undefined,
     minParticipants: min,
     maxParticipants: max,
     fee: fee.trim(),
     notes: notes.trim(),
     organizerName: organizerName.trim(),
-    organizerWechat: organizerWechat.trim(),
+    organizerContactType,
+    organizerContact: organizerContactType === 'private' ? '' : organizerContact.trim(),
+    organizerContactLabel: organizerContactType === 'other' ? organizerContactLabel.trim() : undefined,
+    organizerWechat: organizerContactType === 'wechat' ? organizerContact.trim() : '',
     sourceUrl: sourceUrl.trim(),
     category,
     status: mode === 'admin' ? status : 'recruiting',
@@ -235,6 +292,10 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
     const max = parseMaxParticipants(maxParticipants)
     if (max != null && min > max) {
       alert('最少人数不能大于最多人数')
+      return
+    }
+    if (isEndTimeInPast(dateEnd || undefined)) {
+      alert(PAST_END_TIME_MESSAGE)
       return
     }
     setSubmitting(true)
@@ -276,22 +337,43 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
 
   if (created) {
     const url = eventUrl || getEventUrl(created.id)
+    const groupMessage = buildRecruitGroupMessage({
+      title: created.title,
+      date: created.date,
+      location: created.location,
+      eventUrl: url,
+      proposalTitle: sourceProposalTitle,
+      interestedCount: sourceInterestedCount,
+    })
     return (
       <div className="text-center py-8 page-enter">
         <div className="text-4xl mb-3">✅</div>
         <h3 className="text-xl font-bold mb-4">招募已创建</h3>
+        {sourceProposalId && (sourceInterestedCount ?? 0) > 0 && (
+          <div className="bg-blue-50 text-blue-900 text-sm rounded-xl p-4 mb-4 text-left">
+            <p className="font-medium mb-1">
+              💡 原提议「{sourceProposalTitle}」有 {sourceInterestedCount} 人曾表示感兴趣
+            </p>
+            <p className="text-blue-800/80">可复制下方群消息，发到微信群提醒他们来报名（不会自动替他们报名）。</p>
+          </div>
+        )}
         <p className="text-sm text-gray-600 mb-2 break-all">报名链接：{url}</p>
         <div className="flex gap-3 justify-center mb-4 flex-wrap">
           <button type="button" className="btn-primary" onClick={() => navigator.clipboard.writeText(url)}>
             复制链接
           </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => navigator.clipboard.writeText(created.organizerWechat)}
-          >
-            复制微信号
+          <button type="button" className="btn-secondary" onClick={() => navigator.clipboard.writeText(groupMessage)}>
+            复制群消息
           </button>
+          {created.organizerContactType === 'wechat' && created.organizerContact && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => navigator.clipboard.writeText(created.organizerContact!)}
+            >
+              复制微信号
+            </button>
+          )}
         </div>
         <p className="text-sm text-gray-500 mb-4">分享链接到微信群，让朋友扫码报名</p>
         {qrDataUrl && (
@@ -309,7 +391,7 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
       {mode === 'admin' && !editId && (
         <ActivityParsePanel onParsed={handleParsed} className="border-b border-gray-100 pb-4 mb-2" />
       )}
-      {mode === 'public' && !editId && !sourceProposalId && (
+      {mode === 'public' && !editId && !sourceProposalId && !sourceInfoId && (
         <ActivityParsePanel onParsed={handleParsed} className="border-b border-gray-100 pb-4 mb-2" />
       )}
       <div>
@@ -353,9 +435,29 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
           </div>
         )}
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm text-gray-600 mb-1 block">结束时间（选填）</label>
+          <input type="datetime-local" className="input-field" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+          <p className="text-xs text-gray-400 mt-1">留空则开始日当天 23:59（巴黎时间）视为结束</p>
+        </div>
+        <div>
+          <label className="text-sm text-gray-600 mb-1 block">报名截止（选填）</label>
+          <input type="datetime-local" className="input-field" value={registrationDeadline} onChange={(e) => setRegistrationDeadline(e.target.value)} />
+          <p className="text-xs text-gray-400 mt-1">留空则活动开始前均可报名</p>
+        </div>
+      </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">地点 *</label>
-        <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} />
+        <label className="text-sm text-gray-600 mb-1 block">活动地点 *</label>
+        <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="活动举办的主要地点" />
+      </div>
+      <div>
+        <label className="text-sm text-gray-600 mb-1 block">集合地点（选填）</label>
+        <input className="input-field" value={meetingLocation} onChange={(e) => setMeetingLocation(e.target.value)} placeholder="如与活动地点不同，填写集合出发地点" />
+      </div>
+      <div>
+        <label className="text-sm text-gray-600 mb-1 block">集合时间（选填）</label>
+        <input className="input-field" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} placeholder="如 09:00，如需提前集合请填写" />
       </div>
       <ParticipantLimitFields
         min={minParticipants}
@@ -414,20 +516,22 @@ export function RecruitForm({ mode, initial, sourceProposalId, editId, onSuccess
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm text-gray-600 mb-1 block">发起人</label>
-          {isSignedIn ? (
-            <div className="input-field bg-gray-50 text-gray-700">{organizerName || '你的账号'}</div>
-          ) : (
-            <input className="input-field" value={organizerName} onChange={(e) => setOrganizerName(e.target.value)} />
-          )}
-        </div>
-        <div>
-          <label className="text-sm text-gray-600 mb-1 block">微信号（可选）</label>
-          <input className="input-field" value={organizerWechat} onChange={(e) => setOrganizerWechat(e.target.value)} placeholder="方便组织者联系你" />
-        </div>
+      <div>
+        <label className="text-sm text-gray-600 mb-1 block">发起人</label>
+        {isSignedIn ? (
+          <div className="input-field bg-gray-50 text-gray-700">{organizerName || '你的账号'}</div>
+        ) : (
+          <input className="input-field" value={organizerName} onChange={(e) => setOrganizerName(e.target.value)} />
+        )}
       </div>
+      <OrganizerContactFields
+        contactType={organizerContactType}
+        contact={organizerContact}
+        contactLabel={organizerContactLabel}
+        onTypeChange={setOrganizerContactType}
+        onContactChange={setOrganizerContact}
+        onLabelChange={setOrganizerContactLabel}
+      />
       <button type="button" className="btn-primary w-full" onClick={handleSubmit} disabled={submitting}>
         {submitting ? '保存中...' : editId ? '更新活动' : mode === 'public' ? '发布招募' : '创建活动'}
       </button>

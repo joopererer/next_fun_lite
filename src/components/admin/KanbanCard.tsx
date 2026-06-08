@@ -83,7 +83,7 @@ export function KanbanCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white rounded-xl p-3 shadow-sm border mb-3 ${
+      className={`bg-white rounded-xl p-3 lg:p-4 shadow-sm border mb-3 lg:mb-4 ${
         isEndedCancelled(activity.status) ? 'border-red-200' : 'border-gray-100'
       }`}
     >
@@ -119,7 +119,7 @@ export function KanbanCard({
       </div>
 
       <div className="flex flex-wrap gap-1.5 mt-3">
-        {column === 'proposed' && (
+        {column === 'proposed' && activity.postType !== 'info' && (
           <>
             <Link href={`/admin/activity/${activity.id}`} className="text-xs px-2 py-1 bg-gray-100 rounded-lg hover:bg-gray-200">
               查看详情

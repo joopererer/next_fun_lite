@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
 import type { ParseResult } from '../../shared/types'
+import { ImageUploadZone } from './ImageUploadZone'
 
 type InputMode = 'link' | 'image' | 'manual'
 
@@ -30,7 +31,7 @@ export function ActivityParsePanel({ onParsed, className = '' }: Props) {
       const res = await api.parse({ url: url.trim() })
       setParseSuccess(res.success)
       setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
-      applyResult(res.data, url.trim())
+      if (res.success) applyResult(res.data, url.trim())
     } catch {
       setParseSuccess(false)
       setParseMessage('解析失败，请手动填写或上传截图')
@@ -40,11 +41,8 @@ export function ActivityParsePanel({ onParsed, className = '' }: Props) {
   }
 
   const handleImageUpload = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      alert('图片最大 5MB')
-      return
-    }
     setParsing(true)
+    setParseMessage('')
     const reader = new FileReader()
     reader.onload = async () => {
       const base64 = (reader.result as string).split(',')[1]
@@ -52,7 +50,7 @@ export function ActivityParsePanel({ onParsed, className = '' }: Props) {
         const res = await api.parse({ imageBase64: base64, mimeType: file.type })
         setParseSuccess(res.success)
         setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
-        applyResult(res.data)
+        if (res.success) applyResult(res.data)
       } catch {
         setParseSuccess(false)
         setParseMessage('解析失败，请手动填写')
@@ -101,16 +99,11 @@ export function ActivityParsePanel({ onParsed, className = '' }: Props) {
 
       {mode === 'image' && (
         <div className="mb-4">
-          <label className="block border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-green-400 transition-colors">
-            <input
-              type="file"
-              accept="image/jpeg,image/png"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-            />
-            <p className="text-gray-500 text-sm">拖拽或点击上传截图 / 海报</p>
-            <p className="text-xs text-gray-400 mt-1">支持 JPG、PNG，最大 5MB</p>
-          </label>
+          <ImageUploadZone
+            onFile={handleImageUpload}
+            parsing={parsing}
+            hint="配置 CLAUDE_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY 之一"
+          />
         </div>
       )}
 

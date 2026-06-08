@@ -14,6 +14,7 @@ import {
 } from '@dnd-kit/core'
 import { useState } from 'react'
 import type { ActivityWithCount } from '../../../shared/types'
+import { isInfoPost } from '../../../shared/infoVisibility'
 import { isEndedColumnStatus } from '../../lib/activityStatus'
 import { KANBAN_COLUMNS, type KanbanColumnId } from '../../lib/kanban'
 import { KanbanColumn } from './KanbanColumn'
@@ -60,11 +61,13 @@ export function KanbanBoard({
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   )
 
+  const activityItems = activities.filter((a) => !isInfoPost(a))
+
   const byColumn = (column: KanbanColumnId) => {
     if (column === 'ended') {
-      return activities.filter((a) => isEndedColumnStatus(a.status))
+      return activityItems.filter((a) => isEndedColumnStatus(a.status))
     }
-    return activities.filter((a) => a.status === column)
+    return activityItems.filter((a) => a.status === column)
   }
 
   const activeActivity = activeId ? activities.find((a) => a.id === activeId) : null
@@ -115,7 +118,7 @@ export function KanbanBoard({
       onDragStart={(e: DragStartEvent) => setActiveId(e.active.id as string)}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex flex-col gap-4 pb-4 md:grid md:grid-cols-2 xl:grid-cols-4 xl:gap-6">
         {KANBAN_COLUMNS.map((column) => (
           <KanbanColumn
             key={column}

@@ -1,19 +1,30 @@
 'use client'
 
 import { SignInButton, useUser } from '@clerk/nextjs'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import type { ActivityWithCount, Profile, Registration } from '../../shared/types'
 import { ItineraryBlock } from '../components/ItineraryBlock'
 import { Header } from '../components/layout/Header'
-import { api } from '../lib/api'
+import { Footer } from '../components/layout/Footer'
+import { RegistrationModal } from '../components/RegistrationModal'
+import { RegistrationPreview } from '../components/RegistrationPreview'
+import { api, getCancelUrl } from '../lib/api'
 import { getCancelReasonLabel, isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
-import { isRegistrationFull } from '../lib/participants'
 import { getClerkDisplayName } from '../lib/displayName'
 import { formatEventDate } from '../lib/user'
 import { CapacityBar } from '../components/CapacityBar'
+import { ActivityBadge } from '../components/ActivityBadge'
+import { getDeviceId } from '../utils/device'
+import { canRegister, getRegistrationButtonLabel, isInProgress, isProposalExpired } from '../lib/activityPhase'
+import { notifyActivitiesChanged } from '../lib/activityEvents'
+import { saveGuestRegistration, removeGuestRegistration, getGuestRegistrations } from '../lib/guestRegistrations'
+import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
+import { formatOrganizerContactHint, resolveOrganizerContact } from '../lib/contact'
+import { isInfoPost } from '../../shared/infoVisibility'
+import { InfoEventSection } from '../components/InfoEventSection'
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>()
@@ -25,6 +36,13 @@ export function EventPage() {
   const [expanded, setExpanded] = useState(false)
   const [success, setSuccess] = useState(false)
   const [registeredCount, setRegisteredCount] = useState(0)
+  const [cancelToken, setCancelToken] = useState<string | null>(null)
+  const [showRegistrationModal, setShowRegistrationModal] = useState(false)
+  const [regSummary, setRegSummary] = useState<{ total: number; previews: Array<{ name: string; avatarUrl: string | null }> }>({
+    total: 0,
+    previews: [],
+  })
+  const [summaryLoading, setSummaryLoading] = useState(true)
 
   const [participantCount, setParticipantCount] = useState(1)
   const [note, setNote] = useState('')
@@ -35,6 +53,7 @@ export function EventPage() {
   const [myRegistration, setMyRegistration] = useState<Registration | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
   const [sourceProposal, setSourceProposal] = useState<ActivityWithCount | null | undefined>(undefined)
+  const [linkedRecruits, setLinkedRecruits] = useState<ActivityWithCount[]>([])
 
   const displayName = profile?.nickname || getClerkDisplayName(clerkUser)
 
@@ -53,6 +72,14 @@ export function EventPage() {
         setInterestCount(a.interestedCount ?? 0)
         setRegisteredCount(a.registeredCount)
 
+        if (a.status === 'recruiting') {
+          setSummaryLoading(true)
+          api.getRegistrationSummary(a.id)
+            .then(setRegSummary)
+            .catch(() => setRegSummary({ total: 0, previews: [] }))
+            .finally(() => setSummaryLoading(false))
+        }
+
         if (a.sourceProposalId) {
           api.getActivity(a.sourceProposalId)
             .then((p) => setSourceProposal(p))
@@ -61,21 +88,51 @@ export function EventPage() {
           setSourceProposal(undefined)
         }
 
-        if (!isSignedIn || !clerkUser?.id) {
-          setInterested(false)
-          setMyRegistration(null)
-          return
+        if (a.status === 'proposed' && a.linkedRecruitIds?.length) {
+          api.getActivitiesByIds(a.linkedRecruitIds)
+            .then(setLinkedRecruits)
+            .catch(() => setLinkedRecruits([]))
+        } else {
+          setLinkedRecruits([])
         }
 
-        return Promise.all([
-          api.getInterests(a.id),
-          a.status === 'recruiting' ? api.getMyRegistration(a.id) : Promise.resolve(null),
-        ]).then(([interests, regResult]) => {
-          setInterested(interests.some((i) => i.userId === clerkUser.id))
+        const deviceId = getDeviceId()
+        const interestPromise = api.getInterests(a.id)
+        const regPromise = a.status === 'recruiting' && isSignedIn
+          ? api.getMyRegistration(a.id)
+          : Promise.resolve(null)
+
+        return Promise.all([interestPromise, regPromise]).then(([interests, regResult]) => {
+          if (isSignedIn && clerkUser?.id) {
+            setInterested(interests.some((i) => i.userId === clerkUser.id))
+          } else if (deviceId) {
+            setInterested(interests.some((i) => i.deviceId === deviceId))
+          } else {
+            setInterested(false)
+          }
+
           if (regResult?.registration) {
             setMyRegistration(regResult.registration)
             setParticipantCount(regResult.registration.participantCount)
             setNote(regResult.registration.note)
+          } else if (!isSignedIn) {
+            const guest = getGuestRegistrations().find((g) => g.activityId === a.id)
+            if (guest) {
+              setMyRegistration({
+                id: `guest-${guest.activityId}`,
+                activityId: guest.activityId,
+                name: guest.name,
+                wechat: '',
+                participantCount: guest.participantCount,
+                note: '',
+                registeredAt: guest.registeredAt,
+                cancelToken: guest.cancelToken,
+              })
+              setParticipantCount(guest.participantCount)
+              setCancelToken(guest.cancelToken)
+            } else {
+              setMyRegistration(null)
+            }
           } else {
             setMyRegistration(null)
           }
@@ -86,7 +143,7 @@ export function EventPage() {
   }, [id, isLoaded, isSignedIn, clerkUser?.id])
 
   const toggleInterest = async () => {
-    if (!activity || !isSignedIn || interestLoading) return
+    if (!activity || interestLoading) return
     setInterestLoading(true)
     try {
       const res = interested
@@ -108,8 +165,18 @@ export function EventPage() {
     }
   }
 
-  const handleSubmit = async () => {
-    if (!isSignedIn || !id || !activity || activity.status !== 'recruiting' || myRegistration) return
+  const submitRegistration = async (data: {
+    name?: string
+    wechat?: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue?: string
+    contactLabel?: string
+  }) => {
+    if (!id || !activity || activity.status !== 'recruiting' || myRegistration) return
+    if (!canRegister({ ...activity, registeredCount: activity.registeredCount })) {
+      alert('报名已结束')
+      return
+    }
     if (activity.maxParticipants != null && activity.registeredCount + participantCount > activity.maxParticipants) {
       alert('名额不足')
       return
@@ -118,6 +185,11 @@ export function EventPage() {
     try {
       const res = await api.createRegistration({
         activityId: id,
+        name: data.name,
+        wechat: data.wechat,
+        contactType: data.contactType,
+        contactValue: data.contactValue,
+        contactLabel: data.contactLabel,
         participantCount,
         note: note.trim(),
       })
@@ -126,6 +198,23 @@ export function EventPage() {
         prev ? { ...prev, registeredCount: res.registeredCount } : prev
       )
       setRegisteredCount(res.registeredCount)
+      if (res.cancelToken) {
+        setCancelToken(res.cancelToken)
+        saveGuestRegistration({
+          activityId: id,
+          cancelToken: res.cancelToken,
+          name: data.name ?? displayName,
+          participantCount,
+          registeredAt: new Date().toISOString(),
+        })
+      } else {
+        addRegistrationId(id)
+      }
+      notifyActivitiesChanged()
+      api.getRegistrationSummary(id)
+        .then(setRegSummary)
+        .catch(() => {})
+      setShowRegistrationModal(false)
       setSuccess(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : '报名失败')
@@ -134,18 +223,44 @@ export function EventPage() {
     }
   }
 
+  const handleSubmit = () => submitRegistration({})
+
+  const handleGuestSubmit = (data: {
+    name: string
+    wechat?: string
+    contactType: 'wechat' | 'email' | 'other'
+    contactValue: string
+    contactLabel?: string
+  }) => {
+    submitRegistration(data)
+  }
+
   const handleCancelRegistration = async () => {
-    if (!activity || !myRegistration || !isSignedIn) return
+    if (!activity || !myRegistration) return
     if (!confirm('确定取消报名？')) return
+
+    if (!isSignedIn && myRegistration.cancelToken) {
+      window.location.href = getCancelUrl(myRegistration.cancelToken)
+      return
+    }
+
     setCancelLoading(true)
     try {
-      const res = await api.cancelRegistration({ activityId: activity.id })
+      const res = isSignedIn && myRegistration.id
+        ? await api.cancelRegistrationById(myRegistration.id)
+        : await api.cancelRegistration({ activityId: activity.id })
       setMyRegistration(null)
       setSuccess(false)
       setActivity((prev) =>
         prev ? { ...prev, registeredCount: res.registeredCount } : prev
       )
       setRegisteredCount(res.registeredCount)
+      removeGuestRegistration(activity.id)
+      removeRegistrationId(activity.id)
+      notifyActivitiesChanged()
+      api.getRegistrationSummary(activity.id)
+        .then(setRegSummary)
+        .catch(() => {})
     } catch (err) {
       alert(err instanceof Error ? err.message : '取消失败')
     } finally {
@@ -153,139 +268,215 @@ export function EventPage() {
     }
   }
 
+  const shell = (content: ReactNode) => (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      {content}
+      <Footer />
+    </div>
+  )
+
   if (loading) {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <div className="text-center text-gray-400 py-16">加载中...</div>
-      </div>
-    )
+    return shell(<div className="text-center text-gray-400 py-16 flex-1">加载中...</div>)
   }
 
   if (notFound || !activity) {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <main className="max-w-lg mx-auto px-4 py-16 text-center page-enter">
-          <div className="text-5xl mb-4">😕</div>
-          <h2 className="text-xl font-bold mb-2">活动不存在</h2>
-          <Link href="/" className="btn-primary inline-block mt-4">回到首页</Link>
-        </main>
-      </div>
+    return shell(
+      <main className="flex-1 max-w-lg mx-auto px-4 py-16 text-center page-enter w-full">
+        <div className="text-5xl mb-4">😕</div>
+        <h2 className="text-xl font-bold mb-2">活动不存在</h2>
+        <Link href="/" className="btn-primary inline-block mt-4">回到首页</Link>
+      </main>,
     )
   }
 
   if (success && activity) {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <main className="max-w-lg mx-auto px-4 py-16 page-enter">
-          <div className="text-center mb-8">
-            <div className="text-5xl mb-4">🎉</div>
-            <h2 className="text-xl font-bold mb-2">报名成功！</h2>
-            <p className="text-gray-600">{activity.title}</p>
-            <p className="text-sm text-gray-500 mt-2">参与人数：{participantCount} 人</p>
-          </div>
-          <div className="bg-green-50 rounded-xl p-4 mb-6 text-sm text-gray-700 space-y-2">
-            <p className="font-medium text-green-800">接下来：</p>
-            <p>1. 添加发起人微信确认报名</p>
-            <p>2. 留意活动群通知</p>
-            <p>3. 活动当天准时到达集合地点</p>
-          </div>
-          <p className="text-center text-sm text-gray-600 mb-4">
-            发起人微信：<strong>{activity.organizerWechat}</strong>
-          </p>
-          <div className="flex flex-col gap-3">
+    const cancelUrl = cancelToken ? getCancelUrl(cancelToken) : null
+    const organizerHint = formatOrganizerContactHint(resolveOrganizerContact(activity))
+    return shell(
+      <main className="flex-1 max-w-lg mx-auto px-4 py-16 page-enter w-full">
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-4">🎉</div>
+          <h2 className="text-xl font-bold mb-2">报名成功！</h2>
+          <p className="text-gray-600">你已报名「{activity.title}」</p>
+          <p className="text-sm text-gray-500 mt-2">参与人数：{participantCount} 人</p>
+        </div>
+        <div className="bg-green-50 rounded-xl p-4 mb-6 text-sm text-gray-700 space-y-2">
+          <p className="font-medium text-green-800">📱 下一步：</p>
+          <p>{organizerHint.message}</p>
+          {isSignedIn && organizerHint.copyText && <p>备注「{activity.title} 报名」</p>}
+        </div>
+
+        {organizerHint.copyText && (
+          <button
+            type="button"
+            className="btn-primary w-full mb-6"
+            onClick={() => navigator.clipboard.writeText(organizerHint.copyText!)}
+          >
+            {organizerHint.copyLabel ?? '复制'}
+          </button>
+        )}
+
+        {!isSignedIn && cancelUrl && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+            <p className="text-sm font-medium text-yellow-900 mb-2">⚠️ 请截图保存取消链接：</p>
+            <p className="text-sm break-all font-mono text-yellow-800 mb-3">{cancelUrl}</p>
             <button
               type="button"
-              className="btn-primary w-full"
-              onClick={() => navigator.clipboard.writeText(activity.organizerWechat)}
+              className="btn-secondary w-full text-sm"
+              onClick={() => navigator.clipboard.writeText(cancelUrl)}
             >
-              复制微信号
+              复制链接
             </button>
-            <Link href="/" className="btn-secondary block text-center">回到首页</Link>
+            <p className="text-xs text-yellow-700 mt-3">如链接丢失，请联系发起人取消报名。</p>
           </div>
-        </main>
-      </div>
+        )}
+
+        <div className="flex flex-col gap-3">
+          {isSignedIn ? (
+            <Link href="/my" className="btn-secondary block text-center">去「我的报名」查看</Link>
+          ) : (
+            <>
+              <p className="text-xs text-gray-400 text-center">💡 登录后可在「我的报名」随时管理</p>
+              <SignInButton mode="modal">
+                <button type="button" className="btn-secondary w-full">登录/注册</button>
+              </SignInButton>
+              <Link href="/" className="text-sm text-center text-gray-500 hover:text-green-600">回到首页</Link>
+            </>
+          )}
+        </div>
+      </main>,
     )
   }
 
   const displayCount = activity.registeredCount ?? registeredCount
-  const full = isRegistrationFull(displayCount, activity.maxParticipants)
+  const registrationOpen = canRegister({ ...activity, registeredCount: displayCount })
+  const inProgress = isInProgress(activity)
+  const proposalExpired = activity.status === 'proposed' && isProposalExpired(activity)
+  const registerButtonLabel = getRegistrationButtonLabel(
+    { ...activity, registeredCount: displayCount },
+    Boolean(myRegistration),
+  )
   const endedSuccess = isEndedSuccess(activity.status)
   const endedCancelled = isEndedCancelled(activity.status)
-  const ended = endedSuccess || endedCancelled
 
   const notes = activity.notes ? activity.notes.split('\n').filter(Boolean) : []
 
-  if (endedCancelled) {
-    return (
-      <div className="min-h-screen pb-16">
-        <Header />
-        <main className="max-w-lg mx-auto px-4 py-6 page-enter">
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 text-red-900">
-            <p className="font-bold text-lg mb-3">❌ 本次活动已取消</p>
-            <p className="text-sm mb-1">原因：{getCancelReasonLabel(activity.cancelReason)}</p>
-            {activity.cancelNote && (
-              <p className="text-sm whitespace-pre-wrap mb-4 opacity-90">{activity.cancelNote}</p>
-            )}
-            <p className="text-sm mb-3">如有疑问请联系发起人：</p>
-            <p className="font-medium mb-3">{activity.organizerWechat}</p>
-            <button
-              type="button"
-              className="btn-secondary text-sm"
-              onClick={() => navigator.clipboard.writeText(activity.organizerWechat)}
-            >
-              复制微信号
-            </button>
-          </div>
-
-          <div className="opacity-60 pointer-events-none select-none">
-            <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
-              {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
-            </span>
-            <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
-            <div className="space-y-2 text-sm text-gray-600 mb-6">
-              <p>📅 {formatEventDate(activity.date)}</p>
-              <p>📍 {activity.location || '地点待定'}</p>
-            </div>
-            {activity.description && (
-              <p className="text-gray-700 whitespace-pre-wrap mb-6">{activity.description}</p>
-            )}
-          </div>
-
-          <Link href="/" className="btn-primary block text-center w-full mt-6">回到首页</Link>
-        </main>
-      </div>
+  if (isInfoPost(activity)) {
+    return shell(
+      <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
+        <InfoEventSection activity={activity} />
+      </main>,
     )
   }
 
-  return (
-    <div className="min-h-screen pb-16">
-      <Header />
-      <main className="max-w-lg mx-auto px-4 py-6 page-enter">
+  if (endedCancelled) {
+    const cancelContact = formatOrganizerContactHint(resolveOrganizerContact(activity))
+    return shell(
+      <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 text-red-900">
+          <p className="font-bold text-lg mb-3">❌ 本次活动已取消</p>
+          <p className="text-sm mb-1">原因：{getCancelReasonLabel(activity.cancelReason)}</p>
+          {activity.cancelNote && (
+            <p className="text-sm whitespace-pre-wrap mb-4 opacity-90">{activity.cancelNote}</p>
+          )}
+          <p className="text-sm mb-3">如有疑问请联系发起人：</p>
+          <p className="font-medium mb-3">{cancelContact.message}</p>
+          {cancelContact.copyText && (
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              onClick={() => navigator.clipboard.writeText(cancelContact.copyText!)}
+            >
+              {cancelContact.copyLabel ?? '复制'}
+            </button>
+          )}
+        </div>
+        <div className="opacity-60 pointer-events-none select-none">
+          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
+            {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+          </span>
+          <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
+          <div className="space-y-2 text-sm text-gray-600 mb-6">
+            <p>📅 {formatEventDate(activity.date)}</p>
+            <p>📍 {activity.location || '地点待定'}</p>
+          </div>
+          {activity.description && (
+            <p className="text-gray-700 whitespace-pre-wrap mb-6">{activity.description}</p>
+          )}
+        </div>
+        <Link href="/" className="btn-primary block text-center w-full mt-6">回到首页</Link>
+      </main>,
+    )
+  }
+
+  return shell(
+    <>
+      <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
         <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
           {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
         </span>
+        <div className="mb-2">
+          <ActivityBadge activity={{ ...activity, registeredCount: displayCount }} />
+        </div>
         <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
 
-        {activity.status === 'proposed' && (
+        {inProgress && (
+          <div className="bg-blue-50 text-blue-800 text-sm rounded-xl p-3 mb-4">
+            🔵 活动正在进行中
+          </div>
+        )}
+
+        {activity.status === 'proposed' && !proposalExpired && (
           <div className="bg-blue-50 text-blue-800 text-sm rounded-xl p-3 mb-4">
             💡 这是一个提议，尚未开始招募。感兴趣的人多了，管理员会发起正式活动。
           </div>
         )}
 
+        {proposalExpired && (
+          <div className="bg-amber-50 text-amber-800 text-sm rounded-xl p-3 mb-4">
+            ⚠️ 该提议信息可能已过期，仅供参考。如需更新请联系提议人或管理员。
+          </div>
+        )}
+
         <div className="space-y-2 text-sm text-gray-600 mb-6">
           <p>📅 {formatEventDate(activity.date)}</p>
-          <p>📍 {activity.location || '地点待定'}</p>
+          <p>📍 活动地点：{activity.location || '地点待定'}</p>
+          {activity.meetingLocation && (
+            <p>🚉 集合地点：{activity.meetingLocation}{activity.meetingTime ? ` ${activity.meetingTime}` : ''}</p>
+          )}
           {activity.status === 'recruiting' && (
             <div>
               <p className="mb-1">👥 已报名 {displayCount}{activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''} 人</p>
               <CapacityBar current={displayCount} max={activity.maxParticipants} />
+              <RegistrationPreview
+                total={regSummary.total}
+                previews={regSummary.previews}
+                loading={summaryLoading}
+              />
             </div>
           )}
           {activity.status === 'proposed' && (
             <p>💡 {interestCount} 人感兴趣</p>
+          )}
+          {activity.status === 'proposed' && linkedRecruits.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-green-100">
+              <p className="text-sm font-medium text-green-800 mb-2">🟢 已有招募活动：</p>
+              <ul className="space-y-2">
+                {linkedRecruits.map((r) => (
+                  <li key={r.id} className="text-sm">
+                    · {r.title}{' '}
+                    <span className="text-gray-500">
+                      {formatEventDate(r.date).replace(/ .*/, '')}{' '}
+                      {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}人
+                    </span>{' '}
+                    <Link href={`/event/${r.id}`} className="text-green-600 underline">
+                      去报名 →
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {activity.fee && <p>💰 {activity.fee}</p>}
           {activity.sourceUrl && (
@@ -356,31 +547,39 @@ export function EventPage() {
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
             本次活动已结束
           </div>
-        ) : full ? (
+        ) : !registrationOpen && activity.status === 'recruiting' && !myRegistration ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500 font-medium">
-            已满
+            {registerButtonLabel}
           </div>
         ) : activity.status === 'proposed' ? (
           <div className="space-y-4">
-            {isSignedIn ? (
-              <button
-                type="button"
-                className={`w-full rounded-xl py-3 font-medium border transition-colors ${
-                  interested
-                    ? 'border-gray-300 bg-gray-100 text-gray-600'
-                    : 'btn-primary'
-                }`}
-                onClick={toggleInterest}
-                disabled={interestLoading}
-              >
-                {interestLoading ? '...' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
-              </button>
-            ) : (
-              <SignInButton mode="modal">
-                <button type="button" className="btn-primary w-full rounded-xl py-3 font-medium">
-                  ❤️ 我也感兴趣
-                </button>
-              </SignInButton>
+            <button
+              type="button"
+              className={`w-full rounded-xl py-3 font-medium border transition-colors ${
+                interested
+                  ? 'border-gray-300 bg-gray-100 text-gray-600'
+                  : 'btn-primary'
+              }`}
+              onClick={toggleInterest}
+              disabled={interestLoading || proposalExpired}
+            >
+              {interestLoading ? '...' : proposalExpired ? '信息已过期' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
+            </button>
+            {!proposalExpired && (
+              isSignedIn ? (
+                <Link
+                  href={`/recruit/new?from=${activity.id}`}
+                  className="btn-secondary block text-center w-full py-3"
+                >
+                  发起招募 →
+                </Link>
+              ) : (
+                <SignInButton mode="modal">
+                  <button type="button" className="btn-secondary w-full py-3">
+                    发起招募 →
+                  </button>
+                </SignInButton>
+              )
             )}
             <Link href="/" className="btn-secondary block text-center">回到首页</Link>
           </div>
@@ -412,11 +611,15 @@ export function EventPage() {
             </button>
           </div>
         ) : !isSignedIn ? (
-          <div className="text-center py-8 bg-gray-50 rounded-xl space-y-4">
-            <p className="text-gray-600">登录后即可报名</p>
-            <SignInButton mode="modal">
-              <button type="button" className="btn-primary">登录 / 注册</button>
-            </SignInButton>
+          <div className="space-y-4">
+            <button
+              type="button"
+              className="btn-primary w-full text-lg"
+              onClick={() => setShowRegistrationModal(true)}
+              disabled={!registrationOpen}
+            >
+              {registerButtonLabel}
+            </button>
           </div>
         ) : (
           <>
@@ -462,8 +665,8 @@ export function EventPage() {
             </div>
 
             <div className="sticky bottom-0 bg-warm-bg pt-3 pb-safe -mx-4 px-4">
-              <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting}>
-                {submitting ? '提交中...' : '提交报名'}
+              <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting || !registrationOpen}>
+                {submitting ? '提交中...' : registerButtonLabel === '我要报名' ? '提交报名' : registerButtonLabel}
               </button>
             </div>
           </>
@@ -471,9 +674,23 @@ export function EventPage() {
 
         <div className="mt-8 text-sm text-gray-500 text-center">
           <p>发起人：{activity.organizerName}</p>
-          {activity.organizerWechat && <p>报名后添加微信：{activity.organizerWechat}</p>}
+          {activity.status === 'recruiting' && (
+            <p>{formatOrganizerContactHint(resolveOrganizerContact(activity)).message}</p>
+          )}
         </div>
       </main>
-    </div>
+
+      <RegistrationModal
+        open={showRegistrationModal}
+        onClose={() => setShowRegistrationModal(false)}
+        activityTitle={activity.title}
+        participantCount={participantCount}
+        note={note}
+        onParticipantCountChange={setParticipantCount}
+        onNoteChange={setNote}
+        onSubmit={handleGuestSubmit}
+        submitting={submitting}
+      />
+    </>,
   )
 }

@@ -19,12 +19,17 @@ export type TicketMethod = 'self' | 'group'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type MealArrangement = 'self' | 'restaurant' | 'group'
 export type ReservationMethod = 'organizer' | 'self'
+export type OrganizerContactType = 'wechat' | 'email' | 'other' | 'private'
+export type RegistrantContactType = 'wechat' | 'email' | 'other'
+export type PostType = 'activity' | 'info'
 
 export interface Activity {
   id: string
   title: string
   description: string
   date: string | null
+  dateEnd?: string | null
+  registrationDeadline?: string | null
   location: string
   minParticipants?: number | null
   maxParticipants: number | null
@@ -32,7 +37,18 @@ export interface Activity {
   notes: string
   organizerName: string
   organizerWechat: string
+  organizerContactType?: OrganizerContactType
+  organizerContact?: string
+  organizerContactLabel?: string
   organizerId?: string
+  meetingLocation?: string
+  meetingTime?: string
+  postType?: PostType
+  infoStartTime?: string
+  infoDeadline?: string
+  infoPrice?: string
+  infoActionLabel?: string
+  infoActionUrl?: string
   sourceUrl: string
   status: ActivityStatus
   category: ActivityCategory
@@ -69,15 +85,22 @@ export interface Registration {
   userId?: string
   name: string
   wechat: string
+  contactType?: RegistrantContactType
+  contactValue?: string
+  contactLabel?: string
   participantCount: number
   note: string
   registeredAt: string
+  cancelToken?: string
+  cancelledAt?: string
+  cancelledBy?: 'user' | 'admin'
 }
 
 export interface Interest {
   id: string
   activityId: string
   userId?: string
+  deviceId?: string
   name?: string
   wechat?: string
   createdAt: string
@@ -99,6 +122,8 @@ export interface ActivityWithCount extends Activity {
 export interface RegistrationMutationResult {
   registration?: Registration
   registeredCount: number
+  cancelToken?: string
+  success?: boolean
 }
 
 export interface InterestMutationResult {
@@ -142,6 +167,9 @@ export type EnvConfig = {
   TENCENT_DOCS_APP_ID?: string
   TENCENT_DOCS_APP_SECRET?: string
   CLAUDE_API_KEY?: string
+  OPENAI_API_KEY?: string
+  GEMINI_API_KEY?: string
+  GEMINI_MODEL?: string
   ADMIN_PASSWORD?: string
   SITE_URL?: string
   PARSE_MODE?: string

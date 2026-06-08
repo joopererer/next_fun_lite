@@ -42,6 +42,11 @@ function normalizeHost(hostname: string) {
   return hostname.toLowerCase().replace(/^www\./, '')
 }
 
+function isXiaohongshuHost(hostname: string): boolean {
+  const h = normalizeHost(hostname)
+  return h === 'xiaohongshu.com' || h.endsWith('.xiaohongshu.com') || h === 'xhslink.com'
+}
+
 function isEventbriteHost(hostname: string) {
   return /^eventbrite\.[a-z.]+$/i.test(normalizeHost(hostname))
 }
@@ -162,6 +167,14 @@ export async function parseActivityLink(url: string): Promise<ApiParseResponse &
 
   if (sourceUrl.protocol !== 'https:') {
     return { success: false, data: {}, message: '仅支持 https 链接' }
+  }
+
+  if (isXiaohongshuHost(sourceUrl.hostname)) {
+    return {
+      success: false,
+      data: {},
+      message: '小红书链接暂无法自动提取（需登录才能访问），请上传笔记截图或手动填写',
+    }
   }
 
   const siteName = getSupportedSiteName(sourceUrl)
