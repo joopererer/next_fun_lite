@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
-import * as XLSX from 'xlsx'
 import type { Activity } from '../../../shared/types'
 import { buildImportPreview, type ImportPreviewResult, type ParsedImportRow } from '../../../shared/excelImport'
 import { api } from '../../lib/api'
@@ -30,6 +29,8 @@ export function ImportTab({ activities, onImported }: Props) {
   const [showTable, setShowTable] = useState(false)
 
   const handleFile = useCallback(async (file: File) => {
+    const mod = await import('xlsx')
+    const XLSX = mod.default ?? mod
     const buffer = await file.arrayBuffer()
     const workbook = XLSX.read(buffer, { type: 'array' })
     const sheetName = workbook.SheetNames[0]

@@ -1,5 +1,5 @@
-'use client'
-
 import { InfoNewPage } from '@/src/views/InfoNewPage'
 
-export default InfoNewPage
+export default function NewInfoPage() {
+  return <InfoNewPage />
+}

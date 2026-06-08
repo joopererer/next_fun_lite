@@ -1,7 +1,6 @@
 'use client'
 
 import { useUser } from '@clerk/nextjs'
-import QRCode from 'qrcode'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { Activity, ActivityCategory } from '../../shared/types'
@@ -72,6 +71,7 @@ export function InfoNewPage() {
       setCreated(activity)
       setEventUrl(url)
       try {
+        const { default: QRCode } = await import('qrcode')
         const qr = await QRCode.toDataURL(url, { width: 200 })
         setQrDataUrl(qr)
       } catch {

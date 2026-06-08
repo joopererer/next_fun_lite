@@ -1,5 +1,6 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -9,8 +10,12 @@ import { AdminGate } from '../components/admin/AdminGate'
 import { CancelActivityModal } from '../components/admin/CancelActivityModal'
 import { EndActivityModal } from '../components/admin/EndActivityModal'
 import { KanbanBoard } from '../components/admin/KanbanBoard'
-import { ImportTab } from '../components/admin/ImportTab'
 import { RecruitForm } from '../components/recruit/RecruitForm'
+
+const ImportTab = dynamic(
+  () => import('../components/admin/ImportTab').then((m) => m.ImportTab),
+  { ssr: false, loading: () => <p className="text-gray-400 text-sm py-8">加载导入工具...</p> },
+)
 import { isTerminalStatus } from '../lib/activityStatus'
 import { api } from '../lib/api'
 import { Footer } from '../components/layout/Footer'
