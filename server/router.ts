@@ -18,6 +18,8 @@ import {
   handleGetMyRegistration,
   handleUpdateActivity,
   handleFindSimilarProposals,
+  handleCreateInfo,
+  handleAdminImport,
 } from './handlers'
 import { handleParse } from './handlers/parse'
 import { errorResponse } from './lib/utils'
@@ -56,6 +58,8 @@ const routes: Array<{
     handler: (req, env) => handleCreateActivity(req, env, true),
   },
   { method: 'POST', pattern: /^\/api\/recruitments$/, handler: (req, env) => handleCreateRecruitment(req, env) },
+  { method: 'POST', pattern: /^\/api\/info$/, handler: (req, env) => handleCreateInfo(req, env) },
+  { method: 'POST', pattern: /^\/api\/admin\/import$/, handler: (req, env) => handleAdminImport(req, env) },
   {
     method: 'PATCH',
     pattern: /^\/api\/activities\/([^/]+)$/,

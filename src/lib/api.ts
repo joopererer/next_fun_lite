@@ -10,6 +10,7 @@ import type {
   RegistrationMutationResult,
 } from '@/shared/types'
 import type { SimilarProposalMatch } from '@/shared/activityDedupe'
+import type { ParsedImportRow } from '@/shared/excelImport'
 import { getDeviceId } from '@/src/utils/device'
 
 const ADMIN_KEY = 'nfl_admin_password'
@@ -86,6 +87,8 @@ export const api = {
   getActivity: (id: string) => request<ActivityWithCount>(`/api/activities/${id}`),
   createProposal: (data: Partial<Activity>) =>
     request<Activity>('/api/proposals', { method: 'POST', body: JSON.stringify(data) }),
+  createInfo: (data: Partial<Activity>) =>
+    request<Activity>('/api/info', { method: 'POST', body: JSON.stringify(data) }),
   findSimilarProposals: (params: { title: string; location?: string; sourceUrl?: string }) => {
     const q = new URLSearchParams({ title: params.title })
     if (params.location) q.set('location', params.location)
@@ -116,6 +119,9 @@ export const api = {
     activityId: string
     name?: string
     wechat?: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue?: string
+    contactLabel?: string
     participantCount: number
     note: string
   }) =>
@@ -142,6 +148,13 @@ export const api = {
     }),
   parse: (data: { url?: string; imageBase64?: string; mimeType?: string }) =>
     request<ApiParseResponse>('/api/parse', { method: 'POST', body: JSON.stringify(data) }),
+  adminImport: (rows: ParsedImportRow[]) =>
+    request<{
+      imported: number
+      registrationsCreated: number
+      skipped: number
+      failed: Array<{ title: string; error: string }>
+    }>('/api/admin/import', { method: 'POST', body: JSON.stringify({ rows }) }),
 }
 
 export function getEventUrl(id: string): string {

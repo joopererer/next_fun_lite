@@ -26,7 +26,7 @@ export interface StorageAdapter {
   findRegistrationByNameAndWechat(activityId: string, name: string, wechat: string): Promise<Registration | null>
   findInterestByUserId(activityId: string, userId: string): Promise<Interest | null>
   findInterestByDeviceId(activityId: string, deviceId: string): Promise<Interest | null>
-  createRegistration(data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration>
+  createRegistration(data: Omit<Registration, 'id' | 'registeredAt'> & { registeredAt?: string }): Promise<Registration>
   cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult>
   deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult>
 

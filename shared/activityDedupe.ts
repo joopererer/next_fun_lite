@@ -1,4 +1,5 @@
 import type { Activity } from './types'
+import { isProposalPost } from './infoVisibility'
 
 export type SimilarMatchStatus = 'same_url' | 'similar' | 'same_title'
 
@@ -52,7 +53,7 @@ export function findSimilarProposals(
   const seen = new Set<string>()
 
   for (const p of proposals) {
-    if (p.status !== 'proposed') continue
+    if (!isProposalPost(p)) continue
 
     if (normalizedUrl && p.sourceUrl) {
       const existingUrl = normalizeActivitySourceUrl(p.sourceUrl)

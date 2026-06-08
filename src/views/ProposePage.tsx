@@ -8,7 +8,8 @@ import { Header } from '../components/layout/Header'
 import { Footer } from '../components/layout/Footer'
 import { SignInGate } from '../components/SignInGate'
 import type { SimilarProposalMatch } from '../../shared/activityDedupe'
-import type { Activity, ActivityCategory, FeeLevel, ParseResult } from '../../shared/types'
+import type { Activity, ActivityCategory, FeeLevel, OrganizerContactType, ParseResult } from '../../shared/types'
+import { OrganizerContactFields } from '../components/contact/OrganizerContactFields'
 import { SimilarProposalsDialog } from '../components/SimilarProposalsDialog'
 import { api, getEventUrl } from '../lib/api'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../lib/validateSchedule'
@@ -41,7 +42,9 @@ export function ProposePage() {
   const [feeLevel, setFeeLevel] = useState<FeeLevel>('unknown')
   const [feeDetail, setFeeDetail] = useState('')
   const [itinerary, setItinerary] = useState('')
-  const [organizerWechat, setOrganizerWechat] = useState('')
+  const [organizerContactType, setOrganizerContactType] = useState<OrganizerContactType>('private')
+  const [organizerContact, setOrganizerContact] = useState('')
+  const [organizerContactLabel, setOrganizerContactLabel] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [checkingSimilar, setCheckingSimilar] = useState(false)
   const [similarMatches, setSimilarMatches] = useState<SimilarProposalMatch[]>([])
@@ -51,7 +54,13 @@ export function ProposePage() {
     if (!clerkUser) return
     api.getProfile()
       .then((p) => {
-        if (p?.wechat) setOrganizerWechat(p.wechat)
+        if (p?.wechat) {
+          setOrganizerContactType('wechat')
+          setOrganizerContact(p.wechat)
+        } else if (p?.email) {
+          setOrganizerContactType('email')
+          setOrganizerContact(p.email)
+        }
       })
       .catch(() => {})
   }, [clerkUser])
@@ -122,7 +131,10 @@ export function ProposePage() {
     sourceUrl: sourceUrl.trim(),
     category,
     feeLevel,
-    organizerWechat: organizerWechat.trim(),
+    organizerContactType,
+    organizerContact: organizerContactType === 'private' ? '' : organizerContact.trim(),
+    organizerContactLabel: organizerContactType === 'other' ? organizerContactLabel.trim() : undefined,
+    organizerWechat: organizerContactType === 'wechat' ? organizerContact.trim() : '',
     fee: feeDetail.trim(),
     itinerary: itinerary.trim() || undefined,
     notes: dateHint ? `大概时间：${dateHint}` : '',
@@ -200,11 +212,11 @@ export function ProposePage() {
             <button type="button" className="btn-primary" onClick={() => navigator.clipboard.writeText(url)}>
               复制链接
             </button>
-            {created.organizerWechat && (
+            {created.organizerContactType === 'wechat' && created.organizerContact && (
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => navigator.clipboard.writeText(created.organizerWechat)}
+                onClick={() => navigator.clipboard.writeText(created.organizerContact!)}
               >
                 复制微信号
               </button>
@@ -381,10 +393,14 @@ export function ProposePage() {
           <p className="text-sm text-gray-500 mb-3">
             以 <span className="font-medium text-gray-700">{getClerkDisplayName(clerkUser)}</span> 的身份提交
           </p>
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block">微信号（可选）</label>
-            <input className="input-field" value={organizerWechat} onChange={(e) => setOrganizerWechat(e.target.value)} placeholder="若成团方便联系你" />
-          </div>
+          <OrganizerContactFields
+            contactType={organizerContactType}
+            contact={organizerContact}
+            contactLabel={organizerContactLabel}
+            onTypeChange={setOrganizerContactType}
+            onContactChange={setOrganizerContact}
+            onLabelChange={setOrganizerContactLabel}
+          />
         </div>
 
         <button

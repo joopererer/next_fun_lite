@@ -23,6 +23,9 @@ function seedActivities(): Activity[] {
       notes: '',
       organizerName: 'Cette糖',
       organizerWechat: 'cette456',
+      organizerContactType: 'wechat',
+      organizerContact: 'cette456',
+      postType: 'activity',
       sourceUrl: 'https://www.sortiraparis.com/example',
       status: 'proposed',
       category: 'dining',
@@ -68,16 +71,44 @@ function seedActivities(): Activity[] {
       linkedRecruitIds: ['recr003', 'recr004'],
     },
     {
+      id: 'info001',
+      title: '卢浮宫夏季音乐会',
+      description: '6月16日 15:00 开始抢票，官网直接购买，约39€起。夏季特别演出，值得一看。',
+      date: null,
+      location: 'Musée du Louvre',
+      maxParticipants: null,
+      fee: '39€起',
+      notes: '',
+      organizerName: 'James',
+      organizerWechat: '',
+      organizerContactType: 'private',
+      postType: 'info',
+      infoDeadline: futureDate(14, 15),
+      infoPrice: '39€起',
+      infoActionLabel: '立即抢票',
+      infoActionUrl: 'https://www.louvre.fr/',
+      sourceUrl: 'https://www.louvre.fr/',
+      status: 'proposed',
+      category: 'culture',
+      interestedCount: 0,
+      createdAt: daysAgo(0),
+    },
+    {
       id: 'recr001',
       title: 'Rambouillet 徒步',
       description: '从 Saint-Lazare 坐火车去 Rambouillet 森林徒步，约 12km，中等难度，风景优美。适合有一定体力、喜欢户外的朋友。',
       date: futureDate(10, 9),
-      location: 'Saint-Lazare 站集合',
+      location: 'Forêt de Rambouillet',
+      meetingLocation: 'Saint-Lazare 站 B出口',
+      meetingTime: '09:00',
+      postType: 'activity',
       maxParticipants: 10,
       fee: '火车票自理，约 15€',
       notes: '请穿运动鞋\n自备午餐和水\n雨天取消',
       organizerName: 'James',
       organizerWechat: 'james123',
+      organizerContactType: 'wechat',
+      organizerContact: 'james123',
       sourceUrl: '',
       status: 'recruiting',
       category: 'sports',
@@ -100,7 +131,10 @@ function seedActivities(): Activity[] {
       fee: '人均约 25-35€',
       notes: '请准时到达\n素食可提前告知',
       organizerName: 'Amy',
-      organizerWechat: 'amy_vintage',
+      organizerWechat: '',
+      organizerContactType: 'email',
+      organizerContact: 'amy@example.com',
+      postType: 'activity',
       sourceUrl: '',
       status: 'recruiting',
       category: 'dining',
@@ -192,7 +226,7 @@ function seedActivities(): Activity[] {
 
 function seedRegistrations(): Registration[] {
   return [
-    { id: 'reg001', activityId: 'recr001', name: 'James', wechat: 'james123', participantCount: 2, note: '有车', registeredAt: daysAgo(6) },
+    { id: 'reg001', activityId: 'recr001', name: 'James', wechat: 'james123', contactType: 'wechat', contactValue: 'james123', participantCount: 2, note: '有车', registeredAt: daysAgo(6) },
     { id: 'reg002', activityId: 'recr001', name: 'Cette糖', wechat: 'cette456', participantCount: 1, note: '', registeredAt: daysAgo(5) },
     { id: 'reg003', activityId: 'recr001', name: '小明', wechat: 'xiaoming88', participantCount: 2, note: '', registeredAt: daysAgo(4) },
     { id: 'reg004', activityId: 'recr001', name: 'Lily', wechat: 'lily_art', participantCount: 2, note: '素食', registeredAt: daysAgo(3) },
@@ -345,11 +379,11 @@ export class MockAdapter implements StorageAdapter {
     return this.countActiveRegistrations(activityId)
   }
 
-  async createRegistration(data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> {
+  async createRegistration(data: Omit<Registration, 'id' | 'registeredAt'> & { registeredAt?: string }): Promise<Registration> {
     const registration: Registration = {
       ...data,
       id: nanoid(8),
-      registeredAt: new Date().toISOString(),
+      registeredAt: data.registeredAt ?? new Date().toISOString(),
     }
     this.registrations.push(registration)
     return registration

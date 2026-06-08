@@ -19,6 +19,9 @@ export type TicketMethod = 'self' | 'group'
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type MealArrangement = 'self' | 'restaurant' | 'group'
 export type ReservationMethod = 'organizer' | 'self'
+export type OrganizerContactType = 'wechat' | 'email' | 'other' | 'private'
+export type RegistrantContactType = 'wechat' | 'email' | 'other'
+export type PostType = 'activity' | 'info'
 
 export interface Activity {
   id: string
@@ -34,7 +37,17 @@ export interface Activity {
   notes: string
   organizerName: string
   organizerWechat: string
+  organizerContactType?: OrganizerContactType
+  organizerContact?: string
+  organizerContactLabel?: string
   organizerId?: string
+  meetingLocation?: string
+  meetingTime?: string
+  postType?: PostType
+  infoDeadline?: string
+  infoPrice?: string
+  infoActionLabel?: string
+  infoActionUrl?: string
   sourceUrl: string
   status: ActivityStatus
   category: ActivityCategory
@@ -71,6 +84,9 @@ export interface Registration {
   userId?: string
   name: string
   wechat: string
+  contactType?: RegistrantContactType
+  contactValue?: string
+  contactLabel?: string
   participantCount: number
   note: string
   registeredAt: string

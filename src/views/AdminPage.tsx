@@ -9,12 +9,13 @@ import { AdminGate } from '../components/admin/AdminGate'
 import { CancelActivityModal } from '../components/admin/CancelActivityModal'
 import { EndActivityModal } from '../components/admin/EndActivityModal'
 import { KanbanBoard } from '../components/admin/KanbanBoard'
+import { ImportTab } from '../components/admin/ImportTab'
 import { RecruitForm } from '../components/recruit/RecruitForm'
 import { isTerminalStatus } from '../lib/activityStatus'
 import { api } from '../lib/api'
 import { Footer } from '../components/layout/Footer'
 
-type Tab = 'kanban' | 'list' | 'create'
+type Tab = 'kanban' | 'list' | 'create' | 'import'
 
 export function AdminPage() {
   const searchParams = useSearchParams()
@@ -23,7 +24,7 @@ export function AdminPage() {
 
   const [tab, setTab] = useState<Tab>(initialTab)
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
-  const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ActivityStatus | 'all' | 'info'>('all')
   const [editActivity, setEditActivity] = useState<ActivityWithCount | null>(null)
   const [endModalActivity, setEndModalActivity] = useState<ActivityWithCount | null>(null)
   const [cancelModalActivity, setCancelModalActivity] = useState<ActivityWithCount | null>(null)
@@ -84,6 +85,7 @@ export function AdminPage() {
     { id: 'kanban', label: '看板视图' },
     { id: 'list', label: '列表视图' },
     { id: 'create', label: editId ? '编辑活动' : '新建活动' },
+    { id: 'import', label: '📥 导入' },
   ]
 
   return (
@@ -141,6 +143,9 @@ export function AdminPage() {
               editId={editId ?? undefined}
               onSuccess={load}
             />
+          )}
+          {tab === 'import' && (
+            <ImportTab activities={activities} onImported={load} />
           )}
         </main>
 

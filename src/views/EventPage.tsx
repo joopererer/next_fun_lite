@@ -22,6 +22,8 @@ import { canRegister, getRegistrationButtonLabel, isInProgress, isProposalExpire
 import { notifyActivitiesChanged } from '../lib/activityEvents'
 import { saveGuestRegistration, removeGuestRegistration, getGuestRegistrations } from '../lib/guestRegistrations'
 import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
+import { formatOrganizerContactHint, resolveOrganizerContact } from '../lib/contact'
+import { isInfoPost } from '../../shared/infoVisibility'
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>()
@@ -153,7 +155,13 @@ export function EventPage() {
     }
   }
 
-  const submitRegistration = async (data: { name?: string; wechat?: string }) => {
+  const submitRegistration = async (data: {
+    name?: string
+    wechat?: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue?: string
+    contactLabel?: string
+  }) => {
     if (!id || !activity || activity.status !== 'recruiting' || myRegistration) return
     if (!canRegister({ ...activity, registeredCount: activity.registeredCount })) {
       alert('报名已结束')
@@ -169,6 +177,9 @@ export function EventPage() {
         activityId: id,
         name: data.name,
         wechat: data.wechat,
+        contactType: data.contactType,
+        contactValue: data.contactValue,
+        contactLabel: data.contactLabel,
         participantCount,
         note: note.trim(),
       })
@@ -204,7 +215,13 @@ export function EventPage() {
 
   const handleSubmit = () => submitRegistration({})
 
-  const handleGuestSubmit = (data: { name: string; wechat: string }) => {
+  const handleGuestSubmit = (data: {
+    name: string
+    wechat?: string
+    contactType: 'wechat' | 'email' | 'other'
+    contactValue: string
+    contactLabel?: string
+  }) => {
     submitRegistration(data)
   }
 
@@ -265,6 +282,7 @@ export function EventPage() {
 
   if (success && activity) {
     const cancelUrl = cancelToken ? getCancelUrl(cancelToken) : null
+    const organizerHint = formatOrganizerContactHint(resolveOrganizerContact(activity))
     return shell(
       <main className="flex-1 max-w-lg mx-auto px-4 py-16 page-enter w-full">
         <div className="text-center mb-8">
@@ -275,17 +293,19 @@ export function EventPage() {
         </div>
         <div className="bg-green-50 rounded-xl p-4 mb-6 text-sm text-gray-700 space-y-2">
           <p className="font-medium text-green-800">📱 下一步：</p>
-          <p>添加发起人微信 <strong>{activity.organizerWechat}</strong></p>
-          {isSignedIn && <p>备注「{activity.title} 报名」</p>}
+          <p>{organizerHint.message}</p>
+          {isSignedIn && organizerHint.copyText && <p>备注「{activity.title} 报名」</p>}
         </div>
 
-        <button
-          type="button"
-          className="btn-primary w-full mb-6"
-          onClick={() => navigator.clipboard.writeText(activity.organizerWechat)}
-        >
-          复制微信号
-        </button>
+        {organizerHint.copyText && (
+          <button
+            type="button"
+            className="btn-primary w-full mb-6"
+            onClick={() => navigator.clipboard.writeText(organizerHint.copyText!)}
+          >
+            {organizerHint.copyLabel ?? '复制'}
+          </button>
+        )}
 
         {!isSignedIn && cancelUrl && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
@@ -332,7 +352,49 @@ export function EventPage() {
 
   const notes = activity.notes ? activity.notes.split('\n').filter(Boolean) : []
 
+  if (isInfoPost(activity)) {
+    return shell(
+      <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
+        <span className="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full inline-block mb-2">
+          📢 资讯
+        </span>
+        <h1 className="text-2xl font-bold mb-2">{activity.title}</h1>
+        <p className="text-sm text-gray-500 mb-4">{activity.organizerName}</p>
+        {activity.description && (
+          <p className="text-gray-700 whitespace-pre-wrap mb-4">{activity.description}</p>
+        )}
+        <div className="space-y-2 text-sm text-gray-600 mb-6">
+          {activity.location && <p>📍 {activity.location}</p>}
+          {activity.infoPrice && <p>💰 {activity.infoPrice}</p>}
+          {activity.infoDeadline && <p>⏰ 截止：{formatEventDate(activity.infoDeadline)}</p>}
+          {activity.sourceUrl && (
+            <a href={activity.sourceUrl} target="_blank" rel="noreferrer" className="text-green-600 underline block truncate">
+              🔗 参考链接
+            </a>
+          )}
+        </div>
+        <div className="flex flex-col gap-3">
+          {activity.infoActionUrl && (
+            <a
+              href={activity.infoActionUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-primary w-full text-center"
+            >
+              {activity.infoActionLabel || '查看详情'} →
+            </a>
+          )}
+          <Link href={`/recruit/new?from_info=${activity.id}`} className="btn-secondary w-full text-center">
+            我抢到了，发起组团
+          </Link>
+          <Link href="/" className="text-sm text-center text-gray-500 hover:text-green-600">回到首页</Link>
+        </div>
+      </main>,
+    )
+  }
+
   if (endedCancelled) {
+    const cancelContact = formatOrganizerContactHint(resolveOrganizerContact(activity))
     return shell(
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 text-red-900">
@@ -342,14 +404,16 @@ export function EventPage() {
             <p className="text-sm whitespace-pre-wrap mb-4 opacity-90">{activity.cancelNote}</p>
           )}
           <p className="text-sm mb-3">如有疑问请联系发起人：</p>
-          <p className="font-medium mb-3">{activity.organizerWechat}</p>
-          <button
-            type="button"
-            className="btn-secondary text-sm"
-            onClick={() => navigator.clipboard.writeText(activity.organizerWechat)}
-          >
-            复制微信号
-          </button>
+          <p className="font-medium mb-3">{cancelContact.message}</p>
+          {cancelContact.copyText && (
+            <button
+              type="button"
+              className="btn-secondary text-sm"
+              onClick={() => navigator.clipboard.writeText(cancelContact.copyText!)}
+            >
+              {cancelContact.copyLabel ?? '复制'}
+            </button>
+          )}
         </div>
         <div className="opacity-60 pointer-events-none select-none">
           <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
@@ -400,7 +464,10 @@ export function EventPage() {
 
         <div className="space-y-2 text-sm text-gray-600 mb-6">
           <p>📅 {formatEventDate(activity.date)}</p>
-          <p>📍 {activity.location || '地点待定'}</p>
+          <p>📍 活动地点：{activity.location || '地点待定'}</p>
+          {activity.meetingLocation && (
+            <p>🚉 集合地点：{activity.meetingLocation}{activity.meetingTime ? ` ${activity.meetingTime}` : ''}</p>
+          )}
           {activity.status === 'recruiting' && (
             <div>
               <p className="mb-1">👥 已报名 {displayCount}{activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''} 人</p>
@@ -595,7 +662,9 @@ export function EventPage() {
 
         <div className="mt-8 text-sm text-gray-500 text-center">
           <p>发起人：{activity.organizerName}</p>
-          {activity.organizerWechat && <p>报名后添加微信：{activity.organizerWechat}</p>}
+          {activity.status === 'recruiting' && (
+            <p>{formatOrganizerContactHint(resolveOrganizerContact(activity)).message}</p>
+          )}
         </div>
       </main>
 

@@ -7,11 +7,13 @@ import type {
   Registration,
 } from '../../shared/types'
 import { findSimilarProposals } from '../../shared/activityDedupe'
+import type { ParsedImportRow } from '../../shared/excelImport'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../shared/validateSchedule'
 import { canRegister, isProposalExpired } from '../../shared/activityPhase'
 import { isTerminalStatus, normalizeActivityStatus } from '../../shared/activityStatus'
 import {
   buildAdminCreatePayload,
+  buildInfoPayload,
   buildProposalPayload,
   buildRecruitmentPayload,
 } from '../lib/activityPayload'
@@ -240,6 +242,9 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
     activityId: string
     name?: string
     wechat?: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue?: string
+    contactLabel?: string
     participantCount?: number
     note?: string
     action?: 'remove'
@@ -262,24 +267,34 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
   }
 
   let name = body.name?.trim() ?? ''
-  let wechat = body.wechat?.trim() ?? ''
+  const contactType = body.contactType ?? (body.wechat ? 'wechat' : 'wechat')
+  let contactValue = body.contactValue?.trim() ?? body.wechat?.trim() ?? ''
+  const contactLabel = body.contactLabel?.trim() || undefined
+  let wechat = contactType === 'wechat' ? contactValue : (body.wechat?.trim() ?? '')
   let cancelToken: string | undefined
 
   if (userId) {
     const profile = await getProfileForUser(userId, env)
     if (!name) name = profile?.nickname || (await getClerkDisplayName())
-    if (!wechat) wechat = profile?.wechat ?? ''
+    if (!contactValue) {
+      if (contactType === 'wechat') contactValue = profile?.wechat ?? ''
+      else if (contactType === 'email') contactValue = profile?.email ?? ''
+    }
+    if (contactType === 'wechat') wechat = contactValue
 
     const userRegs = await storage.getRegistrationsByUser(userId)
     if (userRegs.some((r) => r.activityId === body.activityId && !r.cancelledAt)) {
       return errorResponse('Already registered', 409)
     }
   } else {
-    if (!name || !wechat) {
-      return errorResponse('Missing required fields: name, wechat')
+    if (!name || !contactValue) {
+      return errorResponse('Missing required fields: name, contact')
     }
-    const existing = await storage.findRegistrationByNameAndWechat(body.activityId, name, wechat)
-    if (existing) return errorResponse('Already registered', 409)
+    if (contactType === 'wechat') {
+      const existing = await storage.findRegistrationByNameAndWechat(body.activityId, name, contactValue)
+      if (existing) return errorResponse('Already registered', 409)
+      wechat = contactValue
+    }
     cancelToken = nanoid(16)
   }
 
@@ -304,7 +319,10 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
     activityId: body.activityId,
     userId: userId ?? undefined,
     name,
-    wechat: wechat || '—',
+    wechat: wechat || (contactType === 'wechat' ? contactValue : '—'),
+    contactType,
+    contactValue,
+    contactLabel,
     participantCount,
     note: body.note ?? '',
     cancelToken,
@@ -465,7 +483,90 @@ export async function handleFindSimilarProposals(request: Request, env: EnvConfi
 
   const storage = createStorageAdapter(env)
   const activities = await storage.getActivities()
-  const proposals = activities.filter((a) => a.status === 'proposed')
+  const proposals = activities.filter((a) => a.status === 'proposed' && a.postType !== 'info')
   const matches = findSimilarProposals(proposals, { title, location, sourceUrl })
   return jsonResponse({ matches })
+}
+
+export async function handleCreateInfo(request: Request, env: EnvConfig): Promise<Response> {
+  const storage = createStorageAdapter(env)
+  const body = await parseBody<Partial<Activity>>(request)
+
+  if (!body.title?.trim()) {
+    return errorResponse('Missing required field: title', 400)
+  }
+  if (body.infoDeadline && isEndTimeInPast(body.infoDeadline)) {
+    return errorResponse(PAST_END_TIME_MESSAGE, 400)
+  }
+
+  const activity = await storage.createActivity(buildInfoPayload(body))
+  return jsonResponse(activity, 201)
+}
+
+export async function handleAdminImport(request: Request, env: EnvConfig): Promise<Response> {
+  if (!checkAdminAuth(request, env)) return errorResponse('Unauthorized', 401)
+
+  const body = await parseBody<{ rows?: ParsedImportRow[] }>(request)
+  const rows = body.rows ?? []
+  if (rows.length === 0) {
+    return errorResponse('No rows to import', 400)
+  }
+
+  const storage = createStorageAdapter(env)
+  let imported = 0
+  let registrationsCreated = 0
+  let skipped = 0
+  const failed: Array<{ title: string; error: string }> = []
+
+  for (const row of rows) {
+    if (row.skipReason) {
+      skipped++
+      continue
+    }
+    try {
+      const activity = await storage.createActivity({
+        title: row.title,
+        description: row.description ?? '',
+        date: row.date,
+        location: row.location ?? '',
+        meetingLocation: row.meetingLocation,
+        meetingTime: row.meetingTime,
+        maxParticipants: null,
+        fee: '',
+        notes: '',
+        organizerName: row.organizerName ?? '导入',
+        organizerWechat: '',
+        organizerContactType: 'private',
+        sourceUrl: row.sourceUrl ?? '',
+        status: row.status,
+        category: row.category,
+        interestedCount: 0,
+        postType: 'activity',
+        recap: row.recap,
+      })
+
+      for (const member of row.members) {
+        await storage.createRegistration({
+          activityId: activity.id,
+          name: member,
+          wechat: '—',
+          contactType: 'other',
+          contactValue: '',
+          contactLabel: 'Excel导入',
+          participantCount: 1,
+          note: '',
+          registeredAt: row.date ?? new Date().toISOString(),
+        })
+        registrationsCreated++
+      }
+      imported++
+    } catch (err) {
+      failed.push({
+        title: row.title,
+        error: err instanceof Error ? err.message : 'Import failed',
+      })
+    }
+  }
+
+  return jsonResponse({ imported, registrationsCreated, skipped, failed })
 }

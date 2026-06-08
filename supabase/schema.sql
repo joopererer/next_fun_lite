@@ -27,6 +27,16 @@ create table if not exists activities (
   notes text,
   organizer_name text,
   organizer_wechat text,
+  organizer_contact_type text default 'wechat',
+  organizer_contact text,
+  organizer_contact_label text,
+  meeting_location text,
+  meeting_time text,
+  post_type text default 'activity',
+  info_deadline timestamptz,
+  info_price text,
+  info_action_label text,
+  info_action_url text,
   organizer_id text references profiles(id),
   source_url text,
   status text default 'proposed',
@@ -64,6 +74,9 @@ create table if not exists registrations (
   user_id text references profiles(id),
   name text not null,
   wechat text not null,
+  contact_type text default 'wechat',
+  contact_value text not null default '',
+  contact_label text,
   participant_count int default 1,
   note text,
   registered_at timestamptz default now(),
@@ -81,6 +94,8 @@ create table if not exists interests (
   created_at timestamptz default now()
 );
 
+create index if not exists activities_post_type_idx on activities(post_type);
+create index if not exists activities_info_deadline_idx on activities(info_deadline);
 create index if not exists activities_status_idx on activities(status);
 create index if not exists activities_category_idx on activities(category);
 create index if not exists activities_created_at_idx on activities(created_at desc);

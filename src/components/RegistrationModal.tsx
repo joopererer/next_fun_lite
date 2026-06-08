@@ -1,7 +1,10 @@
 'use client'
 
 import { SignInButton } from '@clerk/nextjs'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { RegistrantContactType } from '../../shared/types'
+import { RegistrantContactFields } from './contact/RegistrantContactFields'
+import { loadContactPrefs, saveContactPrefs } from '../lib/contactPrefs'
 
 interface Props {
   open: boolean
@@ -11,7 +14,13 @@ interface Props {
   note: string
   onParticipantCountChange: (n: number) => void
   onNoteChange: (note: string) => void
-  onSubmit: (data: { name: string; wechat: string }) => void
+  onSubmit: (data: {
+    name: string
+    contactType: RegistrantContactType
+    contactValue: string
+    contactLabel?: string
+    wechat?: string
+  }) => void
   submitting: boolean
 }
 
@@ -27,13 +36,37 @@ export function RegistrationModal({
   submitting,
 }: Props) {
   const [name, setName] = useState('')
-  const [wechat, setWechat] = useState('')
+  const [contactType, setContactType] = useState<RegistrantContactType>('wechat')
+  const [contactValue, setContactValue] = useState('')
+  const [contactLabel, setContactLabel] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    const prefs = loadContactPrefs()
+    if (prefs) {
+      setContactType(prefs.contactType)
+      setContactValue(prefs.contactValue)
+      setContactLabel(prefs.contactLabel ?? '')
+    }
+  }, [open])
 
   if (!open) return null
 
   const handleSubmit = () => {
-    if (!name.trim() || !wechat.trim()) return
-    onSubmit({ name: name.trim(), wechat: wechat.trim() })
+    if (!name.trim() || !contactValue.trim()) return
+    const payload = {
+      name: name.trim(),
+      contactType,
+      contactValue: contactValue.trim(),
+      contactLabel: contactType === 'other' ? contactLabel.trim() || undefined : undefined,
+      wechat: contactType === 'wechat' ? contactValue.trim() : undefined,
+    }
+    saveContactPrefs({
+      contactType,
+      contactValue: contactValue.trim(),
+      contactLabel: contactType === 'other' ? contactLabel.trim() || undefined : undefined,
+    })
+    onSubmit(payload)
   }
 
   return (
@@ -67,15 +100,14 @@ export function RegistrationModal({
                 placeholder="你的昵称"
               />
             </div>
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">微信号 *</label>
-              <input
-                className="input-field"
-                value={wechat}
-                onChange={(e) => setWechat(e.target.value)}
-                placeholder="你的微信号"
-              />
-            </div>
+            <RegistrantContactFields
+              contactType={contactType}
+              contactValue={contactValue}
+              contactLabel={contactLabel}
+              onTypeChange={setContactType}
+              onValueChange={setContactValue}
+              onLabelChange={setContactLabel}
+            />
           </div>
         </div>
 
@@ -119,7 +151,7 @@ export function RegistrationModal({
             type="button"
             className="btn-primary w-full mt-5"
             onClick={handleSubmit}
-            disabled={submitting || !name.trim() || !wechat.trim()}
+            disabled={submitting || !name.trim() || !contactValue.trim()}
           >
             {submitting ? '提交中...' : '提交报名'}
           </button>

@@ -155,11 +155,13 @@ export class SupabaseAdapter implements StorageAdapter {
     return this.mapRegistration(data as RegistrationRow)
   }
 
-  async createRegistration(input: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> {
+  async createRegistration(input: Omit<Registration, 'id' | 'registeredAt'> & { registeredAt?: string }): Promise<Registration> {
     const id = nanoid(8)
+    const row = this.unmapRegistration(input)
+    if (input.registeredAt) row.registered_at = input.registeredAt
     const { data, error } = await this.db
       .from('registrations')
-      .insert({ id, ...this.unmapRegistration(input) })
+      .insert({ id, ...row })
       .select()
       .single()
     if (error) throw error
@@ -326,6 +328,16 @@ export class SupabaseAdapter implements StorageAdapter {
       notes: String(row.notes ?? ''),
       organizerName: String(row.organizer_name ?? ''),
       organizerWechat: String(row.organizer_wechat ?? ''),
+      organizerContactType: row.organizer_contact_type as Activity['organizerContactType'],
+      organizerContact: row.organizer_contact ? String(row.organizer_contact) : undefined,
+      organizerContactLabel: row.organizer_contact_label ? String(row.organizer_contact_label) : undefined,
+      meetingLocation: row.meeting_location ? String(row.meeting_location) : undefined,
+      meetingTime: row.meeting_time ? String(row.meeting_time) : undefined,
+      postType: (row.post_type as Activity['postType']) ?? 'activity',
+      infoDeadline: row.info_deadline ? String(row.info_deadline) : undefined,
+      infoPrice: row.info_price ? String(row.info_price) : undefined,
+      infoActionLabel: row.info_action_label ? String(row.info_action_label) : undefined,
+      infoActionUrl: row.info_action_url ? String(row.info_action_url) : undefined,
       organizerId: row.organizer_id ? String(row.organizer_id) : undefined,
       sourceUrl: String(row.source_url ?? ''),
       status: row.status as Activity['status'],
@@ -372,6 +384,16 @@ export class SupabaseAdapter implements StorageAdapter {
     if (activity.notes !== undefined) result.notes = activity.notes
     if (activity.organizerName !== undefined) result.organizer_name = activity.organizerName
     if (activity.organizerWechat !== undefined) result.organizer_wechat = activity.organizerWechat
+    if (activity.organizerContactType !== undefined) result.organizer_contact_type = activity.organizerContactType
+    if (activity.organizerContact !== undefined) result.organizer_contact = activity.organizerContact
+    if (activity.organizerContactLabel !== undefined) result.organizer_contact_label = activity.organizerContactLabel
+    if (activity.meetingLocation !== undefined) result.meeting_location = activity.meetingLocation
+    if (activity.meetingTime !== undefined) result.meeting_time = activity.meetingTime
+    if (activity.postType !== undefined) result.post_type = activity.postType
+    if (activity.infoDeadline !== undefined) result.info_deadline = activity.infoDeadline
+    if (activity.infoPrice !== undefined) result.info_price = activity.infoPrice
+    if (activity.infoActionLabel !== undefined) result.info_action_label = activity.infoActionLabel
+    if (activity.infoActionUrl !== undefined) result.info_action_url = activity.infoActionUrl
     if (activity.organizerId !== undefined) result.organizer_id = activity.organizerId
     if (activity.sourceUrl !== undefined) result.source_url = activity.sourceUrl
     if (activity.status !== undefined) result.status = activity.status
@@ -409,6 +431,9 @@ export class SupabaseAdapter implements StorageAdapter {
       userId: row.user_id ? String(row.user_id) : undefined,
       name: String(row.name),
       wechat: String(row.wechat),
+      contactType: (row.contact_type as Registration['contactType']) ?? 'wechat',
+      contactValue: row.contact_value != null ? String(row.contact_value) : String(row.wechat ?? ''),
+      contactLabel: row.contact_label ? String(row.contact_label) : undefined,
       participantCount: Number(row.participant_count ?? 1),
       note: String(row.note ?? ''),
       registeredAt: String(row.registered_at),
@@ -424,6 +449,9 @@ export class SupabaseAdapter implements StorageAdapter {
     if (r.userId !== undefined) result.user_id = r.userId
     if (r.name !== undefined) result.name = r.name
     if (r.wechat !== undefined) result.wechat = r.wechat
+    if (r.contactType !== undefined) result.contact_type = r.contactType
+    if (r.contactValue !== undefined) result.contact_value = r.contactValue
+    if (r.contactLabel !== undefined) result.contact_label = r.contactLabel
     if (r.participantCount !== undefined) result.participant_count = r.participantCount
     if (r.note !== undefined) result.note = r.note
     if (r.cancelToken !== undefined) result.cancel_token = r.cancelToken

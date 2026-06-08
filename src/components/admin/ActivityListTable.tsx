@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityWithCount, ActivityStatus } from '../../../shared/types'
+import { isInfoPost, isProposalPost } from '../../../shared/infoVisibility'
 import { getStatusLabel, isEndedCancelled, isTerminalStatus } from '../../lib/activityStatus'
 import { getCategoryLabel } from '../../lib/categories'
 import { formatListDate } from '../../lib/user'
@@ -10,7 +11,7 @@ import { formatListDate } from '../../lib/user'
 type SortField = 'title' | 'status' | 'date' | 'location' | 'category' | 'registeredCount' | 'createdAt'
 type SortDir = 'asc' | 'desc'
 
-type StatusFilter = ActivityStatus | 'all'
+type StatusFilter = ActivityStatus | 'all' | 'info'
 
 interface Props {
   activities: ActivityWithCount[]
@@ -22,11 +23,18 @@ interface Props {
 
 const FILTER_OPTIONS: StatusFilter[] = [
   'all',
+  'info',
   'proposed',
   'recruiting',
   'ended_success',
   'ended_cancelled',
 ]
+
+function getFilterLabel(s: StatusFilter): string {
+  if (s === 'all') return '全部'
+  if (s === 'info') return '资讯'
+  return getStatusLabel(s)
+}
 
 export function ActivityListTable({
   activities,
@@ -54,7 +62,11 @@ export function ActivityListTable({
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    let list = statusFilter === 'all' ? activities : activities.filter((a) => a.status === statusFilter)
+    let list = activities
+    if (statusFilter === 'info') list = activities.filter((a) => isInfoPost(a))
+    else if (statusFilter === 'proposed') list = activities.filter((a) => isProposalPost(a))
+    else if (statusFilter === 'all') list = activities
+    else list = activities.filter((a) => a.status === statusFilter && !isInfoPost(a))
     if (q) {
       list = list.filter((a) =>
         [a.title, a.location, a.organizerName, getCategoryLabel(a.category)]
@@ -116,7 +128,7 @@ export function ActivityListTable({
               }`}
               onClick={() => onStatusFilterChange(s)}
             >
-              {s === 'all' ? '全部' : getStatusLabel(s)}
+              {getFilterLabel(s)}
             </button>
           ))}
         </div>
@@ -147,7 +159,11 @@ export function ActivityListTable({
                 <td className="py-4 pr-5 lg:pr-8 font-medium">{a.title}</td>
                 <td className="py-4 pr-5 lg:pr-8">{getCategoryLabel(a.category)}</td>
                 <td className={`py-4 pr-5 lg:pr-8 ${isEndedCancelled(a.status) ? 'text-red-600' : ''}`}>
-                  {isEndedCancelled(a.status) ? '❌ ' : ''}{getStatusLabel(a.status)}
+                  {isInfoPost(a) ? '📢 资讯' : (
+                    <>
+                      {isEndedCancelled(a.status) ? '❌ ' : ''}{getStatusLabel(a.status)}
+                    </>
+                  )}
                 </td>
                 <td className="py-4 pr-5 lg:pr-8 whitespace-nowrap">{formatListDate(a.date)}</td>
                 <td className="py-4 pr-5 lg:pr-8">{a.location || '-'}</td>
@@ -166,7 +182,7 @@ export function ActivityListTable({
                         编辑
                       </Link>
                     )}
-                    {(a.status === 'recruiting' || a.status === 'proposed') && (
+                    {(a.status === 'recruiting' || isProposalPost(a)) && (
                       <button
                         type="button"
                         className="text-red-500 hover:underline"
