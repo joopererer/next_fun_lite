@@ -44,6 +44,7 @@ export interface Activity {
   meetingLocation?: string
   meetingTime?: string
   postType?: PostType
+  infoStartTime?: string
   infoDeadline?: string
   infoPrice?: string
   infoActionLabel?: string

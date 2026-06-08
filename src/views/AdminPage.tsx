@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { Activity, ActivityStatus, ActivityWithCount } from '../../shared/types'
 import { ActivityListTable } from '../components/admin/ActivityListTable'
 import { AdminGate } from '../components/admin/AdminGate'
@@ -23,6 +23,7 @@ import { Footer } from '../components/layout/Footer'
 type Tab = 'kanban' | 'list' | 'create' | 'import'
 
 export function AdminPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const initialTab = (searchParams.get('tab') as Tab) || 'kanban'
   const editId = searchParams.get('edit')
@@ -39,6 +40,21 @@ export function AdminPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('tab') as Tab | null
+    if (fromUrl && ['kanban', 'list', 'create', 'import'].includes(fromUrl)) {
+      setTab(fromUrl)
+    }
+  }, [searchParams])
+
+  const navigateTab = (next: Tab) => {
+    setTab(next)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', next)
+    if (next !== 'create') params.delete('edit')
+    router.replace(`/admin?${params.toString()}`, { scroll: false })
+  }
 
   useEffect(() => {
     if (editId) {
@@ -113,7 +129,7 @@ export function AdminPage() {
                     ? 'border-green-600 text-green-700'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
-                onClick={() => setTab(t.id)}
+                onClick={() => navigateTab(t.id)}
               >
                 {t.label}
               </button>
@@ -150,7 +166,11 @@ export function AdminPage() {
             />
           )}
           {tab === 'import' && (
-            <ImportTab activities={activities} onImported={load} />
+            <ImportTab
+              activities={activities}
+              onImported={load}
+              onNavigate={(target) => navigateTab(target)}
+            />
           )}
         </main>
 

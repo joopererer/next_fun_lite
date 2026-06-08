@@ -17,6 +17,7 @@ export function InfoNewPage() {
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<ActivityCategory>('culture')
   const [sourceUrl, setSourceUrl] = useState('')
+  const [infoStartTime, setInfoStartTime] = useState('')
   const [infoDeadline, setInfoDeadline] = useState('')
   const [infoPrice, setInfoPrice] = useState('')
   const [infoActionLabel, setInfoActionLabel] = useState('')
@@ -53,6 +54,14 @@ export function InfoNewPage() {
       alert(PAST_END_TIME_MESSAGE)
       return
     }
+    if (infoStartTime && infoDeadline) {
+      const start = new Date(infoStartTime).getTime()
+      const end = new Date(infoDeadline).getTime()
+      if (!Number.isNaN(start) && !Number.isNaN(end) && start >= end) {
+        alert('行动开始时间必须早于截止时间')
+        return
+      }
+    }
 
     setSubmitting(true)
     try {
@@ -62,6 +71,7 @@ export function InfoNewPage() {
         category,
         sourceUrl: sourceUrl.trim(),
         organizerName: organizerName.trim(),
+        infoStartTime: infoStartTime ? new Date(infoStartTime).toISOString() : undefined,
         infoDeadline: infoDeadline ? new Date(infoDeadline).toISOString() : undefined,
         infoPrice: infoPrice.trim() || undefined,
         infoActionLabel: infoActionLabel.trim() || undefined,
@@ -141,8 +151,14 @@ export function InfoNewPage() {
             <input className="input-field" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">截止时间（选填）</label>
+            <label className="text-sm text-gray-600 mb-1 block">行动开始时间（选填）</label>
+            <input type="datetime-local" className="input-field" value={infoStartTime} onChange={(e) => setInfoStartTime(e.target.value)} />
+            <p className="text-xs text-gray-400 mt-1">留空表示现在即可操作</p>
+          </div>
+          <div>
+            <label className="text-sm text-gray-600 mb-1 block">行动截止时间（选填）</label>
             <input type="datetime-local" className="input-field" value={infoDeadline} onChange={(e) => setInfoDeadline(e.target.value)} />
+            <p className="text-xs text-gray-400 mt-1">留空表示无截止</p>
           </div>
           <div>
             <label className="text-sm text-gray-600 mb-1 block">价格信息（选填）</label>

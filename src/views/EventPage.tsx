@@ -24,6 +24,7 @@ import { saveGuestRegistration, removeGuestRegistration, getGuestRegistrations }
 import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
 import { formatOrganizerContactHint, resolveOrganizerContact } from '../lib/contact'
 import { isInfoPost } from '../../shared/infoVisibility'
+import { InfoEventSection } from '../components/InfoEventSection'
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>()
@@ -364,40 +365,7 @@ export function EventPage() {
   if (isInfoPost(activity)) {
     return shell(
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
-        <span className="text-xs bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full inline-block mb-2">
-          📢 资讯
-        </span>
-        <h1 className="text-2xl font-bold mb-2">{activity.title}</h1>
-        <p className="text-sm text-gray-500 mb-4">{activity.organizerName}</p>
-        {activity.description && (
-          <p className="text-gray-700 whitespace-pre-wrap mb-4">{activity.description}</p>
-        )}
-        <div className="space-y-2 text-sm text-gray-600 mb-6">
-          {activity.location && <p>📍 {activity.location}</p>}
-          {activity.infoPrice && <p>💰 {activity.infoPrice}</p>}
-          {activity.infoDeadline && <p>⏰ 截止：{formatEventDate(activity.infoDeadline)}</p>}
-          {activity.sourceUrl && (
-            <a href={activity.sourceUrl} target="_blank" rel="noreferrer" className="text-green-600 underline block truncate">
-              🔗 参考链接
-            </a>
-          )}
-        </div>
-        <div className="flex flex-col gap-3">
-          {activity.infoActionUrl && (
-            <a
-              href={activity.infoActionUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-primary w-full text-center"
-            >
-              {activity.infoActionLabel || '查看详情'} →
-            </a>
-          )}
-          <Link href={`/recruit/new?from_info=${activity.id}`} className="btn-secondary w-full text-center">
-            我抢到了，发起组团
-          </Link>
-          <Link href="/" className="text-sm text-center text-gray-500 hover:text-green-600">回到首页</Link>
-        </div>
+        <InfoEventSection activity={activity} />
       </main>,
     )
   }

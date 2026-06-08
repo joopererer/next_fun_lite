@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import Link from 'next/link'
 import type { Activity } from '../../../shared/types'
 import { buildImportPreview, type ImportPreviewResult, type ParsedImportRow } from '../../../shared/excelImport'
 import { api } from '../../lib/api'
@@ -12,11 +11,12 @@ import { getStatusLabel } from '../../lib/activityStatus'
 interface Props {
   activities: Activity[]
   onImported: () => void
+  onNavigate?: (tab: 'kanban' | 'list') => void
 }
 
 type Step = 'upload' | 'preview' | 'done'
 
-export function ImportTab({ activities, onImported }: Props) {
+export function ImportTab({ activities, onImported, onNavigate }: Props) {
   const [step, setStep] = useState<Step>('upload')
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null)
   const [importing, setImporting] = useState(false)
@@ -83,7 +83,13 @@ export function ImportTab({ activities, onImported }: Props) {
             </li>
           )}
         </ul>
-        <Link href="/admin?tab=kanban" className="btn-primary">前往看板查看</Link>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => onNavigate?.('kanban')}
+        >
+          前往看板查看
+        </button>
       </div>
     )
   }
@@ -109,6 +115,7 @@ export function ImportTab({ activities, onImported }: Props) {
                 <tr className="border-b bg-gray-50 text-left text-gray-500">
                   <th className="p-2">标题</th>
                   <th className="p-2">日期</th>
+                  <th className="p-2">集合时间</th>
                   <th className="p-2">类型</th>
                   <th className="p-2">状态</th>
                   <th className="p-2">报名</th>
@@ -120,9 +127,14 @@ export function ImportTab({ activities, onImported }: Props) {
                   <tr key={`${r.title}-${i}`} className="border-b border-gray-50">
                     <td className="p-2">{r.title}</td>
                     <td className="p-2 whitespace-nowrap">{formatListDate(r.date)}</td>
+                    <td className="p-2 whitespace-nowrap">{r.meetingTime ?? '—'}</td>
                     <td className="p-2">{getCategoryLabel(r.category)}</td>
                     <td className="p-2">{getStatusLabel(r.status)}</td>
-                    <td className="p-2">{r.members.length}人</td>
+                    <td className="p-2">
+                      {r.members.length > 0
+                        ? `${r.members.length}人（${r.members.slice(0, 3).join('、')}${r.members.length > 3 ? '…' : ''}）`
+                        : '0人'}
+                    </td>
                     <td className="p-2 text-xs text-gray-500">{r.warning ?? r.skipReason ?? ''}</td>
                   </tr>
                 ))}

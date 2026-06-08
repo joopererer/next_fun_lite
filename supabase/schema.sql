@@ -33,6 +33,7 @@ create table if not exists activities (
   meeting_location text,
   meeting_time text,
   post_type text default 'activity',
+  info_start_time timestamptz,
   info_deadline timestamptz,
   info_price text,
   info_action_label text,

@@ -498,6 +498,13 @@ export async function handleCreateInfo(request: Request, env: EnvConfig): Promis
   if (body.infoDeadline && isEndTimeInPast(body.infoDeadline)) {
     return errorResponse(PAST_END_TIME_MESSAGE, 400)
   }
+  if (body.infoStartTime && body.infoDeadline) {
+    const start = new Date(body.infoStartTime).getTime()
+    const end = new Date(body.infoDeadline).getTime()
+    if (!Number.isNaN(start) && !Number.isNaN(end) && start >= end) {
+      return errorResponse('行动开始时间必须早于截止时间', 400)
+    }
+  }
 
   const activity = await storage.createActivity(buildInfoPayload(body))
   return jsonResponse(activity, 201)

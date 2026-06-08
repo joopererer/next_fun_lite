@@ -334,6 +334,7 @@ export class SupabaseAdapter implements StorageAdapter {
       meetingLocation: row.meeting_location ? String(row.meeting_location) : undefined,
       meetingTime: row.meeting_time ? String(row.meeting_time) : undefined,
       postType: (row.post_type as Activity['postType']) ?? 'activity',
+      infoStartTime: row.info_start_time ? String(row.info_start_time) : undefined,
       infoDeadline: row.info_deadline ? String(row.info_deadline) : undefined,
       infoPrice: row.info_price ? String(row.info_price) : undefined,
       infoActionLabel: row.info_action_label ? String(row.info_action_label) : undefined,
@@ -390,6 +391,7 @@ export class SupabaseAdapter implements StorageAdapter {
     if (activity.meetingLocation !== undefined) result.meeting_location = activity.meetingLocation
     if (activity.meetingTime !== undefined) result.meeting_time = activity.meetingTime
     if (activity.postType !== undefined) result.post_type = activity.postType
+    if (activity.infoStartTime !== undefined) result.info_start_time = activity.infoStartTime
     if (activity.infoDeadline !== undefined) result.info_deadline = activity.infoDeadline
     if (activity.infoPrice !== undefined) result.info_price = activity.infoPrice
     if (activity.infoActionLabel !== undefined) result.info_action_label = activity.infoActionLabel

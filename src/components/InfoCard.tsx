@@ -1,20 +1,41 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { Activity } from '../../shared/types'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { formatEventDate } from '../lib/user'
+import {
+  getInfoTimePhase,
+  getInfoTimeStatusLabel,
+  isInfoActionEnabled,
+  isInfoCountdownUrgent,
+} from '../lib/infoTiming'
 
 interface Props {
   activity: Activity
 }
 
 export function InfoCard({ activity }: Props) {
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const phase = getInfoTimePhase(activity, now)
+  const statusLabel = getInfoTimeStatusLabel(phase, activity, now)
+  const urgent = isInfoCountdownUrgent(phase, activity, now)
+  const actionEnabled = isInfoActionEnabled(activity, now)
+
   const preview = activity.description
     ? activity.description.length > 80
       ? `${activity.description.slice(0, 80)}…`
       : activity.description
     : ''
+
+  const actionLabel = activity.infoActionLabel || '查看详情'
 
   return (
     <article className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
@@ -32,21 +53,35 @@ export function InfoCard({ activity }: Props) {
       {activity.infoPrice && (
         <p className="text-sm text-gray-700 mb-2">💰 {activity.infoPrice}</p>
       )}
-      {activity.infoDeadline && (
-        <p className="text-sm text-amber-700 mb-3">
-          ⏰ 截止：{formatEventDate(activity.infoDeadline)}
+      {statusLabel && (
+        <p
+          className={`text-sm mb-3 ${
+            urgent ? 'text-red-600 font-medium' : phase === 'active_with_deadline' ? 'text-amber-700' : 'text-gray-600'
+          }`}
+        >
+          {statusLabel}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
         {activity.infoActionUrl && (
-          <a
-            href={activity.infoActionUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-primary text-sm"
-          >
-            {activity.infoActionLabel || '查看详情'} →
-          </a>
+          actionEnabled ? (
+            <a
+              href={activity.infoActionUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={`text-sm ${
+                phase === 'active_with_deadline'
+                  ? 'btn-primary ring-2 ring-amber-300/80'
+                  : 'btn-primary'
+              }`}
+            >
+              {actionLabel} →
+            </a>
+          ) : (
+            <span className="text-sm rounded-xl px-4 py-2.5 font-medium bg-gray-100 text-gray-400 cursor-not-allowed">
+              {actionLabel}
+            </span>
+          )
         )}
         <Link
           href={`/recruit/new?from_info=${activity.id}`}

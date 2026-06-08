@@ -83,6 +83,7 @@ function seedActivities(): Activity[] {
       organizerWechat: '',
       organizerContactType: 'private',
       postType: 'info',
+      infoStartTime: futureDate(5, 15),
       infoDeadline: futureDate(14, 15),
       infoPrice: '39€起',
       infoActionLabel: '立即抢票',
