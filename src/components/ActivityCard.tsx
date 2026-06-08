@@ -1,5 +1,6 @@
 'use client'
 
+import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityWithCount } from '../../shared/types'
@@ -9,16 +10,32 @@ import { formatEventDate } from '../lib/user'
 import { CapacityBar } from './CapacityBar'
 import { RegistrationPreview } from './RegistrationPreview'
 import { ActivityBadge } from './ActivityBadge'
+import { RegistrationModal } from './RegistrationModal'
 import { api } from '../lib/api'
+import { getClerkDisplayName } from '../lib/displayName'
+import { notifyActivitiesChanged } from '../lib/activityEvents'
+import { saveGuestRegistration } from '../lib/guestRegistrations'
+import { addRegistrationId } from '../lib/registrations'
 
 interface Props {
   activity: ActivityWithCount
   registered?: boolean
+  onRegistered?: (activityId: string) => void
 }
 
-export function ActivityCard({ activity, registered = false }: Props) {
+export function ActivityCard({ activity, registered = false, onRegistered }: Props) {
+  const { isSignedIn, isLoaded, user: clerkUser } = useUser()
+  const [localRegistered, setLocalRegistered] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [participantCount, setParticipantCount] = useState(1)
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [displayName, setDisplayName] = useState('')
+
+  const isRegistered = registered || localRegistered
   const open = canRegister(activity)
-  const buttonLabel = getRegistrationButtonLabel(activity, registered)
+  const buttonLabel = getRegistrationButtonLabel(activity, isRegistered)
+
   const [summary, setSummary] = useState<{ total: number; previews: Array<{ name: string; avatarUrl: string | null }> }>({
     total: 0,
     previews: [],
@@ -33,52 +50,129 @@ export function ActivityCard({ activity, registered = false }: Props) {
       .finally(() => setSummaryLoading(false))
   }, [activity.id, activity.registeredCount])
 
+  useEffect(() => {
+    if (!isLoaded) return
+    if (!isSignedIn) {
+      setDisplayName('')
+      return
+    }
+    const clerkName = getClerkDisplayName(clerkUser)
+    api.getProfile()
+      .then((p) => setDisplayName(p?.nickname?.trim() || clerkName))
+      .catch(() => setDisplayName(clerkName))
+  }, [isLoaded, isSignedIn, clerkUser])
+
+  const submitRegistration = async (data: {
+    name?: string
+    wechat?: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue?: string
+    contactLabel?: string
+  }) => {
+    if (isRegistered || !open) return
+    if (activity.maxParticipants != null && activity.registeredCount + participantCount > activity.maxParticipants) {
+      alert('名额不足')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await api.createRegistration({
+        activityId: activity.id,
+        name: data.name,
+        wechat: data.wechat,
+        contactType: data.contactType,
+        contactValue: data.contactValue,
+        contactLabel: data.contactLabel,
+        participantCount,
+        note: note.trim(),
+      })
+      if (res.cancelToken) {
+        saveGuestRegistration({
+          activityId: activity.id,
+          cancelToken: res.cancelToken,
+          name: data.name ?? displayName,
+          participantCount,
+          registeredAt: new Date().toISOString(),
+        })
+      } else {
+        addRegistrationId(activity.id)
+      }
+      setLocalRegistered(true)
+      setShowModal(false)
+      onRegistered?.(activity.id)
+      notifyActivitiesChanged()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '报名失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
-      <Link href={`/event/${activity.id}`} className="block flex-1 group">
-        <div className="flex flex-wrap items-center gap-1.5 mb-2">
-          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block">
-            {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
-          </span>
-          <ActivityBadge activity={activity} />
-        </div>
-        <h3 className="font-semibold text-base mb-1 group-hover:text-green-700 transition-colors">
-          {activity.title}
-        </h3>
-        <p className="text-sm text-gray-500 mb-2">
-          {formatEventDate(activity.date)} · {activity.location || '地点待定'}
-        </p>
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.75rem]">
-          {activity.description || ' '}
-        </p>
-        <div className="mb-1">
-          <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
-        </div>
-        <RegistrationPreview
-          total={summary.total}
-          previews={summary.previews}
-          loading={summaryLoading}
-        />
-        {activity.fee && (
-          <p className="text-sm text-gray-600 mb-1">💰 {activity.fee}</p>
-        )}
-        <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName || '管理员'} 发起</p>
-        <p className="text-xs text-green-600 mb-3">点击查看详情 →</p>
-      </Link>
-      {registered ? (
-        <div className="mt-auto text-center rounded-xl py-2.5 font-medium bg-gray-100 text-gray-500 border border-gray-200">
-          已报名
-        </div>
-      ) : (
-        <Link
-          href={`/event/${activity.id}`}
-          className={`mt-auto text-center rounded-xl py-2.5 font-medium transition-colors ${
-            !open ? 'bg-gray-100 text-gray-400 pointer-events-none' : 'btn-primary block'
-          }`}
-        >
-          {buttonLabel}
+    <>
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
+        <Link href={`/event/${activity.id}`} className="block flex-1 group">
+          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+            <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block">
+              {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+            </span>
+            <ActivityBadge activity={activity} />
+          </div>
+          <h3 className="font-semibold text-base mb-1 group-hover:text-green-700 transition-colors">
+            {activity.title}
+          </h3>
+          <p className="text-sm text-gray-500 mb-2">
+            {formatEventDate(activity.date)} · {activity.location || '地点待定'}
+          </p>
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.75rem]">
+            {activity.description || ' '}
+          </p>
+          <div className="mb-1">
+            <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
+          </div>
+          <RegistrationPreview
+            total={summary.total}
+            previews={summary.previews}
+            loading={summaryLoading}
+          />
+          {activity.fee && (
+            <p className="text-sm text-gray-600 mb-1">💰 {activity.fee}</p>
+          )}
+          <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName || '管理员'} 发起</p>
+          <p className="text-xs text-green-600 mb-3">点击查看详情 →</p>
         </Link>
-      )}
-    </div>
+        {isRegistered ? (
+          <div className="mt-auto text-center rounded-xl py-2.5 font-medium bg-gray-100 text-gray-500 border border-gray-200">
+            已报名
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={`mt-auto text-center rounded-xl py-2.5 font-medium transition-colors ${
+              !open ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'btn-primary'
+            }`}
+            disabled={!open}
+            onClick={() => setShowModal(true)}
+          >
+            {buttonLabel}
+          </button>
+        )}
+      </div>
+
+      <RegistrationModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        activityTitle={activity.title}
+        participantCount={participantCount}
+        note={note}
+        onParticipantCountChange={setParticipantCount}
+        onNoteChange={setNote}
+        submitting={submitting}
+        signedInDisplayName={
+          isSignedIn ? (displayName || getClerkDisplayName(clerkUser) || undefined) : undefined
+        }
+        onSubmit={(data) => submitRegistration(data)}
+      />
+    </>
   )
 }

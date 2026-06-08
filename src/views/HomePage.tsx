@@ -109,11 +109,11 @@ export function HomePage() {
       <Header />
       {!loading && !error && (
         <div className="sticky top-[57px] z-30 bg-warm-bg/95 backdrop-blur-sm border-b border-gray-100">
-          <div className="max-w-3xl mx-auto px-4 py-2.5">
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+          <div className="max-w-3xl mx-auto px-4 py-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
                 href="/propose"
-                className="btn-primary flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[11px] sm:text-sm text-center py-2 sm:py-2.5 px-1 sm:px-2 leading-tight min-h-[44px]"
+                className="btn-primary inline-flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3 sm:px-3.5 rounded-full"
               >
                 <span>💡</span>
                 <span className="sm:hidden">提议</span>
@@ -121,7 +121,7 @@ export function HomePage() {
               </Link>
               <Link
                 href="/recruit/new"
-                className="btn-primary flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[11px] sm:text-sm text-center py-2 sm:py-2.5 px-1 sm:px-2 leading-tight min-h-[44px]"
+                className="btn-primary inline-flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3 sm:px-3.5 rounded-full"
               >
                 <span>🟢</span>
                 <span className="sm:hidden">招募</span>
@@ -129,7 +129,7 @@ export function HomePage() {
               </Link>
               <Link
                 href="/info/new"
-                className="btn-primary flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 text-[11px] sm:text-sm text-center py-2 sm:py-2.5 px-1 sm:px-2 leading-tight min-h-[44px]"
+                className="btn-primary inline-flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3 sm:px-3.5 rounded-full"
               >
                 <span>📢</span>
                 <span className="sm:hidden">资讯</span>
@@ -168,6 +168,7 @@ export function HomePage() {
                       key={a.id}
                       activity={a}
                       registered={registeredIds.has(a.id)}
+                      onRegistered={(id) => setRegisteredIds((prev) => new Set([...prev, id]))}
                     />
                   ))}
                 </div>

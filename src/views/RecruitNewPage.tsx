@@ -75,6 +75,8 @@ export function RecruitNewPage() {
               mode="public"
               initial={initial}
               sourceProposalId={sourceActivity && fromId && !fromInfo ? fromId : undefined}
+              sourceProposalTitle={sourceActivity && fromId && !fromInfo ? sourceActivity.title : undefined}
+              sourceInterestedCount={sourceActivity && fromId && !fromInfo ? sourceActivity.interestedCount : undefined}
               sourceInfoId={fromInfo ? fromInfoId ?? undefined : undefined}
             />
             <Link href="/" className="block text-center text-sm text-gray-500 mt-6">← 回到首页</Link>

@@ -28,6 +28,7 @@ import {
 } from '../../lib/participants'
 import { formatEventDate } from '../../lib/user'
 import { getClerkDisplayName } from '../../lib/displayName'
+import { buildRecruitGroupMessage } from '../../lib/recruitShareMessage'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../lib/validateSchedule'
 import { ActivityParsePanel } from '../ActivityParsePanel'
 import { DiningFields } from './DiningFields'
@@ -55,11 +56,22 @@ interface Props {
   initial?: Partial<Activity>
   sourceProposalId?: string
   sourceInfoId?: string
+  sourceProposalTitle?: string
+  sourceInterestedCount?: number
   editId?: string
   onSuccess?: (activity: Activity) => void
 }
 
-export function RecruitForm({ mode, initial, sourceProposalId, sourceInfoId, editId, onSuccess }: Props) {
+export function RecruitForm({
+  mode,
+  initial,
+  sourceProposalId,
+  sourceInfoId,
+  sourceProposalTitle,
+  sourceInterestedCount,
+  editId,
+  onSuccess,
+}: Props) {
   const { isSignedIn, user: clerkUser } = useUser()
   const dynamicRef = useRef<HTMLDivElement>(null)
   const [title, setTitle] = useState(initial?.title ?? '')
@@ -325,14 +337,33 @@ export function RecruitForm({ mode, initial, sourceProposalId, sourceInfoId, edi
 
   if (created) {
     const url = eventUrl || getEventUrl(created.id)
+    const groupMessage = buildRecruitGroupMessage({
+      title: created.title,
+      date: created.date,
+      location: created.location,
+      eventUrl: url,
+      proposalTitle: sourceProposalTitle,
+      interestedCount: sourceInterestedCount,
+    })
     return (
       <div className="text-center py-8 page-enter">
         <div className="text-4xl mb-3">✅</div>
         <h3 className="text-xl font-bold mb-4">招募已创建</h3>
+        {sourceProposalId && (sourceInterestedCount ?? 0) > 0 && (
+          <div className="bg-blue-50 text-blue-900 text-sm rounded-xl p-4 mb-4 text-left">
+            <p className="font-medium mb-1">
+              💡 原提议「{sourceProposalTitle}」有 {sourceInterestedCount} 人曾表示感兴趣
+            </p>
+            <p className="text-blue-800/80">可复制下方群消息，发到微信群提醒他们来报名（不会自动替他们报名）。</p>
+          </div>
+        )}
         <p className="text-sm text-gray-600 mb-2 break-all">报名链接：{url}</p>
         <div className="flex gap-3 justify-center mb-4 flex-wrap">
           <button type="button" className="btn-primary" onClick={() => navigator.clipboard.writeText(url)}>
             复制链接
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => navigator.clipboard.writeText(groupMessage)}>
+            复制群消息
           </button>
           {created.organizerContactType === 'wechat' && created.organizerContact && (
             <button

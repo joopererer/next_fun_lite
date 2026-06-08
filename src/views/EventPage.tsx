@@ -52,6 +52,7 @@ export function EventPage() {
   const [myRegistration, setMyRegistration] = useState<Registration | null>(null)
   const [cancelLoading, setCancelLoading] = useState(false)
   const [sourceProposal, setSourceProposal] = useState<ActivityWithCount | null | undefined>(undefined)
+  const [linkedRecruits, setLinkedRecruits] = useState<ActivityWithCount[]>([])
 
   const displayName = profile?.nickname || getClerkDisplayName(clerkUser)
 
@@ -84,6 +85,14 @@ export function EventPage() {
             .catch(() => setSourceProposal(null))
         } else {
           setSourceProposal(undefined)
+        }
+
+        if (a.status === 'proposed' && a.linkedRecruitIds?.length) {
+          api.getActivitiesByIds(a.linkedRecruitIds)
+            .then(setLinkedRecruits)
+            .catch(() => setLinkedRecruits([]))
+        } else {
+          setLinkedRecruits([])
         }
 
         const deviceId = getDeviceId()
@@ -482,6 +491,25 @@ export function EventPage() {
           {activity.status === 'proposed' && (
             <p>💡 {interestCount} 人感兴趣</p>
           )}
+          {activity.status === 'proposed' && linkedRecruits.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-green-100">
+              <p className="text-sm font-medium text-green-800 mb-2">🟢 已有招募活动：</p>
+              <ul className="space-y-2">
+                {linkedRecruits.map((r) => (
+                  <li key={r.id} className="text-sm">
+                    · {r.title}{' '}
+                    <span className="text-gray-500">
+                      {formatEventDate(r.date).replace(/ .*/, '')}{' '}
+                      {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}人
+                    </span>{' '}
+                    <Link href={`/event/${r.id}`} className="text-green-600 underline">
+                      去报名 →
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {activity.fee && <p>💰 {activity.fee}</p>}
           {activity.sourceUrl && (
             <a href={activity.sourceUrl} target="_blank" rel="noreferrer" className="text-green-600 underline block truncate">
@@ -569,6 +597,22 @@ export function EventPage() {
             >
               {interestLoading ? '...' : proposalExpired ? '信息已过期' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
             </button>
+            {!proposalExpired && (
+              isSignedIn ? (
+                <Link
+                  href={`/recruit/new?from=${activity.id}`}
+                  className="btn-secondary block text-center w-full py-3"
+                >
+                  发起招募 →
+                </Link>
+              ) : (
+                <SignInButton mode="modal">
+                  <button type="button" className="btn-secondary w-full py-3">
+                    发起招募 →
+                  </button>
+                </SignInButton>
+              )
+            )}
             <Link href="/" className="btn-secondary block text-center">回到首页</Link>
           </div>
         ) : activity.status !== 'recruiting' ? (

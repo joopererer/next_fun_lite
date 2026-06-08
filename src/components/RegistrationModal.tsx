@@ -22,6 +22,8 @@ interface Props {
     wechat?: string
   }) => void
   submitting: boolean
+  /** When set, shows logged-in flow (no guest contact fields). */
+  signedInDisplayName?: string
 }
 
 export function RegistrationModal({
@@ -34,6 +36,7 @@ export function RegistrationModal({
   onNoteChange,
   onSubmit,
   submitting,
+  signedInDisplayName,
 }: Props) {
   const [name, setName] = useState('')
   const [contactType, setContactType] = useState<RegistrantContactType>('wechat')
@@ -52,7 +55,17 @@ export function RegistrationModal({
 
   if (!open) return null
 
+  const signedInMode = Boolean(signedInDisplayName)
+
   const handleSubmit = () => {
+    if (signedInMode) {
+      onSubmit({
+        name: signedInDisplayName!,
+        contactType: 'wechat',
+        contactValue: '',
+      })
+      return
+    }
     if (!name.trim() || !contactValue.trim()) return
     const payload = {
       name: name.trim(),
@@ -75,6 +88,13 @@ export function RegistrationModal({
         <div className="px-6 pt-6 pb-5">
           <h2 className="text-xl font-semibold mb-4">报名「{activityTitle}」</h2>
 
+          {signedInMode ? (
+            <div className="rounded-xl border border-green-100 bg-green-50 p-4 text-sm text-gray-700 mb-4">
+              <p>
+                以 <span className="font-medium">{signedInDisplayName}</span> 的身份报名
+              </p>
+            </div>
+          ) : (
           <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">账号</p>
             <p className="text-sm text-gray-600 -mt-1">登录后报名，方便跨设备管理记录</p>
@@ -109,6 +129,7 @@ export function RegistrationModal({
               onLabelChange={setContactLabel}
             />
           </div>
+          )}
         </div>
 
         <div className="border-t-2 border-gray-200 bg-slate-50 rounded-b-2xl px-6 py-5">
@@ -151,7 +172,7 @@ export function RegistrationModal({
             type="button"
             className="btn-primary w-full mt-5"
             onClick={handleSubmit}
-            disabled={submitting || !name.trim() || !contactValue.trim()}
+            disabled={submitting || (!signedInMode && (!name.trim() || !contactValue.trim()))}
           >
             {submitting ? '提交中...' : '提交报名'}
           </button>
