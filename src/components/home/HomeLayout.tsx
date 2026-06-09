@@ -11,8 +11,10 @@ export function HomeLayout({ children }: { children: ReactNode }) {
   return (
     <HomeRegistrationProvider>
       <div className="min-h-screen flex flex-col">
-        <Header />
-        <HomeQuickActions />
+        <div className="sticky top-0 z-40 bg-warm-bg/95 backdrop-blur-sm">
+          <Header embedded />
+          <HomeQuickActions />
+        </div>
         <main className="flex-1 max-w-3xl mx-auto px-4 py-6 page-enter w-full">
           <HomeNotificationBanner />
           {children}

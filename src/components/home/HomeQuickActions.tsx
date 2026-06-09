@@ -2,8 +2,8 @@ import Link from 'next/link'
 
 export function HomeQuickActions() {
   return (
-    <div className="sticky top-[57px] z-30 bg-warm-bg/95 backdrop-blur-sm border-b border-gray-100">
-      <div className="max-w-3xl mx-auto px-4 py-2">
+    <div className="border-b border-gray-100 bg-warm-bg/95">
+      <div className="max-w-3xl mx-auto px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/propose"
@@ -25,7 +25,7 @@ export function HomeQuickActions() {
             <span className="hidden sm:inline">发起招募</span>
           </Link>
           <span
-            className="text-gray-300 text-sm font-light select-none ml-2 sm:ml-5"
+            className="text-gray-300 text-sm font-light select-none ml-2 sm:ml-5 mr-2 sm:mr-5"
             aria-hidden
           >
             |
