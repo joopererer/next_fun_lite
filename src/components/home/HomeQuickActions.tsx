@@ -13,6 +13,9 @@ export function HomeQuickActions() {
             <span className="sm:hidden">提议</span>
             <span className="hidden sm:inline">我有个提议</span>
           </Link>
+          <span className="text-gray-400 text-sm font-medium select-none" aria-hidden>
+            →
+          </span>
           <Link
             href="/recruit/new"
             className="btn-primary inline-flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3 sm:px-3.5 rounded-full"
@@ -21,6 +24,12 @@ export function HomeQuickActions() {
             <span className="sm:hidden">招募</span>
             <span className="hidden sm:inline">发起招募</span>
           </Link>
+          <span
+            className="text-gray-300 text-sm font-light select-none ml-2 sm:ml-5"
+            aria-hidden
+          >
+            |
+          </span>
           <Link
             href="/info/new"
             className="btn-primary inline-flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3 sm:px-3.5 rounded-full"
