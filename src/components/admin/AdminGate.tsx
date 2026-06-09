@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, clearAdminPassword, getAdminPassword, setAdminPassword } from '../../lib/api'
 
 interface Props {
@@ -8,10 +8,23 @@ interface Props {
 }
 
 export function AdminGate({ children }: Props) {
-  const [authed, setAuthed] = useState(!!getAdminPassword())
+  const [authed, setAuthed] = useState(false)
+  const [initializing, setInitializing] = useState(true)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [checking, setChecking] = useState(false)
+
+  useEffect(() => {
+    const stored = getAdminPassword()
+    if (!stored) {
+      setInitializing(false)
+      return
+    }
+    api.verifyAdmin()
+      .then(() => setAuthed(true))
+      .catch(() => clearAdminPassword())
+      .finally(() => setInitializing(false))
+  }, [])
 
   const handleLogin = async () => {
     if (!password.trim()) return
@@ -19,7 +32,7 @@ export function AdminGate({ children }: Props) {
     setError('')
     setAdminPassword(password.trim())
     try {
-      await api.getActivities()
+      await api.verifyAdmin()
       setAuthed(true)
     } catch {
       clearAdminPassword()
@@ -27,6 +40,14 @@ export function AdminGate({ children }: Props) {
     } finally {
       setChecking(false)
     }
+  }
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-warm-bg p-4">
+        <p className="text-gray-400 text-sm">验证中...</p>
+      </div>
+    )
   }
 
   if (authed) return <>{children}</>

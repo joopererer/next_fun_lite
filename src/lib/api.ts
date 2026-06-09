@@ -172,6 +172,7 @@ export const api = {
     }),
   parse: (data: { url?: string; imageBase64?: string; mimeType?: string }) =>
     request<ApiParseResponse>('/api/parse', { method: 'POST', body: JSON.stringify(data) }),
+  verifyAdmin: () => request<{ ok: boolean }>('/api/admin/verify'),
   adminImport: (rows: ParsedImportRow[]) =>
     request<{
       imported: number
