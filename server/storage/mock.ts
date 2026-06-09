@@ -1,7 +1,6 @@
 import { nanoid } from 'nanoid'
 import type {
   Activity,
-  InfoInterest,
   Interest,
   Notification,
   Profile,
@@ -9,7 +8,7 @@ import type {
   Registration,
 } from '../../shared/types'
 import { withProfileDefaults } from '../../shared/profileDefaults'
-import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
+import type { GetNotificationsOptions, InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
 const now = new Date()
 const daysAgo = (n: number) => new Date(now.getTime() - n * 86400000).toISOString()
@@ -295,31 +294,18 @@ function seedNotificationTemplates(): Omit<Notification, 'id' | 'userId'>[] {
   ]
 }
 
-function seedInfoInterests(): InfoInterest[] {
-  return [
-    {
-      id: 'ii001',
-      activityId: 'info001',
-      email: 'guest@example.com',
-      createdAt: daysAgo(1),
-    },
-  ]
-}
-
 export class MockAdapter implements StorageAdapter {
   private activities: Activity[]
   private registrations: Registration[]
   private interests: Interest[]
   private profiles = new Map<string, Profile>()
   private notifications: Notification[] = []
-  private infoInterests: InfoInterest[]
   private seededNotificationUsers = new Set<string>()
 
   constructor() {
     this.activities = seedActivities()
     this.registrations = seedRegistrations()
     this.interests = seedInterests()
-    this.infoInterests = seedInfoInterests()
     for (const activity of this.activities) {
       this.syncInterestedCount(activity.id)
     }
@@ -579,10 +565,11 @@ export class MockAdapter implements StorageAdapter {
     return [...this.profiles.values()].filter((p) => p[pref] === true)
   }
 
-  async getNotifications(userId: string, limit = 50): Promise<Notification[]> {
+  async getNotifications(userId: string, options: GetNotificationsOptions = {}): Promise<Notification[]> {
     this.ensureSeedNotifications(userId)
+    const limit = options.limit ?? 50
     return this.notifications
-      .filter((n) => n.userId === userId)
+      .filter((n) => n.userId === userId && (!options.unreadOnly || !n.isRead))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit)
   }
@@ -593,8 +580,8 @@ export class MockAdapter implements StorageAdapter {
   }
 
   async markAsRead(notificationId: string): Promise<void> {
-    const n = this.notifications.find((item) => item.id === notificationId)
-    if (n) n.isRead = true
+    const notification = this.notifications.find((n) => n.id === notificationId)
+    if (notification) notification.isRead = true
   }
 
   async markAllAsRead(userId: string): Promise<void> {
@@ -614,81 +601,5 @@ export class MockAdapter implements StorageAdapter {
     }
     this.notifications.push(notification)
     return notification
-  }
-
-  async countNotificationsSince(
-    activityId: string,
-    userId: string,
-    type: Notification['type'],
-    sinceIso: string,
-  ): Promise<number> {
-    const since = new Date(sinceIso).getTime()
-    return this.notifications.filter(
-      (n) =>
-        n.activityId === activityId &&
-        n.userId === userId &&
-        n.type === type &&
-        new Date(n.createdAt).getTime() >= since,
-    ).length
-  }
-
-  async getInfoInterests(activityId: string): Promise<InfoInterest[]> {
-    return this.infoInterests.filter((i) => i.activityId === activityId)
-  }
-
-  async findInfoInterestByUserId(activityId: string, userId: string): Promise<InfoInterest | null> {
-    return this.infoInterests.find((i) => i.activityId === activityId && i.userId === userId) ?? null
-  }
-
-  async findInfoInterestByEmail(activityId: string, email: string): Promise<InfoInterest | null> {
-    return this.infoInterests.find((i) => i.activityId === activityId && i.email === email) ?? null
-  }
-
-  async findInfoInterestByDeviceId(activityId: string, deviceId: string): Promise<InfoInterest | null> {
-    return this.infoInterests.find((i) => i.activityId === activityId && i.deviceId === deviceId) ?? null
-  }
-
-  async createInfoInterest(data: Omit<InfoInterest, 'id' | 'createdAt'>): Promise<InfoInterest> {
-    const interest: InfoInterest = {
-      ...data,
-      id: nanoid(8),
-      createdAt: new Date().toISOString(),
-    }
-    this.infoInterests.push(interest)
-    return interest
-  }
-
-  async deleteInfoInterest(id: string): Promise<void> {
-    this.infoInterests = this.infoInterests.filter((i) => i.id !== id)
-  }
-
-  async getRecruitingActivitiesInDateRange(fromIso: string, toIso: string): Promise<Activity[]> {
-    const from = new Date(fromIso).getTime()
-    const to = new Date(toIso).getTime()
-    return this.activities.filter((a) => {
-      if (a.status !== 'recruiting' || !a.date) return false
-      const t = new Date(a.date).getTime()
-      return t >= from && t <= to
-    })
-  }
-
-  async getInfoActivitiesWithStartInRange(fromIso: string, toIso: string): Promise<Activity[]> {
-    const from = new Date(fromIso).getTime()
-    const to = new Date(toIso).getTime()
-    return this.activities.filter((a) => {
-      if (a.postType !== 'info' || !a.infoStartTime) return false
-      const t = new Date(a.infoStartTime).getTime()
-      return t >= from && t <= to
-    })
-  }
-
-  async getInfoActivitiesWithDeadlineInRange(fromIso: string, toIso: string): Promise<Activity[]> {
-    const from = new Date(fromIso).getTime()
-    const to = new Date(toIso).getTime()
-    return this.activities.filter((a) => {
-      if (a.postType !== 'info' || !a.infoDeadline) return false
-      const t = new Date(a.infoDeadline).getTime()
-      return t >= from && t <= to
-    })
   }
 }

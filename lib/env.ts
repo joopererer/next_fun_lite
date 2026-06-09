@@ -26,6 +26,5 @@ export function getEnvConfig(env?: EnvConfig): EnvConfig {
     RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     RESEND_FROM_NAME: process.env.RESEND_FROM_NAME,
     RESEND_TEST_EMAIL: process.env.RESEND_TEST_EMAIL,
-    CRON_SECRET: process.env.CRON_SECRET,
   }
 }

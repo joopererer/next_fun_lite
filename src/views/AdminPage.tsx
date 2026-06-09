@@ -15,11 +15,15 @@ const ImportTab = dynamic(
   () => import('../components/admin/ImportTab').then((m) => m.ImportTab),
   { ssr: false, loading: () => <p className="text-gray-400 text-sm py-8">加载导入工具...</p> },
 )
+const ExportTab = dynamic(
+  () => import('../components/admin/ExportTab').then((m) => m.ExportTab),
+  { ssr: false, loading: () => <p className="text-gray-400 text-sm py-8">加载导出工具...</p> },
+)
 import { isTerminalStatus } from '../lib/activityStatus'
 import { api } from '../lib/api'
 import { Footer } from '../components/layout/Footer'
 
-type Tab = 'kanban' | 'list' | 'create' | 'import'
+type Tab = 'kanban' | 'list' | 'create' | 'import' | 'export'
 
 export function AdminPage() {
   const router = useRouter()
@@ -42,7 +46,7 @@ export function AdminPage() {
 
   useEffect(() => {
     const fromUrl = searchParams.get('tab') as Tab | null
-    if (fromUrl && ['kanban', 'list', 'create', 'import'].includes(fromUrl)) {
+    if (fromUrl && ['kanban', 'list', 'create', 'import', 'export'].includes(fromUrl)) {
       setTab(fromUrl)
     }
   }, [searchParams])
@@ -106,6 +110,7 @@ export function AdminPage() {
     { id: 'list', label: '列表视图' },
     { id: 'create', label: editId ? '编辑活动' : '新建活动' },
     { id: 'import', label: '📥 导入' },
+    { id: 'export', label: '📤 导出' },
   ]
 
   return (
@@ -170,6 +175,7 @@ export function AdminPage() {
               onNavigate={(target) => navigateTab(target)}
             />
           )}
+          {tab === 'export' && <ExportTab activities={activities} />}
         </main>
 
         {endModalActivity && (

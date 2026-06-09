@@ -2,7 +2,6 @@ import type { Activity, EnvConfig, NotificationType } from '@/shared/types'
 import { formatEventDate } from '@/shared/formatDate'
 import { sendEmail } from '@/lib/email'
 import { createStorageAdapter } from '@/server/storage'
-import { checkReminderSent } from './dedupe'
 import {
   activityKeyFieldsChanged,
   buildChangeDescription,
@@ -117,7 +116,6 @@ export async function notifyProposalRecruiting(
   if (!recruit) return
 
   const interests = await storage.getInterests(proposalId)
-  const siteUrl = getSiteUrl(env)
   const datePart = recruit.date ? formatEventDate(recruit.date) : ''
   const body = `「${recruit.title}」${datePart} ${recruit.location || ''}`.trim()
 
@@ -135,23 +133,12 @@ export async function notifyProposalRecruiting(
       actionUrl: `/event/${recruitId}`,
       activityId: recruitId,
     })
-
-    const email = await getNotificationEmail(env, interest.userId)
-    if (email) {
-      await sendEmail(env, {
-        to: email,
-        subject: `【开始招募】${recruit.title}`,
-        template: 'proposal-recruiting',
-        props: { recruit, siteUrl },
-      })
-    }
   }
 }
 
 export async function notifyNewRecruit(env: EnvConfig, activity: Activity): Promise<void> {
   const storage = createStorageAdapter(env)
   const profiles = await storage.listProfilesWithPreference('notifyNewRecruit')
-  const siteUrl = getSiteUrl(env)
   const datePart = activity.date ? formatEventDate(activity.date) : ''
   const body = `「${activity.title}」${datePart} ${activity.location || ''}`.trim()
 
@@ -166,16 +153,6 @@ export async function notifyNewRecruit(env: EnvConfig, activity: Activity): Prom
       actionUrl: `/event/${activity.id}`,
       activityId: activity.id,
     })
-
-    const email = await getNotificationEmail(env, profile.id)
-    if (email) {
-      await sendEmail(env, {
-        to: email,
-        subject: `【新招募】${activity.title}`,
-        template: 'proposal-recruiting',
-        props: { recruit: activity, siteUrl },
-      })
-    }
   }
 }
 

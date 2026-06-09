@@ -2,7 +2,6 @@ import { nanoid } from 'nanoid'
 import type {
   Activity,
   EnvConfig,
-  InfoInterest,
   Interest,
   Notification,
   Profile,
@@ -11,14 +10,13 @@ import type {
 } from '@/shared/types'
 import { withProfileDefaults } from '@/shared/profileDefaults'
 import { getSupabaseClient } from '@/lib/supabase'
-import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
+import type { GetNotificationsOptions, InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
 type ActivityRow = Record<string, unknown>
 type RegistrationRow = Record<string, unknown>
 type InterestRow = Record<string, unknown>
 type ProfileRow = Record<string, unknown>
 type NotificationRow = Record<string, unknown>
-type InfoInterestRow = Record<string, unknown>
 
 const PREF_COLUMN: Record<ProfileNotificationPreference, string> = {
   notifyRegistrationChange: 'notify_registration_change',
@@ -357,13 +355,18 @@ export class SupabaseAdapter implements StorageAdapter {
     return (data ?? []).map((row) => this.mapProfile(row as ProfileRow))
   }
 
-  async getNotifications(userId: string, limit = 50): Promise<Notification[]> {
-    const { data, error } = await this.db
+  async getNotifications(userId: string, options: GetNotificationsOptions = {}): Promise<Notification[]> {
+    const limit = options.limit ?? 50
+    let query = this.db
       .from('notifications')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)
+    if (options.unreadOnly) {
+      query = query.eq('is_read', false)
+    }
+    const { data, error } = await query
     if (error) throw error
     return (data ?? []).map((row) => this.mapNotification(row as NotificationRow))
   }
@@ -413,117 +416,6 @@ export class SupabaseAdapter implements StorageAdapter {
     return this.mapNotification(row as NotificationRow)
   }
 
-  async countNotificationsSince(
-    activityId: string,
-    userId: string,
-    type: Notification['type'],
-    sinceIso: string,
-  ): Promise<number> {
-    const { count, error } = await this.db
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('activity_id', activityId)
-      .eq('user_id', userId)
-      .eq('type', type)
-      .gte('created_at', sinceIso)
-    if (error) throw error
-    return count ?? 0
-  }
-
-  async getInfoInterests(activityId: string): Promise<InfoInterest[]> {
-    const { data, error } = await this.db.from('info_interests').select('*').eq('activity_id', activityId)
-    if (error) throw error
-    return (data ?? []).map((row) => this.mapInfoInterest(row as InfoInterestRow))
-  }
-
-  async findInfoInterestByUserId(activityId: string, userId: string): Promise<InfoInterest | null> {
-    const { data, error } = await this.db
-      .from('info_interests')
-      .select('*')
-      .eq('activity_id', activityId)
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (error || !data) return null
-    return this.mapInfoInterest(data as InfoInterestRow)
-  }
-
-  async findInfoInterestByEmail(activityId: string, email: string): Promise<InfoInterest | null> {
-    const { data, error } = await this.db
-      .from('info_interests')
-      .select('*')
-      .eq('activity_id', activityId)
-      .eq('email', email)
-      .maybeSingle()
-    if (error || !data) return null
-    return this.mapInfoInterest(data as InfoInterestRow)
-  }
-
-  async findInfoInterestByDeviceId(activityId: string, deviceId: string): Promise<InfoInterest | null> {
-    const { data, error } = await this.db
-      .from('info_interests')
-      .select('*')
-      .eq('activity_id', activityId)
-      .eq('device_id', deviceId)
-      .maybeSingle()
-    if (error || !data) return null
-    return this.mapInfoInterest(data as InfoInterestRow)
-  }
-
-  async createInfoInterest(data: Omit<InfoInterest, 'id' | 'createdAt'>): Promise<InfoInterest> {
-    const id = nanoid(8)
-    const { data: row, error } = await this.db
-      .from('info_interests')
-      .insert({
-        id,
-        activity_id: data.activityId,
-        user_id: data.userId ?? null,
-        device_id: data.deviceId ?? null,
-        email: data.email ?? null,
-      })
-      .select()
-      .single()
-    if (error) throw error
-    return this.mapInfoInterest(row as InfoInterestRow)
-  }
-
-  async deleteInfoInterest(id: string): Promise<void> {
-    const { error } = await this.db.from('info_interests').delete().eq('id', id)
-    if (error) throw error
-  }
-
-  async getRecruitingActivitiesInDateRange(fromIso: string, toIso: string): Promise<Activity[]> {
-    const { data, error } = await this.db
-      .from('activities')
-      .select('*')
-      .eq('status', 'recruiting')
-      .gte('date', fromIso)
-      .lte('date', toIso)
-    if (error) throw error
-    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
-  }
-
-  async getInfoActivitiesWithStartInRange(fromIso: string, toIso: string): Promise<Activity[]> {
-    const { data, error } = await this.db
-      .from('activities')
-      .select('*')
-      .eq('post_type', 'info')
-      .gte('info_start_time', fromIso)
-      .lte('info_start_time', toIso)
-    if (error) throw error
-    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
-  }
-
-  async getInfoActivitiesWithDeadlineInRange(fromIso: string, toIso: string): Promise<Activity[]> {
-    const { data, error } = await this.db
-      .from('activities')
-      .select('*')
-      .eq('post_type', 'info')
-      .gte('info_deadline', fromIso)
-      .lte('info_deadline', toIso)
-    if (error) throw error
-    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
-  }
-
   private mapProfile(row: ProfileRow): Profile {
     return withProfileDefaults({
       id: String(row.id),
@@ -571,17 +463,6 @@ export class SupabaseAdapter implements StorageAdapter {
       actionUrl: row.action_url ? String(row.action_url) : undefined,
       activityId: row.activity_id ? String(row.activity_id) : undefined,
       isRead: Boolean(row.is_read),
-      createdAt: String(row.created_at),
-    }
-  }
-
-  private mapInfoInterest(row: InfoInterestRow): InfoInterest {
-    return {
-      id: String(row.id),
-      activityId: String(row.activity_id),
-      userId: row.user_id ? String(row.user_id) : undefined,
-      deviceId: row.device_id ? String(row.device_id) : undefined,
-      email: row.email ? String(row.email) : undefined,
       createdAt: String(row.created_at),
     }
   }

@@ -25,6 +25,8 @@ import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
 import { formatOrganizerContactHint, resolveOrganizerContact } from '../lib/contact'
 import { isInfoPost } from '../../shared/infoVisibility'
 import { InfoEventSection } from '../components/InfoEventSection'
+import { AddToCalendarButton } from '../components/AddToCalendarButton'
+import { buildActivityCalendarEvent } from '../lib/calendarEvents'
 
 interface EventPageProps {
   initialActivity?: ActivityWithCount
@@ -311,6 +313,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
   if (success && activity) {
     const cancelUrl = cancelToken ? getCancelUrl(cancelToken) : null
     const organizerHint = formatOrganizerContactHint(resolveOrganizerContact(activity))
+    const calendarEvent = buildActivityCalendarEvent(activity)
     return shell(
       <main className="flex-1 max-w-lg mx-auto px-4 py-16 page-enter w-full">
         <div className="text-center mb-8">
@@ -347,6 +350,21 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
               复制链接
             </button>
             <p className="text-xs text-yellow-700 mt-3">如链接丢失，请联系发起人取消报名。</p>
+          </div>
+        )}
+
+        {calendarEvent && (
+          <div className="mt-4 pt-4 border-t border-gray-100 mb-6">
+            <p className="text-sm text-gray-500 mb-2">别忘了这次活动：</p>
+            <AddToCalendarButton
+              uid={calendarEvent.uid}
+              title={calendarEvent.title}
+              startTime={calendarEvent.startTime}
+              endTime={calendarEvent.endTime}
+              description={calendarEvent.description}
+              alarmMinutesBefore={calendarEvent.alarmMinutesBefore}
+              label={calendarEvent.label}
+            />
           </div>
         )}
 

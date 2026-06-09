@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { InfoReminderButton } from './InfoReminderButton'
+import { AddToCalendarButton } from './AddToCalendarButton'
 import type { Activity } from '../../shared/types'
+import { buildInfoCalendarEvent } from '../lib/calendarEvents'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { formatEventDate } from '../lib/user'
 import {
@@ -37,6 +38,7 @@ export function InfoCard({ activity }: Props) {
     : ''
 
   const actionLabel = activity.infoActionLabel || '查看详情'
+  const calendarEvent = buildInfoCalendarEvent(activity)
 
   return (
     <article className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
@@ -84,7 +86,19 @@ export function InfoCard({ activity }: Props) {
             </span>
           )
         )}
-        <InfoReminderButton activityId={activity.id} compact />
+        {calendarEvent && (
+          <AddToCalendarButton
+            uid={calendarEvent.uid}
+            title={calendarEvent.title}
+            startTime={calendarEvent.startTime}
+            endTime={calendarEvent.endTime}
+            description={calendarEvent.description}
+            url={calendarEvent.url}
+            alarmMinutesBefore={calendarEvent.alarmMinutesBefore}
+            label={calendarEvent.label}
+            showHint={false}
+          />
+        )}
         <Link
           href={`/recruit/new?from_info=${activity.id}`}
           className="btn-secondary text-sm"

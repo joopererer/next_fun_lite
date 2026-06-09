@@ -27,10 +27,8 @@ export async function handleUpsertProfile(request: Request, env: EnvConfig): Pro
     wechat?: string
     notificationEmail?: string
     notifyRegistrationChange?: boolean
-    notifyActivityReminder?: boolean
     notifyProposalRecruiting?: boolean
     notifyNewRecruit?: boolean
-    notifyInfoReminder?: boolean
   }>(request)
 
   const user = await currentUser()
@@ -55,14 +53,10 @@ export async function handleUpsertProfile(request: Request, env: EnvConfig): Pro
     ...(body.notifyRegistrationChange !== undefined
       ? { notifyRegistrationChange: body.notifyRegistrationChange }
       : {}),
-    ...(body.notifyActivityReminder !== undefined
-      ? { notifyActivityReminder: body.notifyActivityReminder }
-      : {}),
     ...(body.notifyProposalRecruiting !== undefined
       ? { notifyProposalRecruiting: body.notifyProposalRecruiting }
       : {}),
     ...(body.notifyNewRecruit !== undefined ? { notifyNewRecruit: body.notifyNewRecruit } : {}),
-    ...(body.notifyInfoReminder !== undefined ? { notifyInfoReminder: body.notifyInfoReminder } : {}),
   })
 
   return jsonResponse(mapProfile(profile))

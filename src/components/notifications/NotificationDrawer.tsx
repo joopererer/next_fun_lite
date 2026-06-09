@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Notification } from '@/shared/types'
 import { api } from '@/src/lib/api'
 import { formatRelativeTime } from '@/src/lib/user'
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
+  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -25,7 +27,7 @@ export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const list = await api.getNotifications()
+      const { notifications: list } = await api.getNotifications()
       setNotifications(list)
       onUnreadChange?.(list.filter((n) => !n.isRead).length)
     } catch {
@@ -48,9 +50,14 @@ export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
     }
   }, [open])
 
+  const navigateToAction = (actionUrl: string) => {
+    onClose()
+    router.push(actionUrl)
+  }
+
   const handleMarkRead = async (notification: Notification) => {
     if (notification.isRead) {
-      if (notification.actionUrl) window.location.href = notification.actionUrl
+      if (notification.actionUrl) navigateToAction(notification.actionUrl)
       return
     }
     try {
@@ -60,9 +67,9 @@ export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
         onUnreadChange?.(next.filter((n) => !n.isRead).length)
         return next
       })
-      if (notification.actionUrl) window.location.href = notification.actionUrl
+      if (notification.actionUrl) navigateToAction(notification.actionUrl)
     } catch {
-      if (notification.actionUrl) window.location.href = notification.actionUrl
+      if (notification.actionUrl) navigateToAction(notification.actionUrl)
     }
   }
 
