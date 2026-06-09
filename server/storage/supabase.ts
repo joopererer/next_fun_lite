@@ -371,6 +371,21 @@ export class SupabaseAdapter implements StorageAdapter {
     return (data ?? []).map((row) => this.mapNotification(row as NotificationRow))
   }
 
+  async getUnreadCount(userId: string): Promise<number> {
+    const { count, error } = await this.db
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false)
+    if (error) throw error
+    return count ?? 0
+  }
+
+  async markAsRead(notificationId: string): Promise<void> {
+    const { error } = await this.db.from('notifications').update({ is_read: true }).eq('id', notificationId)
+    if (error) throw error
+  }
+
   async markAllAsRead(userId: string): Promise<void> {
     const { error } = await this.db
       .from('notifications')

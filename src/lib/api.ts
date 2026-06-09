@@ -139,6 +139,9 @@ export const api = {
       query ? `/api/notifications?${query}` : '/api/notifications',
     )
   },
+  getUnreadNotificationCount: () => request<{ count: number }>('/api/notifications/unread-count'),
+  markNotificationRead: (id: string) =>
+    request<{ ok: boolean }>(`/api/notifications/${encodeURIComponent(id)}`, { method: 'PATCH' }),
   markAllNotificationsRead: () =>
     request<{ ok: boolean }>('/api/notifications/read-all', { method: 'POST' }),
   createRegistration: (data: {

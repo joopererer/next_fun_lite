@@ -12,9 +12,11 @@ const CATEGORY_EXPORT_LABELS: Record<ActivityCategory, string> = {
   other: '✨ 其他',
 }
 
+/** Column order matches the Next Fun project management spreadsheet. */
 export const EXPORT_HEADERS = [
   '状态',
-  '日期',
+  'ID',
+  'Date',
   '类型',
   '活动名称',
   '活动地点',
@@ -23,10 +25,14 @@ export const EXPORT_HEADERS = [
   '链接',
   '活动介绍',
   '发起人',
+  '报名成员（网名后请加上法语分号;）',
   '参加人数',
-  '报名成员',
-  '复盘',
+  '任何想法',
+  'After Action Review 复盘',
 ] as const
+
+export const EXPORT_DATE_COL = 2
+export const EXPORT_MEETING_TIME_COL = 6
 
 export interface ExportRowInput {
   activity: Activity
@@ -58,24 +64,39 @@ export function exportCategoryLabel(category: ActivityCategory): string {
   return CATEGORY_EXPORT_LABELS[category] ?? CATEGORY_EXPORT_LABELS.other
 }
 
+/** Integer Excel serial for the calendar date (time goes in 集合时间). */
 export function exportDateSerial(iso: string | null | undefined): number | '' {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  const local = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0)
-  return dateToExcelSerial(local)
+  const utcMidnight = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+  return Math.round((utcMidnight - EXCEL_EPOCH_MS) / 86400000)
 }
 
-export function exportMeetingTime(
+/** Excel time fraction 0–1 for 集合时间 column (e.g. 0.8333 = 20:00). */
+export function exportMeetingTimeFraction(
   meetingTime: string | undefined,
   dateIso: string | null | undefined,
-): string {
-  if (meetingTime?.trim()) return meetingTime.trim()
-  if (!dateIso) return ''
-  const d = new Date(dateIso)
-  if (Number.isNaN(d.getTime())) return ''
-  if (d.getHours() === 0 && d.getMinutes() === 0) return ''
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+): number | '' {
+  let hours: number | null = null
+  let minutes: number | null = null
+
+  if (meetingTime?.trim()) {
+    const m = meetingTime.trim().match(/(\d{1,2}):(\d{2})/)
+    if (m) {
+      hours = Number(m[1])
+      minutes = Number(m[2])
+    }
+  } else if (dateIso) {
+    const d = new Date(dateIso)
+    if (!Number.isNaN(d.getTime()) && (d.getHours() !== 0 || d.getMinutes() !== 0)) {
+      hours = d.getHours()
+      minutes = d.getMinutes()
+    }
+  }
+
+  if (hours == null || minutes == null) return ''
+  return (hours * 60 + minutes) / (24 * 60)
 }
 
 export function formatMemberNames(names: string[]): string {
@@ -97,17 +118,19 @@ export function activityToExportRow(
 
   return [
     exportStatusLabel(activity.status),
+    activity.id,
     exportDateSerial(activity.date),
     exportCategoryLabel(activity.category),
     activity.title,
     activity.location ?? '',
-    exportMeetingTime(activity.meetingTime, activity.date),
+    exportMeetingTimeFraction(activity.meetingTime, activity.date),
     activity.meetingLocation ?? '',
     activity.sourceUrl ?? '',
     activity.description ?? '',
     activity.organizerName ?? '',
-    count > 0 ? count : '',
     members,
+    count > 0 ? count : '',
+    '',
     activity.recap ?? '',
   ]
 }
@@ -119,6 +142,29 @@ export function buildExportMatrix(rows: ExportRowInput[]): unknown[][] {
       activityToExportRow(activity, memberNames, headcount),
     ),
   ]
+}
+
+/** Apply Excel number formats so Date / 集合时间 display like the original template. */
+export function applyExportSheetFormats(
+  ws: Record<string, { v?: unknown; t?: string; z?: string }>,
+  rowCount: number,
+  encodeCell: (addr: { r: number; c: number }) => string,
+): void {
+  for (let r = 1; r <= rowCount; r++) {
+    const dateRef = encodeCell({ r, c: EXPORT_DATE_COL })
+    const dateCell = ws[dateRef]
+    if (dateCell && typeof dateCell.v === 'number') {
+      dateCell.t = 'n'
+      dateCell.z = 'dd/mm/yyyy'
+    }
+
+    const timeRef = encodeCell({ r, c: EXPORT_MEETING_TIME_COL })
+    const timeCell = ws[timeRef]
+    if (timeCell && typeof timeCell.v === 'number') {
+      timeCell.t = 'n'
+      timeCell.z = 'hh:mm'
+    }
+  }
 }
 
 export function buildExportFilename(prefix = 'NEXT FUN 活动导出'): string {

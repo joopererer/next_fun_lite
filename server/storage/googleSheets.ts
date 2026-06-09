@@ -504,6 +504,12 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     return []
   }
 
+  async getUnreadCount(_userId: string): Promise<number> {
+    return 0
+  }
+
+  async markAsRead(_notificationId: string): Promise<void> {}
+
   async markAllAsRead(_userId: string): Promise<void> {}
 
   async createNotification(

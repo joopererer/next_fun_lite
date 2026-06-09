@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { ActivityStatus, ActivityWithCount } from '../../../shared/types'
 import { isInfoPost, isProposalPost } from '../../../shared/infoVisibility'
-import { buildExportFilename, buildExportMatrix } from '../../../shared/excelExport'
+import { buildExportFilename, buildExportMatrix, applyExportSheetFormats } from '../../../shared/excelExport'
 import { api } from '../../lib/api'
 import { getStatusLabel } from '../../lib/activityStatus'
 import { getCategoryLabel } from '../../lib/categories'
@@ -115,6 +115,7 @@ export function ExportTab({ activities }: Props) {
       const XLSX = mod.default ?? mod
       const matrix = buildExportMatrix(registrationResults)
       const ws = XLSX.utils.aoa_to_sheet(matrix)
+      applyExportSheetFormats(ws, registrationResults.length, XLSX.utils.encode_cell)
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, '活动')
       XLSX.writeFile(wb, buildExportFilename())

@@ -574,6 +574,16 @@ export class MockAdapter implements StorageAdapter {
       .slice(0, limit)
   }
 
+  async getUnreadCount(userId: string): Promise<number> {
+    this.ensureSeedNotifications(userId)
+    return this.notifications.filter((n) => n.userId === userId && !n.isRead).length
+  }
+
+  async markAsRead(notificationId: string): Promise<void> {
+    const notification = this.notifications.find((n) => n.id === notificationId)
+    if (notification) notification.isRead = true
+  }
+
   async markAllAsRead(userId: string): Promise<void> {
     for (const n of this.notifications) {
       if (n.userId === userId) n.isRead = true

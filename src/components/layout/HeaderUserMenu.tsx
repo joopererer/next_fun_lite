@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PROFILE_EDIT_EVENT } from '../../lib/profileEvents'
 import { AdminNavIcon } from './AdminNavIcon'
+import { AboutInfoButton } from './AboutInfoButton'
+import { NotificationBell } from '../notifications/NotificationBell'
 
 const adminLinkClass =
   'flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-50 transition-colors'
@@ -16,6 +18,7 @@ export function HeaderUserMenu() {
   if (!isSignedIn) {
     return (
       <div className="flex items-center gap-1">
+        <AboutInfoButton />
         <Link href="/admin" className={adminLinkClass} aria-label="管理后台" title="管理后台">
           <AdminNavIcon />
         </Link>
@@ -33,6 +36,8 @@ export function HeaderUserMenu() {
 
   return (
     <div className="flex items-center gap-1">
+      <AboutInfoButton />
+      <NotificationBell />
       <Link href="/admin" className={adminLinkClass} aria-label="管理后台" title="管理后台">
         <AdminNavIcon />
       </Link>

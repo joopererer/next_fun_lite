@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import type { Notification } from '@/shared/types'
 import { api } from '@/src/lib/api'
+import { openNotificationDrawer } from '@/src/lib/notificationUiEvents'
 
 export function HomeNotificationBanner() {
   const { isSignedIn, isLoaded } = useUser()
@@ -34,15 +35,23 @@ export function HomeNotificationBanner() {
     const n = notifications[0]
     return (
       <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-900">
-        <div className="flex items-center gap-2 min-w-0">
+        <button
+          type="button"
+          className="flex items-center gap-2 min-w-0 flex-1 text-left"
+          onClick={openNotificationDrawer}
+        >
           <span>🔔</span>
           <span className="truncate">{n.title}</span>
           {n.actionUrl && (
-            <Link href={n.actionUrl} className="text-green-600 underline shrink-0">
+            <Link
+              href={n.actionUrl}
+              className="text-green-600 underline shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
               查看
             </Link>
           )}
-        </div>
+        </button>
         <button
           type="button"
           onClick={handleDismiss}
@@ -58,18 +67,26 @@ export function HomeNotificationBanner() {
   const first = notifications[0]
   return (
     <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-900">
-      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+      <button
+        type="button"
+        className="flex items-center gap-2 min-w-0 flex-wrap flex-1 text-left"
+        onClick={openNotificationDrawer}
+      >
         <span>🔔</span>
         <span>你有 {notifications.length} 条新通知</span>
         <span className="text-gray-400">·</span>
         {first.actionUrl ? (
-          <Link href={first.actionUrl} className="text-green-600 underline truncate">
+          <Link
+            href={first.actionUrl}
+            className="text-green-600 underline truncate"
+            onClick={(e) => e.stopPropagation()}
+          >
             {first.title}
           </Link>
         ) : (
           <span className="truncate">{first.title}</span>
         )}
-      </div>
+      </button>
       <button
         type="button"
         onClick={handleDismiss}
