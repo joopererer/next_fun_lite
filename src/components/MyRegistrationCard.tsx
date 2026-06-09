@@ -7,6 +7,7 @@ import { getCancelReasonLabel, isEndedCancelled } from '../lib/activityStatus'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { formatEventDate } from '../lib/user'
 import { api, getCancelUrl } from '../lib/api'
+import { ModalSheet } from './ui/ModalSheet'
 
 interface Props {
   activity: ActivityWithCount
@@ -99,13 +100,12 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
       </div>
 
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
-            <h3 className="font-semibold mb-2">确认取消「{activity.title}」的报名？</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              取消后名额将释放，如需重新参加请再次报名。
-            </p>
-            <div className="flex gap-3">
+        <ModalSheet
+          open={showConfirm}
+          onClose={() => setShowConfirm(false)}
+          title={`确认取消「${activity.title}」的报名？`}
+          footer={
+            <div className="flex gap-2 sm:gap-3">
               <button type="button" className="btn-primary flex-1" onClick={handleCancel} disabled={cancelling}>
                 {cancelling ? '处理中...' : '确认取消'}
               </button>
@@ -113,8 +113,12 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
                 返回
               </button>
             </div>
-          </div>
-        </div>
+          }
+        >
+          <p className="text-xs sm:text-sm text-gray-500">
+            取消后名额将释放，如需重新参加请再次报名。
+          </p>
+        </ModalSheet>
       )}
     </>
   )

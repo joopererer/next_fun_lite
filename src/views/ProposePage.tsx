@@ -243,12 +243,12 @@ export function ProposePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col pb-32">
+    <div className="min-h-screen flex flex-col pb-24 sm:pb-32">
       <Header />
       <SignInGate message="登录后即可提交提议">
-      <main className="max-w-lg mx-auto px-4 py-6 page-enter">
-        <h1 className="text-2xl font-bold mb-1">分享一个好去处 💡</h1>
-        <p className="text-gray-500 text-sm mb-6">有趣的活动、餐厅、景点都可以，大家一起决定要不要去</p>
+      <main className="max-w-lg mx-auto px-4 py-4 sm:py-6 page-enter w-full">
+        <h1 className="text-xl sm:text-2xl font-bold mb-1">分享一个好去处 💡</h1>
+        <p className="text-gray-500 text-xs sm:text-sm mb-4 sm:mb-6">有趣的活动、餐厅、景点都可以，大家一起决定要不要去</p>
 
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
           {(['link', 'image', 'manual'] as InputMode[]).map((m) => (
@@ -300,7 +300,7 @@ export function ProposePage() {
           </div>
         )}
 
-        <div className="space-y-4 mb-8">
+        <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
           <div>
             <label className="text-sm text-gray-600 mb-1 block">活动/地点名称 *</label>
             <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} />

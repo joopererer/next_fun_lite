@@ -17,9 +17,9 @@ export function Header({ embedded = false }: HeaderProps) {
           : 'sticky top-0 z-40 bg-warm-bg/90 backdrop-blur border-b border-gray-100'
       }
     >
-      <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="max-w-3xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
         <Link href="/" className="block">
-          <h1 className="text-lg font-bold text-green-700">🎉 快乐制造局</h1>
+          <h1 className="text-base sm:text-lg font-bold text-green-700">🎉 快乐制造局</h1>
         </Link>
         <HeaderUserMenu />
       </div>

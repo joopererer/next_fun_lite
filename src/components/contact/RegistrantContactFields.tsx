@@ -29,12 +29,12 @@ export function RegistrantContactFields({
 
   return (
     <div>
-      <label className="text-sm text-gray-600 mb-2 block">联系方式 *</label>
-      <div className="space-y-2 mb-3">
+      <label className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2 block">联系方式 *</label>
+      <div className="space-y-1.5 sm:space-y-2 mb-2 sm:mb-3">
         {OPTIONS.map((opt) => (
           <label
             key={opt.value}
-            className={`flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer text-sm ${
+            className={`flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border cursor-pointer text-xs sm:text-sm ${
               contactType === opt.value ? 'border-green-400 bg-green-50' : 'border-gray-200'
             }`}
           >

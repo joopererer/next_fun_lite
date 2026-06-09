@@ -19,7 +19,7 @@ export function ProposalsSectionClient({ proposedAll }: Props) {
   const proposedOverflow = filteredAll.length > filtered.length
 
   return (
-    <section className="mb-10">
+    <section className="mb-8 sm:mb-10">
       <div className="mb-4">
         <h2 className="section-title mb-0">
           💡 提议池
@@ -35,7 +35,7 @@ export function ProposalsSectionClient({ proposedAll }: Props) {
           {filter.length > 0 ? '暂无该类型活动' : '还没有提议，来做第一个吧！'}
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {filtered.map((a) => (
             <ProposalCard key={a.id} activity={a} />
           ))}

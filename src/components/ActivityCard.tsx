@@ -123,7 +123,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
 
   return (
     <>
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
+      <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
         <Link href={`/event/${activity.id}`} className="block flex-1 group">
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
             <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block">
