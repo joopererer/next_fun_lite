@@ -4,7 +4,7 @@ import { useUser } from '@clerk/nextjs'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/src/lib/api'
-import { ACTIVITIES_CHANGED_EVENT } from '@/src/lib/activityEvents'
+import { ACTIVITIES_CHANGED_EVENT, consumeActivitiesDirtyFlag } from '@/src/lib/activityEvents'
 import { getGuestRegistrations } from '@/src/lib/guestRegistrations'
 
 interface HomeRegistrationContextValue {
@@ -41,9 +41,17 @@ export function HomeRegistrationProvider({ children }: { children: ReactNode }) 
   }, [isLoaded, isSignedIn, syncRegistrations])
 
   useEffect(() => {
+    if (consumeActivitiesDirtyFlag()) {
+      syncRegistrations()
+      router.refresh()
+    }
+  }, [router, syncRegistrations])
+
+  useEffect(() => {
     const refresh = () => {
       syncRegistrations()
       router.refresh()
+      consumeActivitiesDirtyFlag()
     }
     const onVisible = () => {
       if (document.visibilityState === 'visible') refresh()

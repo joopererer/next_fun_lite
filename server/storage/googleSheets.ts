@@ -378,6 +378,14 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     return registration
   }
 
+  async updateRegistration(id: string, data: Partial<Registration>): Promise<Registration> {
+    const existing = await this.getRegistrationById(id)
+    if (!existing) throw new Error('Registration not found')
+    const updated = { ...existing, ...data, id }
+    await this.updateRowById('registrations', id, registrationToRow(updated))
+    return updated
+  }
+
   async cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult> {
     const existing = await this.getRegistrationById(id)
     if (!existing) return { registration: undefined, registeredCount: 0 }
@@ -506,6 +514,10 @@ export class GoogleSheetsAdapter implements StorageAdapter {
   }
 
   async listProfilesWithPreference(_pref: import('../../shared/types').ProfileNotificationPreference): Promise<import('../../shared/types').Profile[]> {
+    return []
+  }
+
+  async searchProfiles(_query: string, _limit?: number): Promise<import('../../shared/types').Profile[]> {
     return []
   }
 

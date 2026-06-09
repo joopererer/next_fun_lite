@@ -12,6 +12,7 @@ import type { Activity, ActivityCategory, FeeLevel, OrganizerContactType, ParseR
 import { OrganizerContactFields } from '../components/contact/OrganizerContactFields'
 import { SimilarProposalsDialog } from '../components/SimilarProposalsDialog'
 import { api, getEventUrl } from '../lib/api'
+import { notifyActivitiesChanged } from '../lib/activityEvents'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../lib/validateSchedule'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { FEE_LEVELS } from '../lib/feeLevel'
@@ -148,6 +149,7 @@ export function ProposePage() {
       const url = getEventUrl(activity.id)
       setCreated(activity)
       setEventUrl(url)
+      notifyActivitiesChanged()
       try {
         const qr = await QRCode.toDataURL(url, { width: 200 })
         setQrDataUrl(qr)

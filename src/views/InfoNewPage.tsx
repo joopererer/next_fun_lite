@@ -9,6 +9,7 @@ import { Footer } from '../components/layout/Footer'
 import { SignInGate } from '../components/SignInGate'
 import { InfoForm } from '../components/info/InfoForm'
 import { api, getEventUrl } from '../lib/api'
+import { notifyActivitiesChanged } from '../lib/activityEvents'
 
 export function InfoNewPage() {
   const [created, setCreated] = useState<Activity | null>(null)
@@ -19,6 +20,7 @@ export function InfoNewPage() {
     const url = getEventUrl(activity.id)
     setCreated(activity)
     setEventUrl(url)
+    notifyActivitiesChanged()
     try {
       const qr = await QRCode.toDataURL(url, { width: 200 })
       setQrDataUrl(qr)

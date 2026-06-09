@@ -39,6 +39,7 @@ export interface StorageAdapter {
   findInterestByUserId(activityId: string, userId: string): Promise<Interest | null>
   findInterestByDeviceId(activityId: string, deviceId: string): Promise<Interest | null>
   createRegistration(data: Omit<Registration, 'id' | 'registeredAt'> & { registeredAt?: string }): Promise<Registration>
+  updateRegistration(id: string, data: Partial<Registration>): Promise<Registration>
   cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult>
   deleteRegistration(activityId: string, wechat: string): Promise<RegistrationMutationResult>
 
@@ -56,6 +57,7 @@ export interface StorageAdapter {
   getProfile(userId: string): Promise<Profile | null>
   upsertProfile(data: Partial<Profile> & { id: string; nickname?: string }): Promise<Profile>
   listProfilesWithPreference(pref: ProfileNotificationPreference): Promise<Profile[]>
+  searchProfiles(query: string, limit?: number): Promise<Profile[]>
 
   getNotifications(userId: string, options?: GetNotificationsOptions): Promise<Notification[]>
   getUnreadCount(userId: string): Promise<number>

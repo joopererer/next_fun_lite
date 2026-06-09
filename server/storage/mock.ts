@@ -453,6 +453,13 @@ export class MockAdapter implements StorageAdapter {
     return registration
   }
 
+  async updateRegistration(id: string, data: Partial<Registration>): Promise<Registration> {
+    const idx = this.registrations.findIndex((r) => r.id === id)
+    if (idx === -1) throw new Error('Registration not found')
+    this.registrations[idx] = { ...this.registrations[idx], ...data, id }
+    return this.registrations[idx]
+  }
+
   async cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult> {
     const idx = this.registrations.findIndex((r) => r.id === id)
     if (idx === -1) {
@@ -569,6 +576,18 @@ export class MockAdapter implements StorageAdapter {
 
   async listProfilesWithPreference(pref: ProfileNotificationPreference): Promise<Profile[]> {
     return [...this.profiles.values()].filter((p) => p[pref] === true)
+  }
+
+  async searchProfiles(query: string, limit = 10): Promise<Profile[]> {
+    const q = query.trim().toLowerCase()
+    if (q.length < 2) return []
+    return [...this.profiles.values()]
+      .filter(
+        (p) =>
+          p.nickname.toLowerCase().includes(q) ||
+          (p.wechat?.toLowerCase().includes(q) ?? false),
+      )
+      .slice(0, limit)
   }
 
   async getNotifications(userId: string, options: GetNotificationsOptions = {}): Promise<Notification[]> {

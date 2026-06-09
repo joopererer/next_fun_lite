@@ -165,6 +165,40 @@ export const api = {
     request<RegistrationMutationResult>(`/api/registrations/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
+  adminCreateRegistration: (data: {
+    activityId: string
+    userId?: string
+    name: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue: string
+    contactLabel?: string
+    participantCount: number
+    note?: string
+  }) =>
+    request<RegistrationMutationResult>('/api/admin/registrations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  adminUpdateRegistration: (
+    id: string,
+    data: {
+      userId?: string | null
+      name?: string
+      contactType?: 'wechat' | 'email' | 'other'
+      contactValue?: string
+      contactLabel?: string
+      participantCount?: number
+      note?: string
+    },
+  ) =>
+    request<RegistrationMutationResult>(`/api/registrations/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  adminSearchProfiles: (q: string) =>
+    request<{ profiles: Profile[] }>(
+      `/api/admin/profiles/search?q=${encodeURIComponent(q)}`,
+    ),
   getRegistrationSummary: (activityId: string) =>
     request<RegistrationSummary>(`/api/activities/${activityId}/registrations/summary`),
   createInterest: (data: { activityId: string; name?: string; wechat?: string }) =>
