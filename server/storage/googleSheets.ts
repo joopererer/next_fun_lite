@@ -510,6 +510,10 @@ export class GoogleSheetsAdapter implements StorageAdapter {
 
   async markAsRead(_notificationId: string): Promise<void> {}
 
+  async markAsReadForUser(_userId: string, _notificationId: string): Promise<boolean> {
+    return false
+  }
+
   async markAllAsRead(_userId: string): Promise<void> {}
 
   async createNotification(

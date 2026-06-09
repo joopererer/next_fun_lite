@@ -113,10 +113,8 @@ export interface Profile {
   email?: string
   notificationEmail?: string
   notifyRegistrationChange: boolean
-  notifyActivityReminder: boolean
   notifyProposalRecruiting: boolean
   notifyNewRecruit: boolean
-  notifyInfoReminder: boolean
   createdAt: string
   updatedAt: string
 }
@@ -124,10 +122,8 @@ export interface Profile {
 export type NotificationType =
   | 'activity_cancelled'
   | 'activity_updated'
-  | 'activity_reminder'
   | 'proposal_recruiting'
   | 'new_recruit'
-  | 'info_reminder'
 
 export interface Notification {
   id: string
@@ -141,21 +137,10 @@ export interface Notification {
   createdAt: string
 }
 
-export interface InfoInterest {
-  id: string
-  activityId: string
-  userId?: string
-  deviceId?: string
-  email?: string
-  createdAt: string
-}
-
 export type ProfileNotificationPreference =
   | 'notifyRegistrationChange'
-  | 'notifyActivityReminder'
   | 'notifyProposalRecruiting'
   | 'notifyNewRecruit'
-  | 'notifyInfoReminder'
 
 export interface ActivityWithCount extends Activity {
   registeredCount: number

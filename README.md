@@ -62,7 +62,7 @@ npm run dev
 
 **已有项目**：按顺序执行 [`supabase/migrations/`](supabase/migrations/) 下 v5–v10 脚本（见 [develop.md](docs/develop.md#数据库)）。
 
-可选：`npm run db:setup`（需配置 `SUPABASE_DB_URL`）。
+`npm run db:setup` 仅执行 `schema.sql`（需 `SUPABASE_DB_URL`），不含 migrations 目录。
 
 ## 环境变量
 

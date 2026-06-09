@@ -20,10 +20,8 @@ type NotificationRow = Record<string, unknown>
 
 const PREF_COLUMN: Record<ProfileNotificationPreference, string> = {
   notifyRegistrationChange: 'notify_registration_change',
-  notifyActivityReminder: 'notify_activity_reminder',
   notifyProposalRecruiting: 'notify_proposal_recruiting',
   notifyNewRecruit: 'notify_new_recruit',
-  notifyInfoReminder: 'notify_info_reminder',
 }
 
 export class SupabaseAdapter implements StorageAdapter {
@@ -386,6 +384,17 @@ export class SupabaseAdapter implements StorageAdapter {
     if (error) throw error
   }
 
+  async markAsReadForUser(userId: string, notificationId: string): Promise<boolean> {
+    const { data, error } = await this.db
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+      .eq('user_id', userId)
+      .select('id')
+    if (error) throw error
+    return (data?.length ?? 0) > 0
+  }
+
   async markAllAsRead(userId: string): Promise<void> {
     const { error } = await this.db
       .from('notifications')
@@ -424,10 +433,8 @@ export class SupabaseAdapter implements StorageAdapter {
       email: row.email ? String(row.email) : undefined,
       notificationEmail: row.notification_email ? String(row.notification_email) : undefined,
       notifyRegistrationChange: row.notify_registration_change !== false,
-      notifyActivityReminder: row.notify_activity_reminder !== false,
       notifyProposalRecruiting: row.notify_proposal_recruiting !== false,
       notifyNewRecruit: row.notify_new_recruit === true,
-      notifyInfoReminder: row.notify_info_reminder !== false,
       createdAt: String(row.created_at),
       updatedAt: String(row.updated_at),
     })
@@ -442,14 +449,10 @@ export class SupabaseAdapter implements StorageAdapter {
     if (profile.notifyRegistrationChange !== undefined) {
       result.notify_registration_change = profile.notifyRegistrationChange
     }
-    if (profile.notifyActivityReminder !== undefined) {
-      result.notify_activity_reminder = profile.notifyActivityReminder
-    }
     if (profile.notifyProposalRecruiting !== undefined) {
       result.notify_proposal_recruiting = profile.notifyProposalRecruiting
     }
     if (profile.notifyNewRecruit !== undefined) result.notify_new_recruit = profile.notifyNewRecruit
-    if (profile.notifyInfoReminder !== undefined) result.notify_info_reminder = profile.notifyInfoReminder
     return result
   }
 

@@ -1,7 +1,5 @@
 import type { Activity, ActivityCategory, ActivityStatus } from './types'
-
-/** Same epoch as excelImport — Excel serial date (1899-12-30 UTC). */
-const EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30)
+import { EXCEL_EPOCH_MS } from './excelSerial'
 
 const CATEGORY_EXPORT_LABELS: Record<ActivityCategory, string> = {
   board_game: '🎲 桌游',
@@ -38,11 +36,6 @@ export interface ExportRowInput {
   activity: Activity
   memberNames: string[]
   headcount?: number
-}
-
-export function dateToExcelSerial(d: Date): number {
-  const ms = d.getTime() - EXCEL_EPOCH_MS
-  return ms / 86400000
 }
 
 export function exportStatusLabel(status: ActivityStatus): string {

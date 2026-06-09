@@ -2,10 +2,8 @@ import type { Profile } from './types'
 
 export const DEFAULT_NOTIFICATION_PREFS = {
   notifyRegistrationChange: true,
-  notifyActivityReminder: true,
   notifyProposalRecruiting: true,
   notifyNewRecruit: false,
-  notifyInfoReminder: true,
 } as const
 
 export function withProfileDefaults(

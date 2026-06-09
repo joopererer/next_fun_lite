@@ -22,13 +22,8 @@ export function HomeNotificationBanner() {
 
   if (!isSignedIn || dismissed || notifications.length === 0) return null
 
-  const handleDismiss = async () => {
+  const handleDismiss = () => {
     setDismissed(true)
-    try {
-      await api.markAllNotificationsRead()
-    } catch {
-      // banner already hidden
-    }
   }
 
   if (notifications.length === 1) {

@@ -35,6 +35,7 @@ export class TencentDocsAdapter implements StorageAdapter {
   async getNotifications(_userId: string, _options?: GetNotificationsOptions): Promise<Notification[]> { throw new Error(TODO) }
   async getUnreadCount(_userId: string): Promise<number> { throw new Error(TODO) }
   async markAsRead(_notificationId: string): Promise<void> { throw new Error(TODO) }
+  async markAsReadForUser(_userId: string, _notificationId: string): Promise<boolean> { throw new Error(TODO) }
   async markAllAsRead(_userId: string): Promise<void> { throw new Error(TODO) }
   async createNotification(_data: Omit<Notification, 'id' | 'isRead' | 'createdAt'>): Promise<Notification> { throw new Error(TODO) }
 }

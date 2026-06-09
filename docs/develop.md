@@ -49,9 +49,11 @@ npm run dev
 
 ## 数据库
 
-**新 Supabase 项目**：在 SQL Editor 执行 [`supabase/schema.sql`](../supabase/schema.sql)（已含最新字段）。
+**新项目**：在 SQL Editor 执行 [`supabase/schema.sql`](../supabase/schema.sql)（已对齐 v10，不含 `info_interests`）。
 
 **已有项目增量升级**：按顺序执行 `supabase/migrations/` 下脚本：
+
+可选：`npm run db:setup` 仅执行 `schema.sql`（需 `SUPABASE_DB_URL`），不会自动跑 migrations 目录。
 
 | 文件 | 说明 |
 |------|------|
