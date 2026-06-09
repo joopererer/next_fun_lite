@@ -26,7 +26,7 @@ export function ImportTab({ activities, onImported, onNavigate }: Props) {
     skipped: number
     failed: Array<{ title: string; error: string }>
   } | null>(null)
-  const [showTable, setShowTable] = useState(false)
+  const [showTable, setShowTable] = useState(true)
 
   const handleFile = useCallback(async (file: File) => {
     const mod = await import('xlsx')
