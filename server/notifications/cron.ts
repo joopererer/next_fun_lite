@@ -119,10 +119,7 @@ async function sendInfoRemindersForActivity(
       (interest.userId ? await getNotificationEmail(env, interest.userId) : null)
     if (!email) continue
 
-    if (interest.userId) {
-      const alreadySent = await checkReminderSent(env, info.id, interest.userId, 'info_reminder')
-      if (alreadySent) continue
-    }
+    // already deduped above for signed-in users
 
     await sendEmail(env, {
       to: email,
