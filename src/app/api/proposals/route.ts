@@ -1,6 +1,6 @@
-import { runHandler } from '@/lib/apiRoute'
+import { runHandlerWithRevalidate } from '@/lib/runHandlerWithRevalidate'
 import { handleCreateActivity } from '@/server/handlers'
 
 export async function POST(request: Request) {
-  return runHandler(request, (req, env) => handleCreateActivity(req, env, true))
+  return runHandlerWithRevalidate(request, (req, env) => handleCreateActivity(req, env, true))
 }

@@ -1,4 +1,5 @@
 import { runHandler } from '@/lib/apiRoute'
+import { runHandlerWithRevalidate } from '@/lib/runHandlerWithRevalidate'
 import {
   handleDeleteActivity,
   handleGetActivity,
@@ -14,10 +15,10 @@ export async function GET(request: Request, { params }: Params) {
 
 export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params
-  return runHandler(request, (req, env) => handleUpdateActivity(req, env, id), { id })
+  return runHandlerWithRevalidate(request, (req, env) => handleUpdateActivity(req, env, id), { id })
 }
 
 export async function DELETE(request: Request, { params }: Params) {
   const { id } = await params
-  return runHandler(request, (req, env) => handleDeleteActivity(req, env, id), { id })
+  return runHandlerWithRevalidate(request, (req, env) => handleDeleteActivity(req, env, id), { id })
 }

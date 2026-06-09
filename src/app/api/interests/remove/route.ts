@@ -1,6 +1,6 @@
-import { runHandler } from '@/lib/apiRoute'
+import { runHandlerWithRevalidate } from '@/lib/runHandlerWithRevalidate'
 import { handleDeleteInterest } from '@/server/handlers'
 
 export async function POST(request: Request) {
-  return runHandler(request, handleDeleteInterest)
+  return runHandlerWithRevalidate(request, handleDeleteInterest)
 }
