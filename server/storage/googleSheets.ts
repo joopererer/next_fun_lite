@@ -500,15 +500,9 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     return []
   }
 
-  async getNotifications(_userId: string, _limit?: number): Promise<import('../../shared/types').Notification[]> {
+  async getNotifications(_userId: string, _options?: import('./types').GetNotificationsOptions): Promise<import('../../shared/types').Notification[]> {
     return []
   }
-
-  async getUnreadCount(_userId: string): Promise<number> {
-    return 0
-  }
-
-  async markAsRead(_notificationId: string): Promise<void> {}
 
   async markAllAsRead(_userId: string): Promise<void> {}
 
@@ -516,43 +510,5 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     data: Omit<import('../../shared/types').Notification, 'id' | 'isRead' | 'createdAt'>,
   ): Promise<import('../../shared/types').Notification> {
     return { ...data, id: nanoid(8), isRead: false, createdAt: new Date().toISOString() }
-  }
-
-  async countNotificationsSince(_activityId: string, _userId: string, _type: import('../../shared/types').Notification['type'], _sinceIso: string): Promise<number> {
-    return 0
-  }
-
-  async getInfoInterests(_activityId: string): Promise<import('../../shared/types').InfoInterest[]> {
-    return []
-  }
-
-  async findInfoInterestByUserId(_activityId: string, _userId: string): Promise<import('../../shared/types').InfoInterest | null> {
-    return null
-  }
-
-  async findInfoInterestByEmail(_activityId: string, _email: string): Promise<import('../../shared/types').InfoInterest | null> {
-    return null
-  }
-
-  async findInfoInterestByDeviceId(_activityId: string, _deviceId: string): Promise<import('../../shared/types').InfoInterest | null> {
-    return null
-  }
-
-  async createInfoInterest(data: Omit<import('../../shared/types').InfoInterest, 'id' | 'createdAt'>): Promise<import('../../shared/types').InfoInterest> {
-    return { ...data, id: nanoid(8), createdAt: new Date().toISOString() }
-  }
-
-  async deleteInfoInterest(_id: string): Promise<void> {}
-
-  async getRecruitingActivitiesInDateRange(_fromIso: string, _toIso: string): Promise<import('../../shared/types').Activity[]> {
-    return []
-  }
-
-  async getInfoActivitiesWithStartInRange(_fromIso: string, _toIso: string): Promise<import('../../shared/types').Activity[]> {
-    return []
-  }
-
-  async getInfoActivitiesWithDeadlineInRange(_fromIso: string, _toIso: string): Promise<import('../../shared/types').Activity[]> {
-    return []
   }
 }

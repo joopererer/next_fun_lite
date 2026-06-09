@@ -13,10 +13,8 @@ export function NotificationSettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [notificationEmail, setNotificationEmail] = useState('')
   const [notifyRegistrationChange, setNotifyRegistrationChange] = useState(true)
-  const [notifyActivityReminder, setNotifyActivityReminder] = useState(true)
   const [notifyProposalRecruiting, setNotifyProposalRecruiting] = useState(true)
   const [notifyNewRecruit, setNotifyNewRecruit] = useState(false)
-  const [notifyInfoReminder, setNotifyInfoReminder] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -31,10 +29,8 @@ export function NotificationSettingsPage() {
         setProfile(p)
         setNotificationEmail(p.notificationEmail ?? '')
         setNotifyRegistrationChange(p.notifyRegistrationChange)
-        setNotifyActivityReminder(p.notifyActivityReminder)
         setNotifyProposalRecruiting(p.notifyProposalRecruiting)
         setNotifyNewRecruit(p.notifyNewRecruit)
-        setNotifyInfoReminder(p.notifyInfoReminder)
       })
       .catch(() => {})
   }, [isLoaded])
@@ -47,10 +43,8 @@ export function NotificationSettingsPage() {
         nickname: profile?.nickname,
         notificationEmail: notificationEmail.trim() || undefined,
         notifyRegistrationChange,
-        notifyActivityReminder,
         notifyProposalRecruiting,
         notifyNewRecruit,
-        notifyInfoReminder,
       })
       setProfile(updated)
       setSaved(true)
@@ -86,60 +80,43 @@ export function NotificationSettingsPage() {
           </div>
 
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-2">我报名的活动</legend>
-            <label className="flex items-center gap-2 text-sm mb-2 cursor-pointer">
+            <legend className="text-sm font-medium text-gray-700 mb-2">邮件通知</legend>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
                 checked={notifyRegistrationChange}
                 onChange={(e) => setNotifyRegistrationChange(e.target.checked)}
               />
-              活动取消或时间/地点变更
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifyActivityReminder}
-                onChange={(e) => setNotifyActivityReminder(e.target.checked)}
-              />
-              活动开始前24小时提醒
+              我报名的活动：取消或时间/地点变更时发邮件
             </label>
           </fieldset>
 
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-2">我感兴趣的提议</legend>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <legend className="text-sm font-medium text-gray-700 mb-2">站内通知</legend>
+            <label className="flex items-center gap-2 text-sm mb-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={notifyProposalRecruiting}
                 onChange={(e) => setNotifyProposalRecruiting(e.target.checked)}
               />
-              提议转为招募时通知
+              我感兴趣的提议转为招募时提醒
             </label>
-          </fieldset>
-
-          <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-2">全站动态</legend>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
                 checked={notifyNewRecruit}
                 onChange={(e) => setNotifyNewRecruit(e.target.checked)}
               />
-              有新招募发布（可能较频繁）
+              有新招募发布时提醒
             </label>
           </fieldset>
 
-          <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-2">资讯提醒</legend>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifyInfoReminder}
-                onChange={(e) => setNotifyInfoReminder(e.target.checked)}
-              />
-              我关注的资讯：行动开始前1小时 / 截止前3小时
-            </label>
-          </fieldset>
+          <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-600">
+            <p className="font-medium text-gray-700 mb-1">日历提醒</p>
+            <p>
+              报名活动或关注资讯时，可点击「加入日历」按钮，手动添加到你的日历，获得系统级提醒。
+            </p>
+          </div>
 
           <button type="button" className="btn-primary w-full" onClick={handleSave} disabled={saving}>
             {saving ? '保存中...' : saved ? '已保存 ✓' : '保存设置'}

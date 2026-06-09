@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { InfoReminderButton } from './InfoReminderButton'
+import { AddToCalendarButton } from './AddToCalendarButton'
 import type { Activity } from '../../shared/types'
+import { buildInfoCalendarEvent } from '../lib/calendarEvents'
 import { formatEventDate } from '../lib/user'
 import {
   getInfoTimePhase,
@@ -29,6 +30,7 @@ export function InfoEventSection({ activity }: Props) {
   const urgent = isInfoCountdownUrgent(phase, activity, now)
   const actionEnabled = isInfoActionEnabled(activity, now)
   const actionLabel = activity.infoActionLabel || '查看详情'
+  const calendarEvent = buildInfoCalendarEvent(activity)
 
   return (
     <>
@@ -81,7 +83,20 @@ export function InfoEventSection({ activity }: Props) {
             </span>
           )
         )}
-        <InfoReminderButton activityId={activity.id} />
+        {calendarEvent && (
+          <AddToCalendarButton
+            uid={calendarEvent.uid}
+            title={calendarEvent.title}
+            startTime={calendarEvent.startTime}
+            endTime={calendarEvent.endTime}
+            description={calendarEvent.description}
+            url={calendarEvent.url}
+            alarmMinutesBefore={calendarEvent.alarmMinutesBefore}
+            label={calendarEvent.label}
+            variant="button"
+            showHint={false}
+          />
+        )}
         <Link href={`/recruit/new?from_info=${activity.id}`} className="btn-secondary w-full text-center">
           我抢到了，发起组团
         </Link>

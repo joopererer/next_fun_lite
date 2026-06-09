@@ -1,6 +1,5 @@
 import type {
   Activity,
-  InfoInterest,
   Interest,
   Notification,
   Profile,
@@ -16,6 +15,11 @@ export interface InterestMutationResult {
 export interface RegistrationMutationResult {
   registration?: Registration
   registeredCount: number
+}
+
+export interface GetNotificationsOptions {
+  limit?: number
+  unreadOnly?: boolean
 }
 
 export interface StorageAdapter {
@@ -52,26 +56,7 @@ export interface StorageAdapter {
   upsertProfile(data: Partial<Profile> & { id: string; nickname?: string }): Promise<Profile>
   listProfilesWithPreference(pref: ProfileNotificationPreference): Promise<Profile[]>
 
-  getNotifications(userId: string, limit?: number): Promise<Notification[]>
-  getUnreadCount(userId: string): Promise<number>
-  markAsRead(notificationId: string): Promise<void>
+  getNotifications(userId: string, options?: GetNotificationsOptions): Promise<Notification[]>
   markAllAsRead(userId: string): Promise<void>
   createNotification(data: Omit<Notification, 'id' | 'isRead' | 'createdAt'>): Promise<Notification>
-  countNotificationsSince(
-    activityId: string,
-    userId: string,
-    type: Notification['type'],
-    sinceIso: string,
-  ): Promise<number>
-
-  getInfoInterests(activityId: string): Promise<InfoInterest[]>
-  findInfoInterestByUserId(activityId: string, userId: string): Promise<InfoInterest | null>
-  findInfoInterestByEmail(activityId: string, email: string): Promise<InfoInterest | null>
-  findInfoInterestByDeviceId(activityId: string, deviceId: string): Promise<InfoInterest | null>
-  createInfoInterest(data: Omit<InfoInterest, 'id' | 'createdAt'>): Promise<InfoInterest>
-  deleteInfoInterest(id: string): Promise<void>
-
-  getRecruitingActivitiesInDateRange(fromIso: string, toIso: string): Promise<Activity[]>
-  getInfoActivitiesWithStartInRange(fromIso: string, toIso: string): Promise<Activity[]>
-  getInfoActivitiesWithDeadlineInRange(fromIso: string, toIso: string): Promise<Activity[]>
 }

@@ -127,26 +127,20 @@ export const api = {
     wechat?: string
     notificationEmail?: string
     notifyRegistrationChange?: boolean
-    notifyActivityReminder?: boolean
     notifyProposalRecruiting?: boolean
     notifyNewRecruit?: boolean
-    notifyInfoReminder?: boolean
   }) => request<Profile>('/api/profile', { method: 'POST', body: JSON.stringify(data) }),
-  getUnreadNotificationCount: () => request<{ count: number }>('/api/notifications/unread-count'),
-  getNotifications: () => request<Notification[]>('/api/notifications'),
-  markNotificationRead: (id: string) =>
-    request<{ ok: boolean }>(`/api/notifications/${encodeURIComponent(id)}`, { method: 'PATCH' }),
+  getNotifications: (params?: { unread?: boolean; limit?: number }) => {
+    const q = new URLSearchParams()
+    if (params?.unread) q.set('unread', 'true')
+    if (params?.limit != null) q.set('limit', String(params.limit))
+    const query = q.toString()
+    return request<{ notifications: Notification[] }>(
+      query ? `/api/notifications?${query}` : '/api/notifications',
+    )
+  },
   markAllNotificationsRead: () =>
-    request<{ ok: boolean }>('/api/notifications', { method: 'PATCH' }),
-  getInfoInterestStatus: (activityId: string) =>
-    request<{ subscribed: boolean }>(`/api/info-interests/${encodeURIComponent(activityId)}`),
-  subscribeInfoReminder: (data: { activityId: string; email?: string }) =>
-    request<{ id: string }>('/api/info-interests', { method: 'POST', body: JSON.stringify(data) }),
-  unsubscribeInfoReminder: (activityId: string) =>
-    request<{ ok: boolean }>('/api/info-interests', {
-      method: 'DELETE',
-      body: JSON.stringify({ activityId }),
-    }),
+    request<{ ok: boolean }>('/api/notifications/read-all', { method: 'POST' }),
   createRegistration: (data: {
     activityId: string
     name?: string

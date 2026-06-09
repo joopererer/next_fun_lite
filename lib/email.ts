@@ -5,23 +5,12 @@ import type { EnvConfig } from '@/shared/types'
 import { getEnvConfig } from '@/lib/env'
 import ActivityCancelledEmail from '@/emails/activity-cancelled'
 import ActivityUpdatedEmail from '@/emails/activity-updated'
-import ActivityReminderEmail from '@/emails/activity-reminder'
-import ProposalRecruitingEmail from '@/emails/proposal-recruiting'
-import InfoReminderEmail from '@/emails/info-reminder'
 
-export type EmailTemplate =
-  | 'activity-cancelled'
-  | 'activity-updated'
-  | 'activity-reminder'
-  | 'proposal-recruiting'
-  | 'info-reminder'
+export type EmailTemplate = 'activity-cancelled' | 'activity-updated'
 
 const TEMPLATE_RENDERERS: Record<EmailTemplate, (props: Record<string, unknown>) => ReactElement> = {
   'activity-cancelled': (props) => ActivityCancelledEmail(props as never),
   'activity-updated': (props) => ActivityUpdatedEmail(props as never),
-  'activity-reminder': (props) => ActivityReminderEmail(props as never),
-  'proposal-recruiting': (props) => ProposalRecruitingEmail(props as never),
-  'info-reminder': (props) => InfoReminderEmail(props as never),
 }
 
 export async function sendEmail(

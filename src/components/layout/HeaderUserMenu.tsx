@@ -3,7 +3,6 @@
 import { SignInButton, UserButton, useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { NotificationBell } from '../notifications/NotificationBell'
 import { PROFILE_EDIT_EVENT } from '../../lib/profileEvents'
 import { AdminNavIcon } from './AdminNavIcon'
 
@@ -37,7 +36,6 @@ export function HeaderUserMenu() {
       <Link href="/admin" className={adminLinkClass} aria-label="管理后台" title="管理后台">
         <AdminNavIcon />
       </Link>
-      <NotificationBell />
       <UserButton>
         <UserButton.MenuItems>
           <UserButton.Action
