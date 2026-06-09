@@ -4,6 +4,7 @@ import type {
   ApiParseResponse,
   Interest,
   InterestMutationResult,
+  Notification,
   Profile,
   RecruitmentResponse,
   Registration,
@@ -113,8 +114,31 @@ export const api = {
     ),
   getMyRegistrations: () => request<MyRegistrationsResponse>('/api/my-registrations'),
   getProfile: () => request<Profile | null>('/api/profile'),
-  saveProfile: (data: { nickname: string; wechat?: string }) =>
-    request<Profile>('/api/profile', { method: 'POST', body: JSON.stringify(data) }),
+  saveProfile: (data: {
+    nickname?: string
+    wechat?: string
+    notificationEmail?: string
+    notifyRegistrationChange?: boolean
+    notifyActivityReminder?: boolean
+    notifyProposalRecruiting?: boolean
+    notifyNewRecruit?: boolean
+    notifyInfoReminder?: boolean
+  }) => request<Profile>('/api/profile', { method: 'POST', body: JSON.stringify(data) }),
+  getUnreadNotificationCount: () => request<{ count: number }>('/api/notifications/unread-count'),
+  getNotifications: () => request<Notification[]>('/api/notifications'),
+  markNotificationRead: (id: string) =>
+    request<{ ok: boolean }>(`/api/notifications/${encodeURIComponent(id)}`, { method: 'PATCH' }),
+  markAllNotificationsRead: () =>
+    request<{ ok: boolean }>('/api/notifications', { method: 'PATCH' }),
+  getInfoInterestStatus: (activityId: string) =>
+    request<{ subscribed: boolean }>(`/api/info-interests/${encodeURIComponent(activityId)}`),
+  subscribeInfoReminder: (data: { activityId: string; email?: string }) =>
+    request<{ id: string }>('/api/info-interests', { method: 'POST', body: JSON.stringify(data) }),
+  unsubscribeInfoReminder: (activityId: string) =>
+    request<{ ok: boolean }>('/api/info-interests', {
+      method: 'DELETE',
+      body: JSON.stringify({ activityId }),
+    }),
   createRegistration: (data: {
     activityId: string
     name?: string

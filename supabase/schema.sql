@@ -8,6 +8,12 @@ create table if not exists profiles (
   nickname text not null,
   wechat text,
   email text,
+  notification_email text,
+  notify_registration_change boolean default true,
+  notify_activity_reminder boolean default true,
+  notify_proposal_recruiting boolean default true,
+  notify_new_recruit boolean default false,
+  notify_info_reminder boolean default true,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -115,6 +121,41 @@ create unique index if not exists interests_user_unique
 create unique index if not exists interests_device_unique
   on interests(activity_id, device_id)
   where user_id is null and device_id is not null;
+
+create table if not exists notifications (
+  id text primary key,
+  user_id text not null references profiles(id),
+  type text not null,
+  title text not null,
+  body text not null,
+  action_url text,
+  activity_id text references activities(id) on delete cascade,
+  is_read boolean default false,
+  created_at timestamptz default now()
+);
+
+create index if not exists notifications_user_id on notifications(user_id);
+create index if not exists notifications_is_read on notifications(user_id, is_read);
+
+create table if not exists info_interests (
+  id text primary key,
+  activity_id text not null references activities(id) on delete cascade,
+  user_id text references profiles(id),
+  device_id text,
+  email text,
+  created_at timestamptz default now()
+);
+
+create index if not exists info_interests_activity_id on info_interests(activity_id);
+create index if not exists info_interests_user_id on info_interests(user_id);
+
+create unique index if not exists info_interests_user_unique
+  on info_interests(activity_id, user_id)
+  where user_id is not null;
+
+create unique index if not exists info_interests_email_unique
+  on info_interests(activity_id, email)
+  where email is not null;
 
 create or replace function update_updated_at()
 returns trigger as $$

@@ -3,6 +3,7 @@
 import { SignInButton, UserButton, useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { NotificationBell } from '../notifications/NotificationBell'
 import { PROFILE_EDIT_EVENT } from '../../lib/profileEvents'
 import { AdminNavIcon } from './AdminNavIcon'
 
@@ -36,12 +37,18 @@ export function HeaderUserMenu() {
       <Link href="/admin" className={adminLinkClass} aria-label="管理后台" title="管理后台">
         <AdminNavIcon />
       </Link>
+      <NotificationBell />
       <UserButton>
         <UserButton.MenuItems>
           <UserButton.Action
             label="编辑资料"
             labelIcon={<span aria-hidden>✏️</span>}
             onClick={() => window.dispatchEvent(new CustomEvent(PROFILE_EDIT_EVENT))}
+          />
+          <UserButton.Action
+            label="通知设置"
+            labelIcon={<span aria-hidden>📬</span>}
+            onClick={() => router.push('/settings/notifications')}
           />
           <UserButton.Action
             label="我的报名"

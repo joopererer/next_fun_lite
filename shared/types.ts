@@ -111,9 +111,51 @@ export interface Profile {
   nickname: string
   wechat?: string
   email?: string
+  notificationEmail?: string
+  notifyRegistrationChange: boolean
+  notifyActivityReminder: boolean
+  notifyProposalRecruiting: boolean
+  notifyNewRecruit: boolean
+  notifyInfoReminder: boolean
   createdAt: string
   updatedAt: string
 }
+
+export type NotificationType =
+  | 'activity_cancelled'
+  | 'activity_updated'
+  | 'activity_reminder'
+  | 'proposal_recruiting'
+  | 'new_recruit'
+  | 'info_reminder'
+
+export interface Notification {
+  id: string
+  userId: string
+  type: NotificationType
+  title: string
+  body: string
+  actionUrl?: string
+  activityId?: string
+  isRead: boolean
+  createdAt: string
+}
+
+export interface InfoInterest {
+  id: string
+  activityId: string
+  userId?: string
+  deviceId?: string
+  email?: string
+  createdAt: string
+}
+
+export type ProfileNotificationPreference =
+  | 'notifyRegistrationChange'
+  | 'notifyActivityReminder'
+  | 'notifyProposalRecruiting'
+  | 'notifyNewRecruit'
+  | 'notifyInfoReminder'
 
 export interface ActivityWithCount extends Activity {
   registeredCount: number
@@ -175,6 +217,11 @@ export type EnvConfig = {
   PARSE_MODE?: string
   CLERK_SECRET_KEY?: string
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?: string
+  RESEND_API_KEY?: string
+  RESEND_FROM_EMAIL?: string
+  RESEND_FROM_NAME?: string
+  RESEND_TEST_EMAIL?: string
+  CRON_SECRET?: string
 }
 
 export type CreateRecruitmentBody = Partial<Activity> & {

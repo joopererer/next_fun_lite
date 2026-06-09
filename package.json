@@ -22,6 +22,8 @@
     "@fullcalendar/daygrid": "^6.1.20",
     "@fullcalendar/interaction": "^6.1.20",
     "@fullcalendar/react": "^6.1.20",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.8",
     "@supabase/supabase-js": "^2.107.0",
     "@tailwindcss/postcss": "^4.3.0",
     "cors": "^2.8.6",
@@ -34,6 +36,7 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
+    "resend": "^6.12.4",
     "wrangler": "^4.98.0",
     "xlsx": "^0.18.5"
   },

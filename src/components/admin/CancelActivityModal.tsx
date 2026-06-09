@@ -78,7 +78,7 @@ export function CancelActivityModal({ activity, open, onClose, onSaved }: Props)
         </div>
 
         <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-3 mb-4">
-          ⚠️ 取消后活动页面会显示取消提示，报名名单仍然保留，请手动通知已报名的成员。
+          取消后活动页面会显示取消提示，系统将自动通知已报名成员。
         </p>
 
         <div className="flex gap-3">

@@ -1,5 +1,14 @@
 import { nanoid } from 'nanoid'
-import type { Activity, Interest, Registration } from '../../shared/types'
+import type {
+  Activity,
+  InfoInterest,
+  Interest,
+  Notification,
+  Profile,
+  ProfileNotificationPreference,
+  Registration,
+} from '../../shared/types'
+import { withProfileDefaults } from '../../shared/profileDefaults'
 import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
 const now = new Date()
@@ -9,6 +18,8 @@ const futureDate = (days: number, hour = 9) => {
   d.setHours(hour, 0, 0, 0)
   return d.toISOString()
 }
+
+const futureHours = (hours: number) => new Date(now.getTime() + hours * 3600000).toISOString()
 
 function seedActivities(): Activity[] {
   return [
@@ -83,7 +94,7 @@ function seedActivities(): Activity[] {
       organizerWechat: '',
       organizerContactType: 'private',
       postType: 'info',
-      infoStartTime: futureDate(5, 15),
+      infoStartTime: futureHours(0.5),
       infoDeadline: futureDate(14, 15),
       infoPrice: '39€起',
       infoActionLabel: '立即抢票',
@@ -126,7 +137,7 @@ function seedActivities(): Activity[] {
       id: 'recr002',
       title: '玛黑 Brunch 聚餐',
       description: '周末法式 Brunch，提前订位，适合喜欢美食和轻松社交的朋友。',
-      date: futureDate(3, 11),
+      date: futureHours(20),
       location: 'Le Marais, Paris 4e',
       maxParticipants: 8,
       fee: '人均约 25-35€',
@@ -247,8 +258,51 @@ function seedInterests(): Interest[] {
     { id: 'int006', activityId: 'prop002', name: 'Frank', wechat: 'frank06', createdAt: daysAgo(4) },
     { id: 'int007', activityId: 'prop002', name: 'Grace', wechat: 'grace07', createdAt: daysAgo(3) },
     { id: 'int008', activityId: 'prop002', name: 'Henry', wechat: 'henry08', createdAt: daysAgo(2) },
-    { id: 'int009', activityId: 'prop003', name: 'Ivy', wechat: 'ivy09', createdAt: daysAgo(3) },
+    { id: 'int009', activityId: 'prop003', userId: 'demo-user', name: 'Ivy', wechat: 'ivy09', createdAt: daysAgo(3) },
     { id: 'int010', activityId: 'prop003', name: 'Jack', wechat: 'jack10', createdAt: daysAgo(2) },
+  ]
+}
+
+function seedNotificationTemplates(): Omit<Notification, 'id' | 'userId'>[] {
+  return [
+    {
+      type: 'activity_cancelled',
+      title: '「Versailles 一日游」已取消',
+      body: '原因：天气原因',
+      actionUrl: '/event/end002',
+      activityId: 'end002',
+      isRead: false,
+      createdAt: daysAgo(0),
+    },
+    {
+      type: 'proposal_recruiting',
+      title: '你感兴趣的活动开始招募了！',
+      body: '「卢浮宫周五夜场」6月20日 Musée du Louvre',
+      actionUrl: '/event/recr003',
+      activityId: 'recr003',
+      isRead: false,
+      createdAt: daysAgo(1),
+    },
+    {
+      type: 'activity_updated',
+      title: '「Rambouillet 徒步」信息有更新',
+      body: '集合地点已更新为 Saint-Lazare 站 B出口',
+      actionUrl: '/event/recr001',
+      activityId: 'recr001',
+      isRead: true,
+      createdAt: daysAgo(3),
+    },
+  ]
+}
+
+function seedInfoInterests(): InfoInterest[] {
+  return [
+    {
+      id: 'ii001',
+      activityId: 'info001',
+      email: 'guest@example.com',
+      createdAt: daysAgo(1),
+    },
   ]
 }
 
@@ -256,13 +310,30 @@ export class MockAdapter implements StorageAdapter {
   private activities: Activity[]
   private registrations: Registration[]
   private interests: Interest[]
+  private profiles = new Map<string, Profile>()
+  private notifications: Notification[] = []
+  private infoInterests: InfoInterest[]
+  private seededNotificationUsers = new Set<string>()
 
   constructor() {
     this.activities = seedActivities()
     this.registrations = seedRegistrations()
     this.interests = seedInterests()
+    this.infoInterests = seedInfoInterests()
     for (const activity of this.activities) {
       this.syncInterestedCount(activity.id)
+    }
+  }
+
+  private ensureSeedNotifications(userId: string): void {
+    if (this.seededNotificationUsers.has(userId)) return
+    this.seededNotificationUsers.add(userId)
+    for (const template of seedNotificationTemplates()) {
+      this.notifications.push({
+        ...template,
+        id: nanoid(8),
+        userId,
+      })
     }
   }
 
@@ -484,5 +555,140 @@ export class MockAdapter implements StorageAdapter {
     }
     const [removed] = this.interests.splice(idx, 1)
     return { interest: removed, interestedCount: this.syncInterestedCount(activityId) }
+  }
+
+  async getProfile(userId: string): Promise<Profile | null> {
+    return this.profiles.get(userId) ?? null
+  }
+
+  async upsertProfile(data: Partial<Profile> & { id: string; nickname?: string }): Promise<Profile> {
+    const existing = this.profiles.get(data.id)
+    const nowIso = new Date().toISOString()
+    const profile = withProfileDefaults({
+      ...existing,
+      ...data,
+      nickname: data.nickname ?? existing?.nickname ?? '用户',
+      updatedAt: nowIso,
+      createdAt: existing?.createdAt ?? nowIso,
+    })
+    this.profiles.set(data.id, profile)
+    return profile
+  }
+
+  async listProfilesWithPreference(pref: ProfileNotificationPreference): Promise<Profile[]> {
+    return [...this.profiles.values()].filter((p) => p[pref] === true)
+  }
+
+  async getNotifications(userId: string, limit = 50): Promise<Notification[]> {
+    this.ensureSeedNotifications(userId)
+    return this.notifications
+      .filter((n) => n.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit)
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    this.ensureSeedNotifications(userId)
+    return this.notifications.filter((n) => n.userId === userId && !n.isRead).length
+  }
+
+  async markAsRead(notificationId: string): Promise<void> {
+    const n = this.notifications.find((item) => item.id === notificationId)
+    if (n) n.isRead = true
+  }
+
+  async markAllAsRead(userId: string): Promise<void> {
+    for (const n of this.notifications) {
+      if (n.userId === userId) n.isRead = true
+    }
+  }
+
+  async createNotification(
+    data: Omit<Notification, 'id' | 'isRead' | 'createdAt'>,
+  ): Promise<Notification> {
+    const notification: Notification = {
+      ...data,
+      id: nanoid(8),
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    }
+    this.notifications.push(notification)
+    return notification
+  }
+
+  async countNotificationsSince(
+    activityId: string,
+    userId: string,
+    type: Notification['type'],
+    sinceIso: string,
+  ): Promise<number> {
+    const since = new Date(sinceIso).getTime()
+    return this.notifications.filter(
+      (n) =>
+        n.activityId === activityId &&
+        n.userId === userId &&
+        n.type === type &&
+        new Date(n.createdAt).getTime() >= since,
+    ).length
+  }
+
+  async getInfoInterests(activityId: string): Promise<InfoInterest[]> {
+    return this.infoInterests.filter((i) => i.activityId === activityId)
+  }
+
+  async findInfoInterestByUserId(activityId: string, userId: string): Promise<InfoInterest | null> {
+    return this.infoInterests.find((i) => i.activityId === activityId && i.userId === userId) ?? null
+  }
+
+  async findInfoInterestByEmail(activityId: string, email: string): Promise<InfoInterest | null> {
+    return this.infoInterests.find((i) => i.activityId === activityId && i.email === email) ?? null
+  }
+
+  async findInfoInterestByDeviceId(activityId: string, deviceId: string): Promise<InfoInterest | null> {
+    return this.infoInterests.find((i) => i.activityId === activityId && i.deviceId === deviceId) ?? null
+  }
+
+  async createInfoInterest(data: Omit<InfoInterest, 'id' | 'createdAt'>): Promise<InfoInterest> {
+    const interest: InfoInterest = {
+      ...data,
+      id: nanoid(8),
+      createdAt: new Date().toISOString(),
+    }
+    this.infoInterests.push(interest)
+    return interest
+  }
+
+  async deleteInfoInterest(id: string): Promise<void> {
+    this.infoInterests = this.infoInterests.filter((i) => i.id !== id)
+  }
+
+  async getRecruitingActivitiesInDateRange(fromIso: string, toIso: string): Promise<Activity[]> {
+    const from = new Date(fromIso).getTime()
+    const to = new Date(toIso).getTime()
+    return this.activities.filter((a) => {
+      if (a.status !== 'recruiting' || !a.date) return false
+      const t = new Date(a.date).getTime()
+      return t >= from && t <= to
+    })
+  }
+
+  async getInfoActivitiesWithStartInRange(fromIso: string, toIso: string): Promise<Activity[]> {
+    const from = new Date(fromIso).getTime()
+    const to = new Date(toIso).getTime()
+    return this.activities.filter((a) => {
+      if (a.postType !== 'info' || !a.infoStartTime) return false
+      const t = new Date(a.infoStartTime).getTime()
+      return t >= from && t <= to
+    })
+  }
+
+  async getInfoActivitiesWithDeadlineInRange(fromIso: string, toIso: string): Promise<Activity[]> {
+    const from = new Date(fromIso).getTime()
+    const to = new Date(toIso).getTime()
+    return this.activities.filter((a) => {
+      if (a.postType !== 'info' || !a.infoDeadline) return false
+      const t = new Date(a.infoDeadline).getTime()
+      return t >= from && t <= to
+    })
   }
 }

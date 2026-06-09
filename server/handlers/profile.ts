@@ -1,39 +1,38 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { getSupabaseClient } from '@/lib/supabase'
 import type { EnvConfig, Profile } from '@/shared/types'
+import { withProfileDefaults } from '@/shared/profileDefaults'
+import { createStorageAdapter } from '@/server/storage'
 import { errorResponse, jsonResponse, parseBody } from '../lib/utils'
 
-function mapProfile(row: Record<string, unknown>): Profile {
-  return {
-    id: String(row.id),
-    nickname: String(row.nickname),
-    wechat: row.wechat ? String(row.wechat) : undefined,
-    email: row.email ? String(row.email) : undefined,
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  }
+function mapProfile(row: Profile): Profile {
+  return withProfileDefaults(row)
 }
 
 export async function handleGetProfile(_request: Request, env: EnvConfig): Promise<Response> {
   const { userId } = await auth()
   if (!userId) return errorResponse('Unauthorized', 401)
 
-  const { data, error } = await getSupabaseClient(env)
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (error) return errorResponse(error.message, 500)
-  if (!data) return jsonResponse(null)
-  return jsonResponse(mapProfile(data as Record<string, unknown>))
+  const storage = createStorageAdapter(env)
+  const profile = await storage.getProfile(userId)
+  if (!profile) return jsonResponse(null)
+  return jsonResponse(mapProfile(profile))
 }
 
 export async function handleUpsertProfile(request: Request, env: EnvConfig): Promise<Response> {
   const { userId } = await auth()
   if (!userId) return errorResponse('Unauthorized', 401)
 
-  const body = await parseBody<{ nickname?: string; wechat?: string }>(request)
+  const body = await parseBody<{
+    nickname?: string
+    wechat?: string
+    notificationEmail?: string
+    notifyRegistrationChange?: boolean
+    notifyActivityReminder?: boolean
+    notifyProposalRecruiting?: boolean
+    notifyNewRecruit?: boolean
+    notifyInfoReminder?: boolean
+  }>(request)
+
   const user = await currentUser()
   const email = user?.emailAddresses[0]?.emailAddress
   const defaultNickname =
@@ -43,27 +42,35 @@ export async function handleUpsertProfile(request: Request, env: EnvConfig): Pro
     '用户'
   const nickname = body.nickname?.trim() || defaultNickname
 
-  const { data, error } = await getSupabaseClient(env)
-    .from('profiles')
-    .upsert({
-      id: userId,
-      nickname,
-      wechat: body.wechat?.trim() || null,
-      email: email ?? null,
-    })
-    .select()
-    .single()
+  const storage = createStorageAdapter(env)
+  const existing = await storage.getProfile(userId)
+  const profile = await storage.upsertProfile({
+    id: userId,
+    nickname,
+    ...(body.wechat !== undefined ? { wechat: body.wechat.trim() || undefined } : {}),
+    email: email ?? existing?.email,
+    ...(body.notificationEmail !== undefined
+      ? { notificationEmail: body.notificationEmail.trim() || undefined }
+      : {}),
+    ...(body.notifyRegistrationChange !== undefined
+      ? { notifyRegistrationChange: body.notifyRegistrationChange }
+      : {}),
+    ...(body.notifyActivityReminder !== undefined
+      ? { notifyActivityReminder: body.notifyActivityReminder }
+      : {}),
+    ...(body.notifyProposalRecruiting !== undefined
+      ? { notifyProposalRecruiting: body.notifyProposalRecruiting }
+      : {}),
+    ...(body.notifyNewRecruit !== undefined ? { notifyNewRecruit: body.notifyNewRecruit } : {}),
+    ...(body.notifyInfoReminder !== undefined ? { notifyInfoReminder: body.notifyInfoReminder } : {}),
+  })
 
-  if (error) return errorResponse(error.message, 500)
-  return jsonResponse(mapProfile(data as Record<string, unknown>))
+  return jsonResponse(mapProfile(profile))
 }
 
 export async function getProfileForUser(userId: string, env: EnvConfig): Promise<Profile | null> {
-  const { data } = await getSupabaseClient(env)
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle()
-  if (!data) return null
-  return mapProfile(data as Record<string, unknown>)
+  const storage = createStorageAdapter(env)
+  const profile = await storage.getProfile(userId)
+  if (!profile) return null
+  return mapProfile(profile)
 }

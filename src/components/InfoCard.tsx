@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { InfoReminderButton } from './InfoReminderButton'
 import type { Activity } from '../../shared/types'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { formatEventDate } from '../lib/user'
@@ -83,6 +84,7 @@ export function InfoCard({ activity }: Props) {
             </span>
           )
         )}
+        <InfoReminderButton activityId={activity.id} compact />
         <Link
           href={`/recruit/new?from_info=${activity.id}`}
           className="btn-secondary text-sm"
