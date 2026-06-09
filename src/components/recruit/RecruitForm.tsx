@@ -17,6 +17,7 @@ import type {
 import { resolveOrganizerContact } from '../../../shared/contact'
 import { OrganizerContactFields } from '../contact/OrganizerContactFields'
 import { api, getEventUrl } from '../../lib/api'
+import { notifyActivitiesChanged } from '../../lib/activityEvents'
 import { ACTIVITY_CATEGORIES } from '../../lib/categories'
 import { applyParseResult } from '../../lib/parseResult'
 import {
@@ -311,6 +312,7 @@ export function RecruitForm({
         const url = res.eventUrl || getEventUrl(res.activity.id)
         const qr = await QRCode.toDataURL(url, { width: 200 })
         setQrDataUrl(qr)
+        notifyActivitiesChanged()
         onSuccess?.(res.activity)
       } else if (mode === 'organizer') {
         if (!editId) {
@@ -334,6 +336,7 @@ export function RecruitForm({
         setEventUrl(url)
         const qr = await QRCode.toDataURL(url, { width: 200 })
         setQrDataUrl(qr)
+        notifyActivitiesChanged()
         onSuccess?.(result)
       }
     } catch (err) {

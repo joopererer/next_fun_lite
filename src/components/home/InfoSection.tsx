@@ -15,7 +15,7 @@ export async function InfoSection() {
       : String(infos.length)
 
   return (
-    <section className="mb-10">
+    <section className="mb-8 sm:mb-10">
       <h2 className="section-title">
         📢 近期资讯
         <span className="text-base font-normal text-gray-400 ml-2">({infoCountLabel})</span>
@@ -23,7 +23,7 @@ export async function InfoSection() {
       {infos.length === 0 ? (
         <p className="text-gray-400 text-sm">暂无未过期的资讯</p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {infos.map((a) => (
             <InfoCard key={a.id} activity={a} />
           ))}

@@ -17,7 +17,7 @@ export function RecruitingSectionClient({ activities }: Props) {
   const filtered = activities.filter((a) => matchesCategoryFilter(a.category, filter))
 
   return (
-    <section className="mb-10">
+    <section className="mb-8 sm:mb-10">
       <h2 className="section-title">
         🟢 正在招募
         <span className="text-base font-normal text-gray-400 ml-2">({filtered.length})</span>
@@ -30,7 +30,7 @@ export function RecruitingSectionClient({ activities }: Props) {
           {filter.length > 0 ? '暂无该类型活动' : '暂无招募中的活动'}
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
           {filtered.map((a) => (
             <ActivityCard
               key={a.id}

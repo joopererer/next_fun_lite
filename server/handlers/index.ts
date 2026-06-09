@@ -36,6 +36,24 @@ import {
   jsonResponse,
   parseBody,
 } from '../lib/utils'
+import { parseRegistrationContact } from '../lib/registrationContact'
+
+async function assertUserAvailableForActivity(
+  storage: StorageAdapter,
+  activityId: string,
+  userId: string,
+  excludeRegistrationId?: string,
+): Promise<Response | null> {
+  const profile = await storage.getProfile(userId)
+  if (!profile) return errorResponse('User not found', 404)
+
+  const userRegs = await storage.getRegistrationsByUser(userId)
+  const duplicate = userRegs.some(
+    (r) => r.activityId === activityId && !r.cancelledAt && r.id !== excludeRegistrationId,
+  )
+  if (duplicate) return errorResponse('该用户已报名此活动', 409)
+  return null
+}
 import { nanoid } from 'nanoid'
 import { clerkClient } from '@clerk/nextjs/server'
 
@@ -294,6 +312,16 @@ export async function handleGetMyRegistrations(_request: Request, env: EnvConfig
   return jsonResponse({ registrations: registrationMap, activities: enriched })
 }
 
+export async function handleGetMyActivities(_request: Request, env: EnvConfig): Promise<Response> {
+  const userId = await getOptionalUserId()
+  if (!userId) return errorResponse('Unauthorized', 401)
+
+  const storage = createStorageAdapter(env)
+  const activities = await storage.getActivitiesByOrganizer(userId)
+  const enriched = await Promise.all(activities.map((a) => enrichActivity(storage, a)))
+  return jsonResponse({ activities: enriched })
+}
+
 export async function handleCreateRegistration(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
   const userId = await getOptionalUserId()
@@ -391,18 +419,170 @@ export async function handleCreateRegistration(request: Request, env: EnvConfig)
   return jsonResponse({ success: true, registration, registeredCount, cancelToken }, 201)
 }
 
-export async function handleDeleteRegistration(_request: Request, env: EnvConfig, id: string): Promise<Response> {
-  const userId = await getOptionalUserId()
-  if (!userId) return errorResponse('Unauthorized', 401)
-
+export async function handleDeleteRegistration(request: Request, env: EnvConfig, id: string): Promise<Response> {
   const storage = createStorageAdapter(env)
   const registration = await storage.getRegistrationById(id)
   if (!registration) return errorResponse('Registration not found', 404)
-  if (registration.userId !== userId) return errorResponse('Forbidden', 403)
   if (registration.cancelledAt) return errorResponse('Already cancelled', 409)
+
+  if (checkAdminAuth(request, env)) {
+    const result = await storage.cancelRegistration(id, 'admin')
+    return jsonResponse(result)
+  }
+
+  const userId = await getOptionalUserId()
+  if (!userId) return errorResponse('Unauthorized', 401)
+  if (registration.userId !== userId) return errorResponse('Forbidden', 403)
 
   const result = await storage.cancelRegistration(id, 'user')
   return jsonResponse(result)
+}
+
+export async function handleAdminCreateRegistration(request: Request, env: EnvConfig): Promise<Response> {
+  const authErr = requireAdminAuth(request, env)
+  if (authErr) return authErr
+
+  const body = await parseBody<{
+    activityId: string
+    userId?: string
+    name?: string
+    wechat?: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue?: string
+    contactLabel?: string
+    participantCount?: number
+    note?: string
+  }>(request)
+
+  if (!body.activityId) return errorResponse('Missing activityId')
+
+  const storage = createStorageAdapter(env)
+
+  if (body.userId) {
+    const dupErr = await assertUserAvailableForActivity(storage, body.activityId, body.userId)
+    if (dupErr) return dupErr
+  }
+
+  const name = body.name?.trim() ?? ''
+  const { contactType, contactValue, contactLabel, wechat } = parseRegistrationContact(body)
+  if (!name || !contactValue) return errorResponse('Missing required fields: name, contact')
+
+  const activity = await storage.getActivity(body.activityId)
+  if (!activity) return errorResponse('Activity not found', 404)
+  if (isTerminalStatus(normalizeActivityStatus(activity.status))) {
+    return errorResponse('Activity has ended')
+  }
+
+  const participantCount = body.participantCount ?? 1
+  if (participantCount < 1) return errorResponse('Invalid participant count')
+
+  const registration = await storage.createRegistration({
+    activityId: body.activityId,
+    userId: body.userId,
+    name,
+    wechat,
+    contactType,
+    contactValue,
+    contactLabel,
+    participantCount,
+    note: body.note?.trim() ?? '',
+    cancelToken: body.userId ? undefined : nanoid(16),
+  })
+  const registeredCount = await getRegisteredCount(storage, body.activityId)
+  return jsonResponse({ success: true, registration, registeredCount }, 201)
+}
+
+export async function handleAdminUpdateRegistration(
+  request: Request,
+  env: EnvConfig,
+  id: string,
+): Promise<Response> {
+  const authErr = requireAdminAuth(request, env)
+  if (authErr) return authErr
+
+  const storage = createStorageAdapter(env)
+  const existing = await storage.getRegistrationById(id)
+  if (!existing) return errorResponse('Registration not found', 404)
+  if (existing.cancelledAt) return errorResponse('Registration is cancelled', 409)
+
+  const body = await parseBody<{
+    userId?: string | null
+    name?: string
+    wechat?: string
+    contactType?: 'wechat' | 'email' | 'other'
+    contactValue?: string
+    contactLabel?: string
+    participantCount?: number
+    note?: string
+  }>(request)
+
+  const patch: Partial<Registration> = {}
+
+  if (body.userId !== undefined) {
+    const userId = body.userId || undefined
+    if (userId) {
+      const dupErr = await assertUserAvailableForActivity(
+        storage,
+        existing.activityId,
+        userId,
+        id,
+      )
+      if (dupErr) return dupErr
+    }
+    patch.userId = userId
+  }
+
+  if (body.name !== undefined) {
+    const name = body.name.trim()
+    if (!name) return errorResponse('Name is required')
+    patch.name = name
+  }
+
+  const hasContactUpdate =
+    body.contactType !== undefined ||
+    body.contactValue !== undefined ||
+    body.contactLabel !== undefined ||
+    body.wechat !== undefined
+
+  if (hasContactUpdate) {
+    const merged = parseRegistrationContact({
+      contactType: body.contactType ?? existing.contactType,
+      contactValue: body.contactValue ?? existing.contactValue,
+      contactLabel: body.contactLabel ?? existing.contactLabel,
+      wechat: body.wechat ?? existing.wechat,
+    })
+    if (!merged.contactValue) return errorResponse('Contact is required')
+    patch.contactType = merged.contactType
+    patch.contactValue = merged.contactValue
+    patch.contactLabel = merged.contactLabel
+    patch.wechat = merged.wechat
+  }
+
+  if (body.participantCount !== undefined) {
+    if (body.participantCount < 1) return errorResponse('Invalid participant count')
+    patch.participantCount = body.participantCount
+  }
+
+  if (body.note !== undefined) patch.note = body.note.trim()
+
+  if (Object.keys(patch).length === 0) return errorResponse('No fields to update')
+
+  const registration = await storage.updateRegistration(id, patch)
+  const registeredCount = await getRegisteredCount(storage, existing.activityId)
+  return jsonResponse({ success: true, registration, registeredCount })
+}
+
+export async function handleAdminSearchProfiles(request: Request, env: EnvConfig): Promise<Response> {
+  const authErr = requireAdminAuth(request, env)
+  if (authErr) return authErr
+
+  const url = new URL(request.url)
+  const q = url.searchParams.get('q')?.trim() ?? ''
+  if (q.length < 2) return jsonResponse({ profiles: [] })
+
+  const storage = createStorageAdapter(env)
+  const profiles = await storage.searchProfiles(q, 10)
+  return jsonResponse({ profiles })
 }
 
 export async function handleGetRegistrationByToken(_request: Request, env: EnvConfig, token: string): Promise<Response> {

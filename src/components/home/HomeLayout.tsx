@@ -15,7 +15,7 @@ export function HomeLayout({ children }: { children: ReactNode }) {
           <Header embedded />
           <HomeQuickActions />
         </div>
-        <main className="flex-1 max-w-3xl mx-auto px-4 py-6 page-enter w-full">
+        <main className="flex-1 max-w-3xl mx-auto px-4 py-4 sm:py-6 page-enter w-full">
           <HomeNotificationBanner />
           {children}
         </main>

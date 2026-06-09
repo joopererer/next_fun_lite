@@ -7,6 +7,7 @@ import type { ActivityWithCount, Registration } from '@/shared/types'
 import { Header } from '@/src/components/layout/Header'
 import { Footer } from '@/src/components/layout/Footer'
 import { MyRegistrationCard } from '@/src/components/MyRegistrationCard'
+import { MyPublishedCard } from '@/src/components/MyPublishedCard'
 import { MyRegistrationsCalendar } from '@/src/components/MyRegistrationsCalendar'
 import { isEndedCancelled, isEndedSuccess } from '@/src/lib/activityStatus'
 import { api } from '@/src/lib/api'
@@ -37,6 +38,7 @@ function guestToRegistration(guest: GuestRegistrationRecord): Registration {
 export function MyRegistrationsPage() {
   const { isSignedIn, isLoaded } = useUser()
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
+  const [published, setPublished] = useState<ActivityWithCount[]>([])
   const [registrations, setRegistrations] = useState<Map<string, Registration>>(new Map())
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<ViewMode>('list')
@@ -67,9 +69,12 @@ export function MyRegistrationsPage() {
     setLoading(true)
     try {
       if (isSignedIn) {
-        const res = await api.getMyRegistrations()
-        const regMap = new Map(Object.entries(res.registrations))
-        const activityMap = new Map(res.activities.map((a) => [a.id, a]))
+        const [regRes, pubRes] = await Promise.all([
+          api.getMyRegistrations(),
+          api.getMyActivities(),
+        ])
+        const regMap = new Map(Object.entries(regRes.registrations))
+        const activityMap = new Map(regRes.activities.map((a) => [a.id, a]))
 
         for (const guest of getGuestRegistrations()) {
           if (regMap.has(guest.activityId)) continue
@@ -84,7 +89,9 @@ export function MyRegistrationsPage() {
 
         setActivities([...activityMap.values()])
         setRegistrations(regMap)
+        setPublished(pubRes.activities)
       } else {
+        setPublished([])
         await loadGuestOnly()
       }
     } finally {
@@ -124,7 +131,11 @@ export function MyRegistrationsPage() {
   const finished = activities.filter((a) => isEndedSuccess(a.status))
   const cancelled = activities.filter((a) => isEndedCancelled(a.status))
 
-  const hasRecords = activities.some((a) => activeReg(a.id) || isEndedSuccess(a.status) || isEndedCancelled(a.status))
+  const hasRegistrations = activities.some(
+    (a) => activeReg(a.id) || isEndedSuccess(a.status) || isEndedCancelled(a.status),
+  )
+  const hasPublished = published.length > 0
+  const hasAnyContent = hasRegistrations || hasPublished
 
   if (!isLoaded) {
     return (
@@ -144,8 +155,8 @@ export function MyRegistrationsPage() {
           ← 返回首页
         </Link>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">📋 我的报名</h1>
-          {hasRecords && (
+          <h1 className="text-2xl font-bold">我的</h1>
+          {hasRegistrations && (
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
               <button
                 type="button"
@@ -173,12 +184,12 @@ export function MyRegistrationsPage() {
 
         {loading ? (
           <p className="text-center text-gray-400 py-12">加载中...</p>
-        ) : !hasRecords ? (
+        ) : !hasAnyContent ? (
           <div className="text-center py-16">
-            <p className="text-gray-500 mb-2">还没有报名记录</p>
-            <p className="text-sm text-gray-400 mb-6">去首页看看有什么活动？</p>
+            <p className="text-gray-500 mb-2">还没有报名或发布记录</p>
+            <p className="text-sm text-gray-400 mb-6">去首页看看有什么活动，或分享你的想法</p>
             {!isSignedIn && (
-              <p className="text-xs text-gray-400 mb-4">登录后可同步账号下的报名</p>
+              <p className="text-xs text-gray-400 mb-4">登录后可同步报名与发布记录</p>
             )}
             <div className="flex flex-col gap-3 items-center">
               <Link href="/" className="btn-primary inline-block">去首页</Link>
@@ -189,47 +200,80 @@ export function MyRegistrationsPage() {
               )}
             </div>
           </div>
-        ) : view === 'calendar' ? (
-          <MyRegistrationsCalendar activities={activities} registrations={registrations} onCancel={load} />
         ) : (
-          <div className="space-y-8">
-            {upcoming.length > 0 && (
+          <div className="space-y-10">
+            {hasRegistrations && (
               <section>
-                <h2 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">🟢 即将参加</h2>
-                <div className="space-y-3">
-                  {upcoming.map((a) => (
-                    <MyRegistrationCard
-                      key={a.id}
-                      activity={a}
-                      registration={registrations.get(a.id)}
-                      onCancel={load}
-                    />
-                  ))}
-                </div>
+                <h2 className="text-sm font-semibold text-gray-700 mb-4">📋 我的报名</h2>
+                {view === 'calendar' ? (
+                  <MyRegistrationsCalendar activities={activities} registrations={registrations} onCancel={load} />
+                ) : (
+                  <div className="space-y-8">
+                    {upcoming.length > 0 && (
+                      <div>
+                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">🟢 即将参加</h3>
+                        <div className="space-y-3">
+                          {upcoming.map((a) => (
+                            <MyRegistrationCard
+                              key={a.id}
+                              activity={a}
+                              registration={registrations.get(a.id)}
+                              onCancel={load}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {finished.length > 0 && (
+                      <div>
+                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">✅ 已结束</h3>
+                        <div className="space-y-3">
+                          {finished.map((a) => (
+                            <MyRegistrationCard
+                              key={a.id}
+                              activity={a}
+                              registration={registrations.get(a.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {cancelled.length > 0 && (
+                      <div>
+                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">❌ 已取消</h3>
+                        <div className="space-y-3">
+                          {cancelled.map((a) => (
+                            <MyRegistrationCard key={a.id} activity={a} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
             )}
-            {finished.length > 0 && (
+
+            {isSignedIn && (
               <section>
-                <h2 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">✅ 已结束</h2>
-                <div className="space-y-3">
-                  {finished.map((a) => (
-                    <MyRegistrationCard
-                      key={a.id}
-                      activity={a}
-                      registration={registrations.get(a.id)}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-            {cancelled.length > 0 && (
-              <section>
-                <h2 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">❌ 已取消</h2>
-                <div className="space-y-3">
-                  {cancelled.map((a) => (
-                    <MyRegistrationCard key={a.id} activity={a} />
-                  ))}
-                </div>
+                <h2 className="text-sm font-semibold text-gray-700 mb-4">✏️ 我发布的</h2>
+                {hasPublished ? (
+                  <div className="space-y-3">
+                    {published.map((a) => (
+                      <MyPublishedCard key={a.id} activity={a} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-sm text-gray-500 mb-4">还没有发布过提议、招募或资讯</p>
+                    <div className="flex flex-wrap gap-2 justify-center text-sm">
+                      <Link href="/propose" className="text-green-600 hover:underline">发个提议</Link>
+                      <span className="text-gray-300">·</span>
+                      <Link href="/recruit/new" className="text-green-600 hover:underline">发起招募</Link>
+                      <span className="text-gray-300">·</span>
+                      <Link href="/info/new" className="text-green-600 hover:underline">发布资讯</Link>
+                    </div>
+                  </div>
+                )}
               </section>
             )}
           </div>

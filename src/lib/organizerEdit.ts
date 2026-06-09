@@ -17,3 +17,12 @@ export function getOrganizerEditHref(activity: Activity): string | null {
   if (activity.status === 'proposed') return `/propose/edit/${activity.id}`
   return null
 }
+
+/** Edit destination for cards: dedicated edit pages, or event page for info. */
+export function getOrganizerEditLink(activity: Activity): string | null {
+  if (isTerminalStatus(activity.status)) return null
+  const href = getOrganizerEditHref(activity)
+  if (href) return href
+  if (isInfoPost(activity)) return `/event/${activity.id}`
+  return null
+}

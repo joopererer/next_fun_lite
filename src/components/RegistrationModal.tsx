@@ -4,6 +4,7 @@ import { SignInButton } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 import type { RegistrantContactType } from '../../shared/types'
 import { RegistrantContactFields } from './contact/RegistrantContactFields'
+import { ModalSheet } from './ui/ModalSheet'
 import { loadContactPrefs, saveContactPrefs } from '../lib/contactPrefs'
 
 interface Props {
@@ -22,7 +23,6 @@ interface Props {
     wechat?: string
   }) => void
   submitting: boolean
-  /** When set, shows logged-in flow (no guest contact fields). */
   signedInDisplayName?: string
 }
 
@@ -53,8 +53,6 @@ export function RegistrationModal({
     }
   }, [open])
 
-  if (!open) return null
-
   const signedInMode = Boolean(signedInDisplayName)
 
   const handleSubmit = () => {
@@ -82,108 +80,103 @@ export function RegistrationModal({
     onSubmit(payload)
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl page-enter max-h-[90vh] overflow-y-auto">
-        <div className="px-6 pt-6 pb-5">
-          <h2 className="text-xl font-semibold mb-4">报名「{activityTitle}」</h2>
-
-          {signedInMode ? (
-            <div className="rounded-xl border border-green-100 bg-green-50 p-4 text-sm text-gray-700 mb-4">
-              <p>
-                以 <span className="font-medium">{signedInDisplayName}</span> 的身份报名
-              </p>
-            </div>
-          ) : (
-          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">账号</p>
-            <p className="text-sm text-gray-600 -mt-1">登录后报名，方便跨设备管理记录</p>
-            <SignInButton mode="modal">
-              <button type="button" className="btn-primary w-full rounded-xl py-2.5 text-sm">
-                登录 / 注册
-              </button>
-            </SignInButton>
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <p className="relative text-center text-xs text-gray-400 bg-white px-2 mx-auto w-fit">
-                或直接填写（无需登录）
-              </p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">姓名/昵称 *</label>
-              <input
-                className="input-field"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="你的昵称"
-              />
-            </div>
-            <RegistrantContactFields
-              contactType={contactType}
-              contactValue={contactValue}
-              contactLabel={contactLabel}
-              onTypeChange={setContactType}
-              onValueChange={setContactValue}
-              onLabelChange={setContactLabel}
-            />
+  const footer = (
+    <>
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">报名信息</p>
+      {!signedInMode && (
+        <p className="text-xs text-gray-500 mb-3">本设备可凭取消链接管理报名</p>
+      )}
+      <div className="space-y-2.5 sm:space-y-3">
+        <div>
+          <label className="text-xs sm:text-sm text-gray-600 mb-1 block">参与人数</label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-gray-200 bg-white text-base flex items-center justify-center"
+              onClick={() => onParticipantCountChange(Math.max(1, participantCount - 1))}
+            >
+              −
+            </button>
+            <span className="text-base font-medium w-6 text-center">{participantCount}</span>
+            <button
+              type="button"
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl border border-gray-200 bg-white text-base flex items-center justify-center"
+              onClick={() => onParticipantCountChange(participantCount + 1)}
+            >
+              +
+            </button>
           </div>
-          )}
         </div>
-
-        <div className="border-t-2 border-gray-200 bg-slate-50 rounded-b-2xl px-6 py-5">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">报名信息</p>
-          <p className="text-xs text-gray-500 -mt-2 mb-4">本设备可凭取消链接管理报名</p>
-
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">参与人数</label>
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  className="min-h-[44px] min-w-[44px] rounded-xl border border-gray-200 bg-white text-lg flex items-center justify-center"
-                  onClick={() => onParticipantCountChange(Math.max(1, participantCount - 1))}
-                >
-                  −
-                </button>
-                <span className="text-lg font-medium w-8 text-center">{participantCount}</span>
-                <button
-                  type="button"
-                  className="min-h-[44px] min-w-[44px] rounded-xl border border-gray-200 bg-white text-lg flex items-center justify-center"
-                  onClick={() => onParticipantCountChange(participantCount + 1)}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 mb-1 block">备注</label>
-              <input
-                className="input-field bg-white"
-                value={note}
-                onChange={(e) => onNoteChange(e.target.value)}
-                placeholder="过敏/有车等"
-              />
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="btn-primary w-full mt-5"
-            onClick={handleSubmit}
-            disabled={submitting || (!signedInMode && (!name.trim() || !contactValue.trim()))}
-          >
-            {submitting ? '提交中...' : '提交报名'}
-          </button>
-        </div>
-
-        <div className="px-6 pb-4 bg-slate-50">
-          <button type="button" className="text-sm text-gray-400 w-full py-2" onClick={onClose}>
-            关闭
-          </button>
+        <div>
+          <label className="text-xs sm:text-sm text-gray-600 mb-1 block">备注</label>
+          <input
+            className="input-field bg-white"
+            value={note}
+            onChange={(e) => onNoteChange(e.target.value)}
+            placeholder="过敏/有车等"
+          />
         </div>
       </div>
-    </div>
+      <button
+        type="button"
+        className="btn-primary w-full mt-4"
+        onClick={handleSubmit}
+        disabled={submitting || (!signedInMode && (!name.trim() || !contactValue.trim()))}
+      >
+        {submitting ? '提交中...' : '提交报名'}
+      </button>
+    </>
+  )
+
+  return (
+    <ModalSheet
+      open={open}
+      onClose={onClose}
+      title={<>报名「{activityTitle}」</>}
+      footer={footer}
+    >
+      {signedInMode ? (
+        <div className="rounded-xl border border-green-100 bg-green-50 p-3 sm:p-4 text-sm text-gray-700">
+          <p>
+            以 <span className="font-medium">{signedInDisplayName}</span> 的身份报名
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">账号</p>
+          <p className="text-xs sm:text-sm text-gray-600 -mt-1">登录后报名，方便跨设备管理记录</p>
+          <SignInButton mode="modal">
+            <button type="button" className="btn-primary w-full rounded-xl py-2 text-sm">
+              登录 / 注册
+            </button>
+          </SignInButton>
+          <div className="relative py-1.5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <p className="relative text-center text-xs text-gray-400 bg-white px-2 mx-auto w-fit">
+              或直接填写（无需登录）
+            </p>
+          </div>
+          <div>
+            <label className="text-xs sm:text-sm text-gray-600 mb-1 block">姓名/昵称 *</label>
+            <input
+              className="input-field"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="你的昵称"
+            />
+          </div>
+          <RegistrantContactFields
+            contactType={contactType}
+            contactValue={contactValue}
+            contactLabel={contactLabel}
+            onTypeChange={setContactType}
+            onValueChange={setContactValue}
+            onLabelChange={setContactLabel}
+          />
+        </div>
+      )}
+    </ModalSheet>
   )
 }

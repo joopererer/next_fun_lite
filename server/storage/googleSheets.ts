@@ -247,6 +247,15 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     return unique.map((id) => byId.get(id)).filter((a): a is Activity => a != null)
   }
 
+  async getActivitiesByOrganizer(userId: string): Promise<Activity[]> {
+    const rows = await this.getSheetRows('activities')
+    return rows
+      .filter((r) => r[0])
+      .map(activityFromRow)
+      .filter((a) => a.organizerId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }
+
   async addLinkedRecruit(proposalId: string, recruitId: string): Promise<void> {
     const proposal = await this.getActivity(proposalId)
     if (!proposal) throw new Error('Proposal not found')
@@ -367,6 +376,14 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     }
     await this.appendRow('registrations', registrationToRow(registration))
     return registration
+  }
+
+  async updateRegistration(id: string, data: Partial<Registration>): Promise<Registration> {
+    const existing = await this.getRegistrationById(id)
+    if (!existing) throw new Error('Registration not found')
+    const updated = { ...existing, ...data, id }
+    await this.updateRowById('registrations', id, registrationToRow(updated))
+    return updated
   }
 
   async cancelRegistration(id: string, cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult> {
@@ -497,6 +514,10 @@ export class GoogleSheetsAdapter implements StorageAdapter {
   }
 
   async listProfilesWithPreference(_pref: import('../../shared/types').ProfileNotificationPreference): Promise<import('../../shared/types').Profile[]> {
+    return []
+  }
+
+  async searchProfiles(_query: string, _limit?: number): Promise<import('../../shared/types').Profile[]> {
     return []
   }
 

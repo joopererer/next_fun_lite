@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import type { ActivityWithCount, Registration } from '../../shared/types'
 import { ActivityForm } from '../components/admin/ActivityForm'
+import { AdminRegistrationManager } from '../components/admin/AdminRegistrationManager'
 import { InfoForm } from '../components/info/InfoForm'
 import { api, getEventUrl } from '../lib/api'
 import { formatEventDate } from '../lib/user'
@@ -35,14 +36,15 @@ export function AdminActivityPage() {
 
   const exportList = () => {
     if (!activity) return
-    const totalPeople = registrations.reduce((s, r) => s + r.participantCount, 0)
-    const lines = registrations.map((r, i) => {
+    const active = registrations.filter((r) => !r.cancelledAt)
+    const totalPeople = active.reduce((s, r) => s + r.participantCount, 0)
+    const lines = active.map((r, i) => {
       const note = r.note ? ` 备注：${r.note}` : ''
       return `${i + 1}. ${r.name}（${formatRegistrationContactLine(r)}）×${r.participantCount}${note}`
     })
     const text = [
       `【${activity.title}】报名名单`,
-      `共 ${registrations.length} 人报名，合计 ${totalPeople} 人参与`,
+      `共 ${active.length} 人报名，合计 ${totalPeople} 人参与`,
       ...lines,
     ].join('\n')
     navigator.clipboard.writeText(text)
@@ -62,7 +64,6 @@ export function AdminActivityPage() {
     )
   }
 
-  const totalPeople = registrations.reduce((s, r) => s + r.participantCount, 0)
   const isInfo = isInfoPost(activity)
 
   return (
@@ -154,47 +155,12 @@ export function AdminActivityPage() {
 
         {!isInfo && (
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">报名名单</h2>
-            <button type="button" className="btn-secondary text-sm" onClick={exportList}>
-              导出名单
-            </button>
-          </div>
-          {registrations.length === 0 ? (
-            <p className="text-gray-400 text-sm">暂无报名</p>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-gray-500">
-                      <th className="py-2 pr-3">姓名</th>
-                      <th className="py-2 pr-3">联系方式</th>
-                      <th className="py-2 pr-3">人数</th>
-                      <th className="py-2 pr-3">备注</th>
-                      <th className="py-2">时间</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {registrations.map((r) => (
-                      <tr key={r.id} className="border-b border-gray-50">
-                        <td className="py-2.5 pr-3">{r.name}</td>
-                        <td className="py-2.5 pr-3">{formatRegistrationContactLine(r)}</td>
-                        <td className="py-2.5 pr-3">{r.participantCount}</td>
-                        <td className="py-2.5 pr-3">{r.note || '-'}</td>
-                        <td className="py-2.5 text-gray-400">
-                          {new Date(r.registeredAt).toLocaleString('zh-CN')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-sm text-gray-500 mt-3">
-                合计：{registrations.length} 人报名，共 {totalPeople} 人参与
-              </p>
-            </>
-          )}
+          <AdminRegistrationManager
+            activityId={activity.id}
+            registrations={registrations}
+            onMutated={load}
+            onExport={exportList}
+          />
         </section>
         )}
       </main>

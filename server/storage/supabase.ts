@@ -57,6 +57,16 @@ export class SupabaseAdapter implements StorageAdapter {
     return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
   }
 
+  async getActivitiesByOrganizer(userId: string): Promise<Activity[]> {
+    const { data, error } = await this.db
+      .from('activities')
+      .select('*')
+      .eq('organizer_id', userId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
+  }
+
   async createActivity(input: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> {
     const id = nanoid(8)
     const { data, error } = await this.db
@@ -179,6 +189,17 @@ export class SupabaseAdapter implements StorageAdapter {
     const { data, error } = await this.db
       .from('registrations')
       .insert({ id, ...row })
+      .select()
+      .single()
+    if (error) throw error
+    return this.mapRegistration(data as RegistrationRow)
+  }
+
+  async updateRegistration(id: string, input: Partial<Registration>): Promise<Registration> {
+    const { data, error } = await this.db
+      .from('registrations')
+      .update(this.unmapRegistration(input))
+      .eq('id', id)
       .select()
       .single()
     if (error) throw error
@@ -351,6 +372,28 @@ export class SupabaseAdapter implements StorageAdapter {
     const { data, error } = await this.db.from('profiles').select('*').eq(column, true)
     if (error) throw error
     return (data ?? []).map((row) => this.mapProfile(row as ProfileRow))
+  }
+
+  async searchProfiles(query: string, limit = 10): Promise<Profile[]> {
+    const q = query.trim()
+    if (q.length < 2) return []
+    const pattern = `%${q}%`
+    const [byName, byWechat] = await Promise.all([
+      this.db.from('profiles').select('*').ilike('nickname', pattern).limit(limit),
+      this.db.from('profiles').select('*').ilike('wechat', pattern).limit(limit),
+    ])
+    if (byName.error) throw byName.error
+    if (byWechat.error) throw byWechat.error
+    const seen = new Set<string>()
+    const rows: ProfileRow[] = []
+    for (const row of [...(byName.data ?? []), ...(byWechat.data ?? [])]) {
+      const id = String(row.id)
+      if (seen.has(id)) continue
+      seen.add(id)
+      rows.push(row as ProfileRow)
+      if (rows.length >= limit) break
+    }
+    return rows.map((row) => this.mapProfile(row))
   }
 
   async getNotifications(userId: string, options: GetNotificationsOptions = {}): Promise<Notification[]> {
@@ -606,7 +649,7 @@ export class SupabaseAdapter implements StorageAdapter {
   private unmapRegistration(r: Partial<Registration>): Record<string, unknown> {
     const result: Record<string, unknown> = {}
     if (r.activityId !== undefined) result.activity_id = r.activityId
-    if (r.userId !== undefined) result.user_id = r.userId
+    if ('userId' in r) result.user_id = r.userId ?? null
     if (r.name !== undefined) result.name = r.name
     if (r.wechat !== undefined) result.wechat = r.wechat
     if (r.contactType !== undefined) result.contact_type = r.contactType

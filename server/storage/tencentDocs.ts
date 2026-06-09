@@ -7,6 +7,7 @@ export class TencentDocsAdapter implements StorageAdapter {
   async getActivities(): Promise<Activity[]> { throw new Error(TODO) }
   async getActivity(_id: string): Promise<Activity | null> { throw new Error(TODO) }
   async getActivitiesByIds(_ids: string[]): Promise<Activity[]> { throw new Error(TODO) }
+  async getActivitiesByOrganizer(_userId: string): Promise<Activity[]> { throw new Error(TODO) }
   async addLinkedRecruit(_proposalId: string, _recruitId: string): Promise<void> { throw new Error(TODO) }
   async createActivity(_data: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> { throw new Error(TODO) }
   async updateActivity(_id: string, _data: Partial<Activity>): Promise<Activity> { throw new Error(TODO) }
@@ -21,6 +22,7 @@ export class TencentDocsAdapter implements StorageAdapter {
   async findInterestByUserId(_activityId: string, _userId: string): Promise<Interest | null> { throw new Error(TODO) }
   async findInterestByDeviceId(_activityId: string, _deviceId: string): Promise<Interest | null> { throw new Error(TODO) }
   async createRegistration(_data: Omit<Registration, 'id' | 'registeredAt'>): Promise<Registration> { throw new Error(TODO) }
+  async updateRegistration(_id: string, _data: Partial<Registration>): Promise<Registration> { throw new Error(TODO) }
   async cancelRegistration(_id: string, _cancelledBy: 'user' | 'admin'): Promise<RegistrationMutationResult> { throw new Error(TODO) }
   async deleteRegistration(_activityId: string, _wechat: string): Promise<RegistrationMutationResult> { throw new Error(TODO) }
   async getInterests(_activityId: string): Promise<Interest[]> { throw new Error(TODO) }
@@ -32,6 +34,7 @@ export class TencentDocsAdapter implements StorageAdapter {
   async getProfile(_userId: string): Promise<Profile | null> { throw new Error(TODO) }
   async upsertProfile(_data: Partial<Profile> & { id: string; nickname?: string }): Promise<Profile> { throw new Error(TODO) }
   async listProfilesWithPreference(_pref: ProfileNotificationPreference): Promise<Profile[]> { throw new Error(TODO) }
+  async searchProfiles(_query: string, _limit?: number): Promise<Profile[]> { throw new Error(TODO) }
   async getNotifications(_userId: string, _options?: GetNotificationsOptions): Promise<Notification[]> { throw new Error(TODO) }
   async getUnreadCount(_userId: string): Promise<number> { throw new Error(TODO) }
   async markAsRead(_notificationId: string): Promise<void> { throw new Error(TODO) }
