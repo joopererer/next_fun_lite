@@ -156,6 +156,10 @@ export async function handleCreateRecruitment(request: Request, env: EnvConfig):
     await storage.addLinkedRecruit(body.sourceProposalId, activity.id)
   }
 
+  void import('@/server/notifications/triggers').then(({ dispatchRecruitmentNotifications }) =>
+    dispatchRecruitmentNotifications(env, activity, body.sourceProposalId).catch(console.error),
+  )
+
   return jsonResponse(
     { activity, eventUrl: getEventUrl(env, activity.id) },
     201,
@@ -182,7 +186,12 @@ export async function handleUpdateActivity(request: Request, env: EnvConfig, id:
     return errorResponse(PAST_END_TIME_MESSAGE, 400)
   }
   try {
+    const before = await storage.getActivity(id)
+    if (!before) return errorResponse('Activity not found', 404)
     const activity = await storage.updateActivity(id, body)
+    void import('@/server/notifications/triggers').then(({ dispatchActivityNotifications }) =>
+      dispatchActivityNotifications(env, before, activity).catch(console.error),
+    )
     return jsonResponse(await enrichActivity(storage, activity))
   } catch {
     return errorResponse('Activity not found', 404)

@@ -14,6 +14,7 @@ import { isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { api } from '../lib/api'
 import { sortProposalsForHome } from '../lib/proposals'
 import { InfoCard } from '../components/InfoCard'
+import { HomeNotificationBanner } from '../components/notifications/HomeNotificationBanner'
 import { isInfoPost, isInfoVisible, isProposalPost, sortInfosForHome } from '../lib/infoVisibility'
 import { ACTIVITIES_CHANGED_EVENT } from '../lib/activityEvents'
 import { getGuestRegistrations } from '../lib/guestRegistrations'
@@ -149,6 +150,7 @@ export function HomePage() {
           </div>
         ) : (
           <>
+            <HomeNotificationBanner />
             <section className="mb-10">
               <h2 className="section-title">
                 🟢 正在招募

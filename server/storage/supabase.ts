@@ -1,11 +1,32 @@
 import { nanoid } from 'nanoid'
-import type { Activity, EnvConfig, Interest, Registration } from '@/shared/types'
+import type {
+  Activity,
+  EnvConfig,
+  InfoInterest,
+  Interest,
+  Notification,
+  Profile,
+  ProfileNotificationPreference,
+  Registration,
+} from '@/shared/types'
+import { withProfileDefaults } from '@/shared/profileDefaults'
 import { getSupabaseClient } from '@/lib/supabase'
 import type { InterestMutationResult, RegistrationMutationResult, StorageAdapter } from './types'
 
 type ActivityRow = Record<string, unknown>
 type RegistrationRow = Record<string, unknown>
 type InterestRow = Record<string, unknown>
+type ProfileRow = Record<string, unknown>
+type NotificationRow = Record<string, unknown>
+type InfoInterestRow = Record<string, unknown>
+
+const PREF_COLUMN: Record<ProfileNotificationPreference, string> = {
+  notifyRegistrationChange: 'notify_registration_change',
+  notifyActivityReminder: 'notify_activity_reminder',
+  notifyProposalRecruiting: 'notify_proposal_recruiting',
+  notifyNewRecruit: 'notify_new_recruit',
+  notifyInfoReminder: 'notify_info_reminder',
+}
 
 export class SupabaseAdapter implements StorageAdapter {
   private env?: EnvConfig
@@ -310,6 +331,259 @@ export class SupabaseAdapter implements StorageAdapter {
     const interestedCount = count ?? 0
     await this.updateActivity(activityId, { interestedCount })
     return interestedCount
+  }
+
+  async getProfile(userId: string): Promise<Profile | null> {
+    const { data, error } = await this.db.from('profiles').select('*').eq('id', userId).maybeSingle()
+    if (error) throw error
+    if (!data) return null
+    return this.mapProfile(data as ProfileRow)
+  }
+
+  async upsertProfile(data: Partial<Profile> & { id: string; nickname?: string }): Promise<Profile> {
+    const { data: row, error } = await this.db
+      .from('profiles')
+      .upsert(this.unmapProfile(data))
+      .select()
+      .single()
+    if (error) throw error
+    return this.mapProfile(row as ProfileRow)
+  }
+
+  async listProfilesWithPreference(pref: ProfileNotificationPreference): Promise<Profile[]> {
+    const column = PREF_COLUMN[pref]
+    const { data, error } = await this.db.from('profiles').select('*').eq(column, true)
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapProfile(row as ProfileRow))
+  }
+
+  async getNotifications(userId: string, limit = 50): Promise<Notification[]> {
+    const { data, error } = await this.db
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapNotification(row as NotificationRow))
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    const { count, error } = await this.db
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false)
+    if (error) throw error
+    return count ?? 0
+  }
+
+  async markAsRead(notificationId: string): Promise<void> {
+    const { error } = await this.db.from('notifications').update({ is_read: true }).eq('id', notificationId)
+    if (error) throw error
+  }
+
+  async markAllAsRead(userId: string): Promise<void> {
+    const { error } = await this.db
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('is_read', false)
+    if (error) throw error
+  }
+
+  async createNotification(
+    data: Omit<Notification, 'id' | 'isRead' | 'createdAt'>,
+  ): Promise<Notification> {
+    const id = nanoid(8)
+    const { data: row, error } = await this.db
+      .from('notifications')
+      .insert({
+        id,
+        user_id: data.userId,
+        type: data.type,
+        title: data.title,
+        body: data.body,
+        action_url: data.actionUrl ?? null,
+        activity_id: data.activityId ?? null,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    return this.mapNotification(row as NotificationRow)
+  }
+
+  async countNotificationsSince(
+    activityId: string,
+    userId: string,
+    type: Notification['type'],
+    sinceIso: string,
+  ): Promise<number> {
+    const { count, error } = await this.db
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('activity_id', activityId)
+      .eq('user_id', userId)
+      .eq('type', type)
+      .gte('created_at', sinceIso)
+    if (error) throw error
+    return count ?? 0
+  }
+
+  async getInfoInterests(activityId: string): Promise<InfoInterest[]> {
+    const { data, error } = await this.db.from('info_interests').select('*').eq('activity_id', activityId)
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapInfoInterest(row as InfoInterestRow))
+  }
+
+  async findInfoInterestByUserId(activityId: string, userId: string): Promise<InfoInterest | null> {
+    const { data, error } = await this.db
+      .from('info_interests')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapInfoInterest(data as InfoInterestRow)
+  }
+
+  async findInfoInterestByEmail(activityId: string, email: string): Promise<InfoInterest | null> {
+    const { data, error } = await this.db
+      .from('info_interests')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('email', email)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapInfoInterest(data as InfoInterestRow)
+  }
+
+  async findInfoInterestByDeviceId(activityId: string, deviceId: string): Promise<InfoInterest | null> {
+    const { data, error } = await this.db
+      .from('info_interests')
+      .select('*')
+      .eq('activity_id', activityId)
+      .eq('device_id', deviceId)
+      .maybeSingle()
+    if (error || !data) return null
+    return this.mapInfoInterest(data as InfoInterestRow)
+  }
+
+  async createInfoInterest(data: Omit<InfoInterest, 'id' | 'createdAt'>): Promise<InfoInterest> {
+    const id = nanoid(8)
+    const { data: row, error } = await this.db
+      .from('info_interests')
+      .insert({
+        id,
+        activity_id: data.activityId,
+        user_id: data.userId ?? null,
+        device_id: data.deviceId ?? null,
+        email: data.email ?? null,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    return this.mapInfoInterest(row as InfoInterestRow)
+  }
+
+  async deleteInfoInterest(id: string): Promise<void> {
+    const { error } = await this.db.from('info_interests').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  async getRecruitingActivitiesInDateRange(fromIso: string, toIso: string): Promise<Activity[]> {
+    const { data, error } = await this.db
+      .from('activities')
+      .select('*')
+      .eq('status', 'recruiting')
+      .gte('date', fromIso)
+      .lte('date', toIso)
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
+  }
+
+  async getInfoActivitiesWithStartInRange(fromIso: string, toIso: string): Promise<Activity[]> {
+    const { data, error } = await this.db
+      .from('activities')
+      .select('*')
+      .eq('post_type', 'info')
+      .gte('info_start_time', fromIso)
+      .lte('info_start_time', toIso)
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
+  }
+
+  async getInfoActivitiesWithDeadlineInRange(fromIso: string, toIso: string): Promise<Activity[]> {
+    const { data, error } = await this.db
+      .from('activities')
+      .select('*')
+      .eq('post_type', 'info')
+      .gte('info_deadline', fromIso)
+      .lte('info_deadline', toIso)
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
+  }
+
+  private mapProfile(row: ProfileRow): Profile {
+    return withProfileDefaults({
+      id: String(row.id),
+      nickname: String(row.nickname),
+      wechat: row.wechat ? String(row.wechat) : undefined,
+      email: row.email ? String(row.email) : undefined,
+      notificationEmail: row.notification_email ? String(row.notification_email) : undefined,
+      notifyRegistrationChange: row.notify_registration_change !== false,
+      notifyActivityReminder: row.notify_activity_reminder !== false,
+      notifyProposalRecruiting: row.notify_proposal_recruiting !== false,
+      notifyNewRecruit: row.notify_new_recruit === true,
+      notifyInfoReminder: row.notify_info_reminder !== false,
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at),
+    })
+  }
+
+  private unmapProfile(profile: Partial<Profile> & { id: string; nickname?: string }): Record<string, unknown> {
+    const result: Record<string, unknown> = { id: profile.id }
+    if (profile.nickname !== undefined) result.nickname = profile.nickname
+    if (profile.wechat !== undefined) result.wechat = profile.wechat || null
+    if (profile.email !== undefined) result.email = profile.email || null
+    if (profile.notificationEmail !== undefined) result.notification_email = profile.notificationEmail || null
+    if (profile.notifyRegistrationChange !== undefined) {
+      result.notify_registration_change = profile.notifyRegistrationChange
+    }
+    if (profile.notifyActivityReminder !== undefined) {
+      result.notify_activity_reminder = profile.notifyActivityReminder
+    }
+    if (profile.notifyProposalRecruiting !== undefined) {
+      result.notify_proposal_recruiting = profile.notifyProposalRecruiting
+    }
+    if (profile.notifyNewRecruit !== undefined) result.notify_new_recruit = profile.notifyNewRecruit
+    if (profile.notifyInfoReminder !== undefined) result.notify_info_reminder = profile.notifyInfoReminder
+    return result
+  }
+
+  private mapNotification(row: NotificationRow): Notification {
+    return {
+      id: String(row.id),
+      userId: String(row.user_id),
+      type: row.type as Notification['type'],
+      title: String(row.title),
+      body: String(row.body),
+      actionUrl: row.action_url ? String(row.action_url) : undefined,
+      activityId: row.activity_id ? String(row.activity_id) : undefined,
+      isRead: Boolean(row.is_read),
+      createdAt: String(row.created_at),
+    }
+  }
+
+  private mapInfoInterest(row: InfoInterestRow): InfoInterest {
+    return {
+      id: String(row.id),
+      activityId: String(row.activity_id),
+      userId: row.user_id ? String(row.user_id) : undefined,
+      deviceId: row.device_id ? String(row.device_id) : undefined,
+      email: row.email ? String(row.email) : undefined,
+      createdAt: String(row.created_at),
+    }
   }
 
   private mapActivity(row: ActivityRow): Activity {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { InfoReminderButton } from './InfoReminderButton'
 import type { Activity } from '../../shared/types'
 import { formatEventDate } from '../lib/user'
 import {
@@ -80,6 +81,7 @@ export function InfoEventSection({ activity }: Props) {
             </span>
           )
         )}
+        <InfoReminderButton activityId={activity.id} />
         <Link href={`/recruit/new?from_info=${activity.id}`} className="btn-secondary w-full text-center">
           我抢到了，发起组团
         </Link>
