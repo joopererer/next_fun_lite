@@ -15,6 +15,7 @@ import type { ParsedImportRow } from '@/shared/excelImport'
 import { getDeviceId } from '@/src/utils/device'
 
 const ADMIN_KEY = 'nfl_admin_password'
+export const ADMIN_AUTH_EXPIRED_EVENT = 'nfl:admin-auth-expired'
 
 let tokenGetter: (() => Promise<string | null>) | null = null
 
@@ -52,6 +53,7 @@ async function deviceHeaders(): Promise<HeadersInit> {
 }
 
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const hadAdminPassword = !!getAdminPassword()
   const res = await fetch(url, {
     ...options,
     headers: {
@@ -64,7 +66,14 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
-    throw new Error((err as { error?: string }).error ?? 'Request failed')
+    const message = (err as { error?: string }).error ?? 'Request failed'
+    if (hadAdminPassword && (res.status === 401 || res.status === 503)) {
+      clearAdminPassword()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(ADMIN_AUTH_EXPIRED_EVENT))
+      }
+    }
+    throw new Error(message)
   }
   return res.json() as Promise<T>
 }
