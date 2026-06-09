@@ -1,10 +1,10 @@
-import { runHandler } from '@/lib/apiRoute'
+import { runHandlerWithRevalidate } from '@/lib/runHandlerWithRevalidate'
 import { handleMutateInterest, handleDeleteInterest } from '@/server/handlers'
 
 export async function POST(request: Request) {
-  return runHandler(request, handleMutateInterest)
+  return runHandlerWithRevalidate(request, handleMutateInterest)
 }
 
 export async function DELETE(request: Request) {
-  return runHandler(request, handleDeleteInterest)
+  return runHandlerWithRevalidate(request, handleDeleteInterest)
 }

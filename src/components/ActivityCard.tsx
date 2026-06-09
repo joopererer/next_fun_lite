@@ -31,6 +31,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [displayName, setDisplayName] = useState('')
+  const [localRegisteredCount, setLocalRegisteredCount] = useState(activity.registeredCount)
 
   const isRegistered = registered || localRegistered
   const open = canRegister(activity)
@@ -43,12 +44,16 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
   const [summaryLoading, setSummaryLoading] = useState(true)
 
   useEffect(() => {
+    setLocalRegisteredCount(activity.registeredCount)
+  }, [activity.id, activity.registeredCount])
+
+  useEffect(() => {
     setSummaryLoading(true)
     api.getRegistrationSummary(activity.id)
       .then(setSummary)
       .catch(() => setSummary({ total: 0, previews: [] }))
       .finally(() => setSummaryLoading(false))
-  }, [activity.id, activity.registeredCount])
+  }, [activity.id, localRegisteredCount])
 
   useEffect(() => {
     if (!isLoaded) return
@@ -70,11 +75,17 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
     contactLabel?: string
   }) => {
     if (isRegistered || !open) return
-    if (activity.maxParticipants != null && activity.registeredCount + participantCount > activity.maxParticipants) {
+    if (activity.maxParticipants != null && localRegisteredCount + participantCount > activity.maxParticipants) {
       alert('名额不足')
       return
     }
+
+    const previousCount = localRegisteredCount
+    setLocalRegisteredCount((c) => c + participantCount)
+    setLocalRegistered(true)
+    setShowModal(false)
     setSubmitting(true)
+
     try {
       const res = await api.createRegistration({
         activityId: activity.id,
@@ -97,11 +108,13 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
       } else {
         addRegistrationId(activity.id)
       }
-      setLocalRegistered(true)
-      setShowModal(false)
+      setLocalRegisteredCount(res.registeredCount)
       onRegistered?.(activity.id)
       notifyActivitiesChanged()
     } catch (err) {
+      setLocalRegisteredCount(previousCount)
+      setLocalRegistered(false)
+      setShowModal(true)
       alert(err instanceof Error ? err.message : '报名失败')
     } finally {
       setSubmitting(false)
@@ -116,7 +129,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
             <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block">
               {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
             </span>
-            <ActivityBadge activity={activity} />
+            <ActivityBadge activity={{ ...activity, registeredCount: localRegisteredCount }} />
           </div>
           <h3 className="font-semibold text-base mb-1 group-hover:text-green-700 transition-colors">
             {activity.title}
@@ -128,7 +141,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
             {activity.description || ' '}
           </p>
           <div className="mb-1">
-            <CapacityBar current={activity.registeredCount} max={activity.maxParticipants} />
+            <CapacityBar current={localRegisteredCount} max={activity.maxParticipants} />
           </div>
           <RegistrationPreview
             total={summary.total}

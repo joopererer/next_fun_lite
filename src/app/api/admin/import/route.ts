@@ -1,6 +1,6 @@
-import { runHandler } from '@/lib/apiRoute'
+import { runHandlerWithRevalidate } from '@/lib/runHandlerWithRevalidate'
 import { handleAdminImport } from '@/server/handlers'
 
 export async function POST(request: Request) {
-  return runHandler(request, (req, env) => handleAdminImport(req, env))
+  return runHandlerWithRevalidate(request, (req, env) => handleAdminImport(req, env))
 }

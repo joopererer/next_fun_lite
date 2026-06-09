@@ -26,16 +26,21 @@ import { formatOrganizerContactHint, resolveOrganizerContact } from '../lib/cont
 import { isInfoPost } from '../../shared/infoVisibility'
 import { InfoEventSection } from '../components/InfoEventSection'
 
-export function EventPage() {
-  const { id } = useParams<{ id: string }>()
+interface EventPageProps {
+  initialActivity?: ActivityWithCount
+}
+
+export function EventPage({ initialActivity }: EventPageProps = {}) {
+  const { id: routeId } = useParams<{ id: string }>()
+  const id = routeId ?? initialActivity?.id
   const { isSignedIn, isLoaded, user: clerkUser } = useUser()
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [activity, setActivity] = useState<ActivityWithCount | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [activity, setActivity] = useState<ActivityWithCount | null>(initialActivity ?? null)
+  const [loading, setLoading] = useState(!initialActivity)
   const [notFound, setNotFound] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [registeredCount, setRegisteredCount] = useState(0)
+  const [registeredCount, setRegisteredCount] = useState(initialActivity?.registeredCount ?? 0)
   const [cancelToken, setCancelToken] = useState<string | null>(null)
   const [showRegistrationModal, setShowRegistrationModal] = useState(false)
   const [regSummary, setRegSummary] = useState<{ total: number; previews: Array<{ name: string; avatarUrl: string | null }> }>({
@@ -66,7 +71,11 @@ export function EventPage() {
 
   useEffect(() => {
     if (!id || !isLoaded) return
-    api.getActivity(id)
+    const activityPromise = initialActivity && initialActivity.id === id
+      ? Promise.resolve(initialActivity)
+      : api.getActivity(id)
+
+    activityPromise
       .then((a) => {
         setActivity(a)
         setInterestCount(a.interestedCount ?? 0)
@@ -140,7 +149,7 @@ export function EventPage() {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false))
-  }, [id, isLoaded, isSignedIn, clerkUser?.id])
+  }, [id, isLoaded, isSignedIn, clerkUser?.id, initialActivity])
 
   const toggleInterest = async () => {
     if (!activity || interestLoading) return
@@ -177,11 +186,19 @@ export function EventPage() {
       alert('报名已结束')
       return
     }
-    if (activity.maxParticipants != null && activity.registeredCount + participantCount > activity.maxParticipants) {
+    const currentCount = activity.registeredCount
+    if (activity.maxParticipants != null && currentCount + participantCount > activity.maxParticipants) {
       alert('名额不足')
       return
     }
+
+    const optimisticCount = currentCount + participantCount
+    setActivity((prev) => (prev ? { ...prev, registeredCount: optimisticCount } : prev))
+    setRegisteredCount(optimisticCount)
+    setShowRegistrationModal(false)
+    setSuccess(true)
     setSubmitting(true)
+
     try {
       const res = await api.createRegistration({
         activityId: id,
@@ -214,9 +231,10 @@ export function EventPage() {
       api.getRegistrationSummary(id)
         .then(setRegSummary)
         .catch(() => {})
-      setShowRegistrationModal(false)
-      setSuccess(true)
     } catch (err) {
+      setActivity((prev) => (prev ? { ...prev, registeredCount: currentCount } : prev))
+      setRegisteredCount(currentCount)
+      setSuccess(false)
       alert(err instanceof Error ? err.message : '报名失败')
     } finally {
       setSubmitting(false)

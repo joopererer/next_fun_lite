@@ -30,7 +30,7 @@ export function isInfoVisible(info: Activity, now: Date = new Date()): boolean {
   return expires > now.getTime()
 }
 
-export function sortInfosForHome(infos: Activity[], now: Date = new Date()): Activity[] {
+export function sortInfosForHome<T extends Activity>(infos: T[], now: Date = new Date()): T[] {
   return [...infos]
     .filter((i) => isInfoVisible(i, now))
     .sort((a, b) => {

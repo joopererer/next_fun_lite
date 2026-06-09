@@ -11,6 +11,7 @@ import type { ParsedImportRow } from '../../shared/excelImport'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../shared/validateSchedule'
 import { canRegister, isProposalExpired } from '../../shared/activityPhase'
 import { isTerminalStatus, normalizeActivityStatus } from '../../shared/activityStatus'
+import { enrichActivity } from '../lib/enrichActivity'
 import {
   buildAdminCreatePayload,
   buildInfoPayload,
@@ -35,20 +36,6 @@ import { clerkClient } from '@clerk/nextjs/server'
 function getEventUrl(env: EnvConfig, activityId: string): string {
   const base = env.SITE_URL?.replace(/\/$/, '') ?? ''
   return base ? `${base}/event/${activityId}` : `/event/${activityId}`
-}
-
-async function enrichActivity(storage: StorageAdapter, activity: Activity): Promise<ActivityWithCount> {
-  const [registeredCount, interests] = await Promise.all([
-    getRegisteredCount(storage, activity.id),
-    storage.getInterests(activity.id),
-  ])
-  const interestedCount = interests.length
-  return {
-    ...activity,
-    status: normalizeActivityStatus(activity.status),
-    registeredCount,
-    interestedCount,
-  }
 }
 
 export async function handleGetActivities(_request: Request, env: EnvConfig): Promise<Response> {
