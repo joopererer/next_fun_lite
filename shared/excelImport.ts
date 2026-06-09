@@ -103,7 +103,7 @@ export function resolveMembersCellRaw(row: unknown[], headers: string[]): string
 }
 
 /** Excel serial date epoch (1899-12-30 UTC). */
-const EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30)
+import { EXCEL_EPOCH_MS } from './excelSerial'
 
 export function excelSerialToDate(serial: number): Date {
   const wholeDays = Math.floor(serial)

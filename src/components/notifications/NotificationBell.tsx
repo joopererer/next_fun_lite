@@ -69,5 +69,3 @@ export function NotificationBell() {
     </>
   )
 }
-
-export { openNotificationDrawer } from '@/src/lib/notificationUiEvents'

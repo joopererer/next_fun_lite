@@ -584,6 +584,13 @@ export class MockAdapter implements StorageAdapter {
     if (notification) notification.isRead = true
   }
 
+  async markAsReadForUser(userId: string, notificationId: string): Promise<boolean> {
+    const notification = this.notifications.find((n) => n.id === notificationId && n.userId === userId)
+    if (!notification) return false
+    notification.isRead = true
+    return true
+  }
+
   async markAllAsRead(userId: string): Promise<void> {
     for (const n of this.notifications) {
       if (n.userId === userId) n.isRead = true

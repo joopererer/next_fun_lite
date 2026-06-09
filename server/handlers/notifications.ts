@@ -35,11 +35,9 @@ export async function handleMarkNotificationRead(
   if (!userId) return errorResponse('Unauthorized', 401)
 
   const storage = createStorageAdapter(env)
-  const notifications = await storage.getNotifications(userId, { limit: 200 })
-  const target = notifications.find((n) => n.id === notificationId)
-  if (!target) return errorResponse('Not found', 404)
+  const updated = await storage.markAsReadForUser(userId, notificationId)
+  if (!updated) return errorResponse('Not found', 404)
 
-  await storage.markAsRead(notificationId)
   return jsonResponse({ ok: true })
 }
 
