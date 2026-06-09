@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ADMIN_AUTH_EXPIRED_EVENT, api, clearAdminPassword, getAdminPassword, setAdminPassword } from '../../lib/api'
+import { ADMIN_AUTH_EXPIRED_EVENT, api, clearAdminPassword, setAdminPassword } from '../../lib/api'
 
 interface Props {
   children: React.ReactNode
@@ -9,22 +9,9 @@ interface Props {
 
 export function AdminGate({ children }: Props) {
   const [authed, setAuthed] = useState(false)
-  const [initializing, setInitializing] = useState(true)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [checking, setChecking] = useState(false)
-
-  useEffect(() => {
-    const stored = getAdminPassword()
-    if (!stored) {
-      setInitializing(false)
-      return
-    }
-    api.verifyAdmin()
-      .then(() => setAuthed(true))
-      .catch(() => clearAdminPassword())
-      .finally(() => setInitializing(false))
-  }, [])
 
   useEffect(() => {
     const onExpired = () => {
@@ -44,20 +31,13 @@ export function AdminGate({ children }: Props) {
     try {
       await api.verifyAdmin()
       setAuthed(true)
+      setPassword('')
     } catch (err) {
       clearAdminPassword()
       setError(err instanceof Error ? err.message : '密码错误')
     } finally {
       setChecking(false)
     }
-  }
-
-  if (initializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-warm-bg p-4">
-        <p className="text-gray-400 text-sm">验证中...</p>
-      </div>
-    )
   }
 
   if (authed) return <>{children}</>

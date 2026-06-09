@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { Activity, ActivityStatus, ActivityWithCount } from '../../shared/types'
 import { ActivityListTable } from '../components/admin/ActivityListTable'
-import { AdminGate } from '../components/admin/AdminGate'
 import { CancelActivityModal } from '../components/admin/CancelActivityModal'
 import { EndActivityModal } from '../components/admin/EndActivityModal'
 import { KanbanBoard } from '../components/admin/KanbanBoard'
@@ -110,7 +109,6 @@ export function AdminPage() {
   ]
 
   return (
-    <AdminGate>
       <div className="min-h-screen flex flex-col pb-12">
         <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
           <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
@@ -198,6 +196,5 @@ export function AdminPage() {
         )}
         <Footer />
       </div>
-    </AdminGate>
   )
 }

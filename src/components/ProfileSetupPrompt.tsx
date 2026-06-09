@@ -1,21 +1,32 @@
 'use client'
 
 import { useUser } from '@clerk/nextjs'
-import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import type { Profile } from '../../shared/types'
 import { api } from '../lib/api'
 import { ProfileModal } from './ProfileModal'
-
 import { PROFILE_EDIT_EVENT } from '../lib/profileEvents'
 
-const SKIP_KEY = 'nfl_profile_setup_skipped'
+const SKIP_KEY_PREFIX = 'nfl_profile_setup_skipped_'
+
+const AUTO_PROMPT_ROUTES = new Set(['/', '/my'])
+
+function isAutoPromptRoute(pathname: string): boolean {
+  return AUTO_PROMPT_ROUTES.has(pathname)
+}
+
+function getSkipKey(userId: string): string {
+  return `${SKIP_KEY_PREFIX}${userId}`
+}
 
 export function ProfileSetupPrompt() {
+  const pathname = usePathname()
   const { isSignedIn, isLoaded, user } = useUser()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'setup' | 'edit'>('setup')
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [checked, setChecked] = useState(false)
+  const setupCheckedRef = useRef<string | null>(null)
 
   useEffect(() => {
     const onEdit = () => {
@@ -32,35 +43,39 @@ export function ProfileSetupPrompt() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) {
       setOpen(false)
-      setChecked(false)
+      setupCheckedRef.current = null
       return
     }
-    if (sessionStorage.getItem(SKIP_KEY) === '1') {
-      setChecked(true)
-      return
-    }
+
+    if (!isAutoPromptRoute(pathname)) return
+
+    if (localStorage.getItem(getSkipKey(user.id)) === '1') return
+
+    if (setupCheckedRef.current === user.id) return
 
     let cancelled = false
     api.getProfile()
       .then((p) => {
         if (cancelled) return
+        setupCheckedRef.current = user.id
         if (!p) {
           setMode('setup')
           setProfile(null)
           setOpen(true)
+        } else {
+          setOpen(false)
         }
-        setChecked(true)
       })
       .catch(() => {
-        if (!cancelled) setChecked(true)
+        if (!cancelled) setupCheckedRef.current = user.id
       })
 
     return () => {
       cancelled = true
     }
-  }, [isLoaded, isSignedIn, user?.id])
+  }, [isLoaded, isSignedIn, user?.id, pathname])
 
-  if (!checked || !isSignedIn) return null
+  if (!isSignedIn) return null
 
   return (
     <ProfileModal
@@ -69,11 +84,13 @@ export function ProfileSetupPrompt() {
       initialNickname={profile?.nickname}
       initialWechat={profile?.wechat}
       onClose={() => {
-        if (mode === 'setup') sessionStorage.setItem(SKIP_KEY, '1')
+        if (mode === 'setup' && user?.id) {
+          localStorage.setItem(getSkipKey(user.id), '1')
+        }
         setOpen(false)
       }}
       onSaved={() => {
-        sessionStorage.removeItem(SKIP_KEY)
+        if (user?.id) localStorage.removeItem(getSkipKey(user.id))
         setOpen(false)
       }}
     />

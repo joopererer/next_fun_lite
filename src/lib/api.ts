@@ -14,26 +14,25 @@ import type { SimilarProposalMatch } from '@/shared/activityDedupe'
 import type { ParsedImportRow } from '@/shared/excelImport'
 import { getDeviceId } from '@/src/utils/device'
 
-const ADMIN_KEY = 'nfl_admin_password'
 export const ADMIN_AUTH_EXPIRED_EVENT = 'nfl:admin-auth-expired'
 
 let tokenGetter: (() => Promise<string | null>) | null = null
+let adminPasswordMemory: string | null = null
 
 export function setAuthTokenGetter(getter: () => Promise<string | null>): void {
   tokenGetter = getter
 }
 
 export function getAdminPassword(): string | null {
-  if (typeof window === 'undefined') return null
-  return sessionStorage.getItem(ADMIN_KEY)
+  return adminPasswordMemory
 }
 
 export function setAdminPassword(password: string): void {
-  sessionStorage.setItem(ADMIN_KEY, password)
+  adminPasswordMemory = password
 }
 
 export function clearAdminPassword(): void {
-  sessionStorage.removeItem(ADMIN_KEY)
+  adminPasswordMemory = null
 }
 
 function adminHeaders(): HeadersInit {
