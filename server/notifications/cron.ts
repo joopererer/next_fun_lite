@@ -9,13 +9,11 @@ import { getNotificationEmail } from './helpers'
 export async function runReminderCron(env: EnvConfig): Promise<{ ok: true }> {
   const now = new Date()
   const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  const in1h = new Date(now.getTime() + 60 * 60 * 1000)
-  const in3h = new Date(now.getTime() + 3 * 60 * 60 * 1000)
-
+  // Vercel Hobby allows one cron run per day; use 24h windows so a daily job still catches upcoming items.
   await Promise.all([
     sendActivityReminders(env, now, in24h),
-    sendInfoStartReminders(env, now, in1h),
-    sendInfoDeadlineReminders(env, now, in3h),
+    sendInfoStartReminders(env, now, in24h),
+    sendInfoDeadlineReminders(env, now, in24h),
   ])
 
   return { ok: true }
