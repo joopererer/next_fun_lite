@@ -247,6 +247,15 @@ export class GoogleSheetsAdapter implements StorageAdapter {
     return unique.map((id) => byId.get(id)).filter((a): a is Activity => a != null)
   }
 
+  async getActivitiesByOrganizer(userId: string): Promise<Activity[]> {
+    const rows = await this.getSheetRows('activities')
+    return rows
+      .filter((r) => r[0])
+      .map(activityFromRow)
+      .filter((a) => a.organizerId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }
+
   async addLinkedRecruit(proposalId: string, recruitId: string): Promise<void> {
     const proposal = await this.getActivity(proposalId)
     if (!proposal) throw new Error('Proposal not found')

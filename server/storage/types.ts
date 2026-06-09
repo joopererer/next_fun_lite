@@ -50,6 +50,7 @@ export interface StorageAdapter {
   deleteInterestByDeviceId(activityId: string, deviceId: string): Promise<InterestMutationResult>
 
   getActivitiesByIds(ids: string[]): Promise<Activity[]>
+  getActivitiesByOrganizer(userId: string): Promise<Activity[]>
   addLinkedRecruit(proposalId: string, recruitId: string): Promise<void>
 
   getProfile(userId: string): Promise<Profile | null>

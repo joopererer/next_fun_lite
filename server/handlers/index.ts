@@ -294,6 +294,16 @@ export async function handleGetMyRegistrations(_request: Request, env: EnvConfig
   return jsonResponse({ registrations: registrationMap, activities: enriched })
 }
 
+export async function handleGetMyActivities(_request: Request, env: EnvConfig): Promise<Response> {
+  const userId = await getOptionalUserId()
+  if (!userId) return errorResponse('Unauthorized', 401)
+
+  const storage = createStorageAdapter(env)
+  const activities = await storage.getActivitiesByOrganizer(userId)
+  const enriched = await Promise.all(activities.map((a) => enrichActivity(storage, a)))
+  return jsonResponse({ activities: enriched })
+}
+
 export async function handleCreateRegistration(request: Request, env: EnvConfig): Promise<Response> {
   const storage = createStorageAdapter(env)
   const userId = await getOptionalUserId()

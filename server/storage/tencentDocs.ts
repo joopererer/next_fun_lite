@@ -7,6 +7,7 @@ export class TencentDocsAdapter implements StorageAdapter {
   async getActivities(): Promise<Activity[]> { throw new Error(TODO) }
   async getActivity(_id: string): Promise<Activity | null> { throw new Error(TODO) }
   async getActivitiesByIds(_ids: string[]): Promise<Activity[]> { throw new Error(TODO) }
+  async getActivitiesByOrganizer(_userId: string): Promise<Activity[]> { throw new Error(TODO) }
   async addLinkedRecruit(_proposalId: string, _recruitId: string): Promise<void> { throw new Error(TODO) }
   async createActivity(_data: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> { throw new Error(TODO) }
   async updateActivity(_id: string, _data: Partial<Activity>): Promise<Activity> { throw new Error(TODO) }

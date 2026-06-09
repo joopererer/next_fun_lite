@@ -347,6 +347,12 @@ export class MockAdapter implements StorageAdapter {
       .filter((a): a is Activity => a != null)
   }
 
+  async getActivitiesByOrganizer(userId: string): Promise<Activity[]> {
+    return this.activities
+      .filter((a) => a.organizerId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }
+
   async addLinkedRecruit(proposalId: string, recruitId: string): Promise<void> {
     const proposal = this.activities.find((a) => a.id === proposalId)
     if (!proposal) throw new Error('Proposal not found')

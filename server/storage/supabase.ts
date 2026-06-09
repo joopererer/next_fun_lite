@@ -57,6 +57,16 @@ export class SupabaseAdapter implements StorageAdapter {
     return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
   }
 
+  async getActivitiesByOrganizer(userId: string): Promise<Activity[]> {
+    const { data, error } = await this.db
+      .from('activities')
+      .select('*')
+      .eq('organizer_id', userId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
+  }
+
   async createActivity(input: Omit<Activity, 'id' | 'createdAt'>): Promise<Activity> {
     const id = nanoid(8)
     const { data, error } = await this.db

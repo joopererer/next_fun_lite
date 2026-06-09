@@ -121,6 +121,7 @@ export const api = {
         : `/api/activities/${activityId}/registration`,
     ),
   getMyRegistrations: () => request<MyRegistrationsResponse>('/api/my-registrations'),
+  getMyActivities: () => request<{ activities: ActivityWithCount[] }>('/api/my-activities'),
   getProfile: () => request<Profile | null>('/api/profile'),
   saveProfile: (data: {
     nickname?: string
