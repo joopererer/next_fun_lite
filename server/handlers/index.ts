@@ -24,7 +24,7 @@ import type { StorageAdapter } from '../storage/types'
 import { getOptionalUserId, getClerkDisplayName } from '../lib/clerkAuth'
 import { getProfileForUser } from './profile'
 import {
-  checkAdminAuth,
+  requireAdminAuth,
   errorResponse,
   getRegisteredCount,
   jsonResponse,
@@ -79,7 +79,8 @@ export async function handleCreateActivity(request: Request, env: EnvConfig, isP
     return jsonResponse(activity, 201)
   }
 
-  if (!checkAdminAuth(request, env)) return errorResponse('Unauthorized', 401)
+  const authErr = requireAdminAuth(request, env)
+  if (authErr) return authErr
 
   const activity = await storage.createActivity(buildAdminCreatePayload(body))
   return jsonResponse(activity, 201)
@@ -166,7 +167,8 @@ export async function handleGetActivitiesByIds(request: Request, env: EnvConfig)
 }
 
 export async function handleUpdateActivity(request: Request, env: EnvConfig, id: string): Promise<Response> {
-  if (!checkAdminAuth(request, env)) return errorResponse('Unauthorized', 401)
+  const authErr = requireAdminAuth(request, env)
+  if (authErr) return authErr
   const storage = createStorageAdapter(env)
   const body = await parseBody<Partial<Activity>>(request)
   if (body.dateEnd !== undefined && isEndTimeInPast(body.dateEnd)) {
@@ -186,14 +188,16 @@ export async function handleUpdateActivity(request: Request, env: EnvConfig, id:
 }
 
 export async function handleDeleteActivity(request: Request, env: EnvConfig, id: string): Promise<Response> {
-  if (!checkAdminAuth(request, env)) return errorResponse('Unauthorized', 401)
+  const authErr = requireAdminAuth(request, env)
+  if (authErr) return authErr
   const storage = createStorageAdapter(env)
   await storage.deleteActivity(id)
   return jsonResponse({ ok: true })
 }
 
 export async function handleGetRegistrations(request: Request, env: EnvConfig, activityId: string): Promise<Response> {
-  if (!checkAdminAuth(request, env)) return errorResponse('Unauthorized', 401)
+  const authErr = requireAdminAuth(request, env)
+  if (authErr) return authErr
   const storage = createStorageAdapter(env)
   const registrations = await storage.getRegistrations(activityId)
   return jsonResponse(registrations)
@@ -507,7 +511,8 @@ export async function handleCreateInfo(request: Request, env: EnvConfig): Promis
 }
 
 export async function handleAdminImport(request: Request, env: EnvConfig): Promise<Response> {
-  if (!checkAdminAuth(request, env)) return errorResponse('Unauthorized', 401)
+  const authErr = requireAdminAuth(request, env)
+  if (authErr) return authErr
 
   const body = await parseBody<{ rows?: ParsedImportRow[] }>(request)
   const rows = body.rows ?? []

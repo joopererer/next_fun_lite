@@ -1,17 +1,27 @@
 'use client'
 
-import { useState } from 'react'
-import { api, clearAdminPassword, getAdminPassword, setAdminPassword } from '../../lib/api'
+import { useEffect, useState } from 'react'
+import { ADMIN_AUTH_EXPIRED_EVENT, api, clearAdminPassword, setAdminPassword } from '../../lib/api'
 
 interface Props {
   children: React.ReactNode
 }
 
 export function AdminGate({ children }: Props) {
-  const [authed, setAuthed] = useState(!!getAdminPassword())
+  const [authed, setAuthed] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [checking, setChecking] = useState(false)
+
+  useEffect(() => {
+    const onExpired = () => {
+      clearAdminPassword()
+      setAuthed(false)
+      setError('管理员密码无效或已过期，请重新输入')
+    }
+    window.addEventListener(ADMIN_AUTH_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(ADMIN_AUTH_EXPIRED_EVENT, onExpired)
+  }, [])
 
   const handleLogin = async () => {
     if (!password.trim()) return
@@ -19,11 +29,12 @@ export function AdminGate({ children }: Props) {
     setError('')
     setAdminPassword(password.trim())
     try {
-      await api.getActivities()
+      await api.verifyAdmin()
       setAuthed(true)
-    } catch {
+      setPassword('')
+    } catch (err) {
       clearAdminPassword()
-      setError('密码错误')
+      setError(err instanceof Error ? err.message : '密码错误')
     } finally {
       setChecking(false)
     }
