@@ -35,7 +35,7 @@ export function HomeQuickActions() {
             className="btn-primary inline-flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3 sm:px-3.5 rounded-full"
           >
             <span>📢</span>
-            <span className="sm:hidden">资讯</span>
+            <span className="sm:hidden">发资讯</span>
             <span className="hidden sm:inline">发布资讯</span>
           </Link>
         </div>
