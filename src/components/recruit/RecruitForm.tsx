@@ -52,7 +52,7 @@ function initOrganizerContact(initial?: Partial<Activity>) {
 }
 
 interface Props {
-  mode: 'public' | 'admin'
+  mode: 'public' | 'admin' | 'organizer'
   initial?: Partial<Activity>
   sourceProposalId?: string
   sourceInfoId?: string
@@ -312,6 +312,14 @@ export function RecruitForm({
         const qr = await QRCode.toDataURL(url, { width: 200 })
         setQrDataUrl(qr)
         onSuccess?.(res.activity)
+      } else if (mode === 'organizer') {
+        if (!editId) {
+          alert('缺少活动 ID')
+          return
+        }
+        const result = await api.updateActivity(editId, data)
+        onSuccess?.(result)
+        alert('活动已更新')
       } else {
         const result = editId
           ? await api.updateActivity(editId, data)
@@ -533,7 +541,7 @@ export function RecruitForm({
         onLabelChange={setOrganizerContactLabel}
       />
       <button type="button" className="btn-primary w-full" onClick={handleSubmit} disabled={submitting}>
-        {submitting ? '保存中...' : editId ? '更新活动' : mode === 'public' ? '发布招募' : '创建活动'}
+        {submitting ? '保存中...' : editId ? (mode === 'organizer' ? '保存修改' : '更新活动') : mode === 'public' ? '发布招募' : '创建活动'}
       </button>
     </div>
   )

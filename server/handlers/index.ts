@@ -22,9 +22,15 @@ import { autoEndExpiredRecruitments, getActivityAfterLifecycle } from '../lib/ac
 import { createStorageAdapter } from '../storage'
 import type { StorageAdapter } from '../storage/types'
 import { getOptionalUserId, getClerkDisplayName } from '../lib/clerkAuth'
-import { getProfileForUser } from './profile'
+import { ensureProfileForUser, getProfileForUser } from './profile'
+import {
+  canOrganizerMutate,
+  filterOrganizerUpdate,
+  isActivityOrganizer,
+} from '../lib/activityMutateAuth'
 import {
   requireAdminAuth,
+  checkAdminAuth,
   errorResponse,
   getRegisteredCount,
   jsonResponse,
@@ -68,15 +74,21 @@ export async function handleCreateActivity(request: Request, env: EnvConfig, isP
 
     let payload = buildProposalPayload(body)
     const displayName = await getClerkDisplayName()
-    const profile = await getProfileForUser(userId, env)
+    const profile = await ensureProfileForUser(userId, env)
     payload = {
       ...payload,
-      organizerName: payload.organizerName || profile?.nickname || displayName,
-      organizerWechat: payload.organizerWechat || profile?.wechat || '',
+      organizerName: payload.organizerName || profile.nickname || displayName,
+      organizerWechat: payload.organizerWechat || profile.wechat || '',
       organizerId: userId,
     }
-    const activity = await storage.createActivity(payload)
-    return jsonResponse(activity, 201)
+    try {
+      const activity = await storage.createActivity(payload)
+      return jsonResponse(activity, 201)
+    } catch (err) {
+      console.error('create proposal failed:', err)
+      const message = err instanceof Error ? err.message : '创建提议失败'
+      return errorResponse(message, 500)
+    }
   }
 
   const authErr = requireAdminAuth(request, env)
@@ -106,13 +118,13 @@ export async function handleCreateRecruitment(request: Request, env: EnvConfig):
   }
 
   if (userId) {
-    const profile = await getProfileForUser(userId, env)
+    const profile = await ensureProfileForUser(userId, env)
     const displayName = await getClerkDisplayName()
     if (!payload.organizerName) {
       payload.organizerName = displayName
     }
     if (!payload.organizerWechat) {
-      payload.organizerWechat = profile?.wechat ?? ''
+      payload.organizerWechat = profile.wechat ?? ''
     }
     payload.organizerId = userId
   } else {
@@ -167,10 +179,48 @@ export async function handleGetActivitiesByIds(request: Request, env: EnvConfig)
 }
 
 export async function handleUpdateActivity(request: Request, env: EnvConfig, id: string): Promise<Response> {
-  const authErr = requireAdminAuth(request, env)
-  if (authErr) return authErr
   const storage = createStorageAdapter(env)
   const body = await parseBody<Partial<Activity>>(request)
+  const isAdmin = checkAdminAuth(request, env)
+
+  if (!isAdmin) {
+    const userId = await getOptionalUserId()
+    if (!userId) return errorResponse('Unauthorized', 401)
+    const before = await storage.getActivity(id)
+    if (!before) return errorResponse('Activity not found', 404)
+    if (!isActivityOrganizer(before, userId) || !canOrganizerMutate(before)) {
+      return errorResponse('Forbidden', 403)
+    }
+    const filtered = filterOrganizerUpdate(before, body)
+    if (Object.keys(filtered).length === 0) {
+      return errorResponse('No editable fields', 400)
+    }
+    if (filtered.dateEnd !== undefined && isEndTimeInPast(filtered.dateEnd)) {
+      return errorResponse(PAST_END_TIME_MESSAGE, 400)
+    }
+    if (filtered.infoDeadline && isEndTimeInPast(filtered.infoDeadline)) {
+      return errorResponse(PAST_END_TIME_MESSAGE, 400)
+    }
+    const nextStart = filtered.infoStartTime ?? before.infoStartTime
+    const nextDeadline = filtered.infoDeadline ?? before.infoDeadline
+    if (nextStart && nextDeadline) {
+      const start = new Date(nextStart).getTime()
+      const end = new Date(nextDeadline).getTime()
+      if (!Number.isNaN(start) && !Number.isNaN(end) && start >= end) {
+        return errorResponse('行动开始时间必须早于截止时间', 400)
+      }
+    }
+    try {
+      const activity = await storage.updateActivity(id, filtered)
+      void import('@/server/notifications/triggers').then(({ dispatchActivityNotifications }) =>
+        dispatchActivityNotifications(env, before, activity).catch(console.error),
+      )
+      return jsonResponse(await enrichActivity(storage, activity))
+    } catch {
+      return errorResponse('Activity not found', 404)
+    }
+  }
+
   if (body.dateEnd !== undefined && isEndTimeInPast(body.dateEnd)) {
     return errorResponse(PAST_END_TIME_MESSAGE, 400)
   }
@@ -188,9 +238,19 @@ export async function handleUpdateActivity(request: Request, env: EnvConfig, id:
 }
 
 export async function handleDeleteActivity(request: Request, env: EnvConfig, id: string): Promise<Response> {
-  const authErr = requireAdminAuth(request, env)
-  if (authErr) return authErr
   const storage = createStorageAdapter(env)
+  const isAdmin = checkAdminAuth(request, env)
+
+  if (!isAdmin) {
+    const userId = await getOptionalUserId()
+    if (!userId) return errorResponse('Unauthorized', 401)
+    const activity = await storage.getActivity(id)
+    if (!activity) return errorResponse('Activity not found', 404)
+    if (!isActivityOrganizer(activity, userId) || !canOrganizerMutate(activity)) {
+      return errorResponse('Forbidden', 403)
+    }
+  }
+
   await storage.deleteActivity(id)
   return jsonResponse({ ok: true })
 }
@@ -489,6 +549,9 @@ export async function handleFindSimilarProposals(request: Request, env: EnvConfi
 }
 
 export async function handleCreateInfo(request: Request, env: EnvConfig): Promise<Response> {
+  const userId = await getOptionalUserId()
+  if (!userId) return errorResponse('Unauthorized', 401)
+
   const storage = createStorageAdapter(env)
   const body = await parseBody<Partial<Activity>>(request)
 
@@ -506,8 +569,21 @@ export async function handleCreateInfo(request: Request, env: EnvConfig): Promis
     }
   }
 
-  const activity = await storage.createActivity(buildInfoPayload(body))
-  return jsonResponse(activity, 201)
+  const profile = await ensureProfileForUser(userId, env)
+  const displayName = await getClerkDisplayName()
+  const payload = buildInfoPayload(body)
+  try {
+    const activity = await storage.createActivity({
+      ...payload,
+      organizerId: userId,
+      organizerName: payload.organizerName || profile.nickname || displayName,
+    })
+    return jsonResponse(activity, 201)
+  } catch (err) {
+    console.error('create info failed:', err)
+    const message = err instanceof Error ? err.message : '发布资讯失败'
+    return errorResponse(message, 500)
+  }
 }
 
 export async function handleAdminImport(request: Request, env: EnvConfig): Promise<Response> {

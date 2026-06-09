@@ -1,4 +1,5 @@
 import type { Activity, CreateRecruitmentBody } from '../../shared/types'
+import { DEFAULT_INFO_ACTION_LABEL } from '../../shared/infoDefaults'
 import {
   syncOrganizerWechatFromContact,
   type OrganizerContactType,
@@ -143,7 +144,7 @@ export function buildInfoPayload(body: Partial<Activity>): Omit<Activity, 'id' |
     infoStartTime: body.infoStartTime ?? undefined,
     infoDeadline: body.infoDeadline ?? undefined,
     infoPrice: body.infoPrice?.trim() || undefined,
-    infoActionLabel: body.infoActionLabel?.trim() || undefined,
+    infoActionLabel: body.infoActionLabel?.trim() || DEFAULT_INFO_ACTION_LABEL,
     infoActionUrl: body.infoActionUrl?.trim() || undefined,
     ...pickExtendedFields(body),
   }

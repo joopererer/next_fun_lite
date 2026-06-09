@@ -25,6 +25,7 @@ import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
 import { formatOrganizerContactHint, resolveOrganizerContact } from '../lib/contact'
 import { isInfoPost } from '../../shared/infoVisibility'
 import { InfoEventSection } from '../components/InfoEventSection'
+import { OrganizerEditBar } from '../components/OrganizerEditBar'
 import { AddToCalendarButton } from '../components/AddToCalendarButton'
 import { buildActivityCalendarEvent } from '../lib/calendarEvents'
 
@@ -401,6 +402,10 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
   if (isInfoPost(activity)) {
     return shell(
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
+        <OrganizerEditBar
+          activity={activity}
+          onUpdated={(updated) => setActivity((prev) => (prev ? { ...prev, ...updated } : prev))}
+        />
         <InfoEventSection activity={activity} />
       </main>,
     )
@@ -455,6 +460,10 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
         <div className="mb-2">
           <ActivityBadge activity={{ ...activity, registeredCount: displayCount }} />
         </div>
+        <OrganizerEditBar
+          activity={activity}
+          onUpdated={(updated) => setActivity((prev) => (prev ? { ...prev, ...updated } : prev))}
+        />
         <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
 
         {inProgress && (

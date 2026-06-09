@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AddToCalendarButton } from './AddToCalendarButton'
 import type { Activity } from '../../shared/types'
+import { DEFAULT_INFO_ACTION_LABEL } from '../../shared/infoDefaults'
 import { buildInfoCalendarEvent } from '../lib/calendarEvents'
 import { formatEventDate } from '../lib/user'
 import {
@@ -29,7 +30,7 @@ export function InfoEventSection({ activity }: Props) {
   const statusLabel = getInfoTimeStatusLabel(phase, activity, now)
   const urgent = isInfoCountdownUrgent(phase, activity, now)
   const actionEnabled = isInfoActionEnabled(activity, now)
-  const actionLabel = activity.infoActionLabel || '查看详情'
+  const actionLabel = activity.infoActionLabel || DEFAULT_INFO_ACTION_LABEL
   const calendarEvent = buildInfoCalendarEvent(activity)
 
   return (

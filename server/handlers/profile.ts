@@ -68,3 +68,25 @@ export async function getProfileForUser(userId: string, env: EnvConfig): Promise
   if (!profile) return null
   return mapProfile(profile)
 }
+
+/** Ensures a profiles row exists before writing organizer_id FK on activities. */
+export async function ensureProfileForUser(userId: string, env: EnvConfig): Promise<Profile> {
+  const storage = createStorageAdapter(env)
+  const existing = await storage.getProfile(userId)
+  if (existing) return mapProfile(existing)
+
+  const user = await currentUser()
+  const email = user?.emailAddresses[0]?.emailAddress
+  const nickname =
+    user?.fullName?.trim() ||
+    user?.firstName?.trim() ||
+    email ||
+    '用户'
+
+  const profile = await storage.upsertProfile({
+    id: userId,
+    nickname,
+    email,
+  })
+  return mapProfile(profile)
+}

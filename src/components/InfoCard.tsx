@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AddToCalendarButton } from './AddToCalendarButton'
 import type { Activity } from '../../shared/types'
+import { DEFAULT_INFO_ACTION_LABEL } from '../../shared/infoDefaults'
 import { buildInfoCalendarEvent } from '../lib/calendarEvents'
 import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { formatEventDate } from '../lib/user'
@@ -37,7 +38,7 @@ export function InfoCard({ activity }: Props) {
       : activity.description
     : ''
 
-  const actionLabel = activity.infoActionLabel || '查看详情'
+  const actionLabel = activity.infoActionLabel || DEFAULT_INFO_ACTION_LABEL
   const calendarEvent = buildInfoCalendarEvent(activity)
 
   return (

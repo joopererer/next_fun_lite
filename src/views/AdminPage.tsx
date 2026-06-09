@@ -10,6 +10,8 @@ import { CancelActivityModal } from '../components/admin/CancelActivityModal'
 import { EndActivityModal } from '../components/admin/EndActivityModal'
 import { KanbanBoard } from '../components/admin/KanbanBoard'
 import { RecruitForm } from '../components/recruit/RecruitForm'
+import { InfoForm } from '../components/info/InfoForm'
+import { isInfoPost } from '../lib/infoVisibility'
 
 const ImportTab = dynamic(
   () => import('../components/admin/ImportTab').then((m) => m.ImportTab),
@@ -108,7 +110,7 @@ export function AdminPage() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'kanban', label: '看板视图' },
     { id: 'list', label: '列表视图' },
-    { id: 'create', label: editId ? '编辑活动' : '新建活动' },
+    { id: 'create', label: editId && editActivity && isInfoPost(editActivity) ? '编辑资讯' : editId ? '编辑活动' : '新建活动' },
     { id: 'import', label: '📥 导入' },
     { id: 'export', label: '📤 导出' },
   ]
@@ -161,12 +163,24 @@ export function AdminPage() {
             />
           )}
           {tab === 'create' && (
-            <RecruitForm
-              mode="admin"
-              initial={editActivity ?? undefined}
-              editId={editId ?? undefined}
-              onSuccess={load}
-            />
+            editActivity && isInfoPost(editActivity) && editId ? (
+              <InfoForm
+                mode="edit"
+                initial={editActivity}
+                editId={editId}
+                onSuccess={() => {
+                  load()
+                  alert('资讯已更新')
+                }}
+              />
+            ) : (
+              <RecruitForm
+                mode="admin"
+                initial={editActivity ?? undefined}
+                editId={editId ?? undefined}
+                onSuccess={load}
+              />
+            )
           )}
           {tab === 'import' && (
             <ImportTab
