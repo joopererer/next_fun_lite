@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/src/lib/api'
-import {
-  NOTIFICATION_DRAWER_OPEN_EVENT,
-  NOTIFICATION_DRAWER_STATE_EVENT,
-  emitNotificationDrawerState,
-} from '@/src/lib/notificationUiEvents'
+import { NOTIFICATION_DRAWER_OPEN_EVENT, emitNotificationDrawerState } from '@/src/lib/notificationUiEvents'
 import { NotificationDrawer } from './NotificationDrawer'
 
 export function NotificationBell() {
