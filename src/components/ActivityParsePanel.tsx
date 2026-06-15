@@ -8,7 +8,7 @@ import { ImageUploadZone } from './ImageUploadZone'
 type InputMode = 'link' | 'image' | 'manual'
 
 interface Props {
-  onParsed: (data: Partial<ParseResult> & { sourceUrl?: string }) => void
+  onParsed: (data: Partial<ParseResult>) => void
   className?: string
 }
 
@@ -20,7 +20,7 @@ export function ActivityParsePanel({ onParsed, className = '' }: Props) {
   const [parseSuccess, setParseSuccess] = useState<boolean | null>(null)
 
   const applyResult = (data: Partial<ParseResult>, sourceUrl?: string) => {
-    onParsed({ ...data, sourceUrl })
+    onParsed({ ...data, ...(sourceUrl ? { sourceUrl } : {}) })
   }
 
   const handleParseUrl = async () => {

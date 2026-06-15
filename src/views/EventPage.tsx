@@ -419,7 +419,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
           <p className="font-bold text-lg mb-3">❌ 本次活动已取消</p>
           <p className="text-sm mb-1">原因：{getCancelReasonLabel(activity.cancelReason)}</p>
           {activity.cancelNote && (
-            <p className="text-sm whitespace-pre-wrap mb-4 opacity-90">{activity.cancelNote}</p>
+            <p className="text-sm whitespace-pre-wrap break-words mb-4 opacity-90">{activity.cancelNote}</p>
           )}
           <p className="text-sm mb-3">如有疑问请联系发起人：</p>
           <p className="font-medium mb-3">{cancelContact.message}</p>
@@ -443,7 +443,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
             <p>📍 {activity.location || '地点待定'}</p>
           </div>
           {activity.description && (
-            <p className="text-gray-700 whitespace-pre-wrap mb-6">{activity.description}</p>
+            <p className="text-gray-700 whitespace-pre-wrap break-words mb-6">{activity.description}</p>
           )}
         </div>
         <Link href="/" className="btn-primary block text-center w-full mt-6">回到首页</Link>
@@ -533,7 +533,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
 
         {activity.description && (
           <div className="mb-6">
-            <p className={`text-gray-700 whitespace-pre-wrap ${expanded ? '' : 'line-clamp-4'}`}>
+            <p className={`text-gray-700 whitespace-pre-wrap break-words ${expanded ? '' : 'line-clamp-4'}`}>
               {activity.description}
             </p>
             {activity.description.length > 120 && (
@@ -562,7 +562,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
         {endedSuccess && activity.recap && (
           <div className="bg-purple-50 rounded-xl p-4 mb-8">
             <p className="font-medium text-purple-800 mb-2">📝 活动回顾</p>
-            <p className="text-sm text-purple-900 whitespace-pre-wrap">{activity.recap}</p>
+            <p className="text-sm text-purple-900 whitespace-pre-wrap break-words">{activity.recap}</p>
             {activity.recapImages && (
               <div className="flex gap-2 mt-3 overflow-x-auto">
                 {activity.recapImages.split('\n').filter(Boolean).map((url) => (

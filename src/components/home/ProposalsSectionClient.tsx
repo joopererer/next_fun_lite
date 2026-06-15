@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityCategory, ActivityWithCount } from '@/shared/types'
+import { ACTIVITY_CATEGORIES } from '@/src/lib/categories'
 import { CategoryFilter, matchesCategoryFilter } from '@/src/components/CategoryFilter'
 import { ProposalCard } from '@/src/components/ProposalCard'
 import { sortProposalsForHome } from '@/src/lib/proposals'
@@ -13,6 +14,17 @@ interface Props {
 
 export function ProposalsSectionClient({ proposedAll }: Props) {
   const [filter, setFilter] = useState<ActivityCategory[]>([])
+
+  const counts = useMemo(
+    () =>
+      Object.fromEntries(
+        ACTIVITY_CATEGORIES.map((c) => [
+          c.value,
+          proposedAll.filter((a) => a.category === c.value).length,
+        ]),
+      ) as Partial<Record<ActivityCategory, number>>,
+    [proposedAll],
+  )
 
   const filteredAll = proposedAll.filter((a) => matchesCategoryFilter(a.category, filter))
   const filtered = sortProposalsForHome(filteredAll)
@@ -28,7 +40,7 @@ export function ProposalsSectionClient({ proposedAll }: Props) {
         <p className="text-sm text-gray-500 mt-1">有好去处？告诉大家</p>
       </div>
       <div className="mb-3">
-        <CategoryFilter selected={filter} onChange={setFilter} />
+        <CategoryFilter selected={filter} onChange={setFilter} counts={counts} totalCount={proposedAll.length} />
       </div>
       {filtered.length === 0 ? (
         <p className="text-gray-400 text-sm">

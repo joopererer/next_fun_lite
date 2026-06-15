@@ -126,9 +126,11 @@ export function RecruitForm({
 
   useEffect(() => {
     if (!isSignedIn || !clerkUser) return
-    setOrganizerName(getClerkDisplayName(clerkUser))
+    const clerkName = getClerkDisplayName(clerkUser)
+    setOrganizerName(clerkName)
     api.getProfile()
       .then((profile) => {
+        if (profile?.nickname?.trim()) setOrganizerName(profile.nickname.trim())
         if (profile?.wechat) {
           setOrganizerContactType('wechat')
           setOrganizerContact(profile.wechat)
@@ -221,7 +223,7 @@ export function RecruitForm({
     setters[field]?.(value)
   }
 
-  const handleParsed = (data: Partial<ParseResult> & { sourceUrl?: string }) => {
+  const handleParsed = (data: Partial<ParseResult>) => {
     applyParseResult(data, {
       setTitle,
       setDescription,

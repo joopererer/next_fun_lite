@@ -166,6 +166,7 @@ export interface RecruitmentResponse {
 export interface ParseResult {
   title?: string | null
   description?: string | null
+  sourceUrl?: string | null
   date?: string | null
   dateEnd?: string | null
   location?: string | null

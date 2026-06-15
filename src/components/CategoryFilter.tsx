@@ -6,9 +6,11 @@ import { ACTIVITY_CATEGORIES } from '../lib/categories'
 interface Props {
   selected: ActivityCategory[]
   onChange: (selected: ActivityCategory[]) => void
+  counts?: Partial<Record<ActivityCategory, number>>
+  totalCount?: number
 }
 
-export function CategoryFilter({ selected, onChange }: Props) {
+export function CategoryFilter({ selected, onChange, counts, totalCount }: Props) {
   const toggle = (cat: ActivityCategory) => {
     if (selected.includes(cat)) {
       onChange(selected.filter((c) => c !== cat))
@@ -28,10 +30,12 @@ export function CategoryFilter({ selected, onChange }: Props) {
         }`}
         onClick={() => onChange([])}
       >
-        全部
+        全部{totalCount != null ? <span className={`ml-1 text-xs ${allSelected ? 'opacity-80' : 'text-gray-400'}`}>{totalCount}</span> : null}
       </button>
       {ACTIVITY_CATEGORIES.map((c) => {
         const active = selected.includes(c.value)
+        const count = counts?.[c.value]
+        if (count === 0) return null
         return (
           <button
             key={c.value}
@@ -41,7 +45,7 @@ export function CategoryFilter({ selected, onChange }: Props) {
             }`}
             onClick={() => toggle(c.value)}
           >
-            {c.emoji} {c.label}
+            {c.emoji} {c.label}{count != null ? <span className={`ml-1 text-xs ${active ? 'opacity-80' : 'text-gray-400'}`}>{count}</span> : null}
           </button>
         )
       })}

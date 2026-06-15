@@ -66,7 +66,7 @@ export function ProposePage() {
       .catch(() => {})
   }, [clerkUser])
 
-  const applyParsed = (data: Partial<ParseResult> & { sourceUrl?: string }) => {
+  const applyParsed = (data: Partial<ParseResult>) => {
     applyParseResult(data, {
       setTitle,
       setDescription,
