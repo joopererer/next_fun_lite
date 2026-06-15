@@ -7,6 +7,7 @@ import { ModalSheet } from '../ui/ModalSheet'
 import { formatRegistrationContactLine } from '../../lib/contact'
 import { api } from '../../lib/api'
 import { notifyActivitiesChanged } from '../../lib/activityEvents'
+import { useT } from '../../i18n/LanguageContext'
 
 interface Props {
   activityId: string
@@ -35,6 +36,7 @@ function profileContact(profile: Profile): { contactType: RegistrantContactType;
 }
 
 export function AdminRegistrationManager({ activityId, registrations, onMutated, onExport }: Props) {
+  const t = useT()
   const active = registrations.filter((r) => !r.cancelledAt)
   const [formMode, setFormMode] = useState<FormMode | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -147,7 +149,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
       setFormMode(null)
       onMutated()
     } catch (err) {
-      alert(err instanceof Error ? err.message : '保存失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setSaving(false)
     }
@@ -162,7 +164,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
       setConfirmDelete(null)
       onMutated()
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setDeletingId(null)
     }
@@ -171,31 +173,31 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold">报名名单</h2>
+        <h2 className="font-semibold">{t.adminRegistrationList}</h2>
         <div className="flex gap-2">
           <button type="button" className="btn-primary text-sm" onClick={openAdd}>
-            添加报名
+            {t.adminAddRegistration}
           </button>
           <button type="button" className="btn-secondary text-sm" onClick={onExport}>
-            导出名单
+            {t.adminExportList}
           </button>
         </div>
       </div>
 
       {active.length === 0 ? (
-        <p className="text-gray-400 text-sm">暂无报名</p>
+        <p className="text-gray-400 text-sm">{t.adminNoRegistrations}</p>
       ) : (
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-gray-500">
-                  <th className="py-2 pr-3">姓名</th>
-                  <th className="py-2 pr-3">联系方式</th>
-                  <th className="py-2 pr-3">人数</th>
-                  <th className="py-2 pr-3">备注</th>
-                  <th className="py-2 pr-3">时间</th>
-                  <th className="py-2 w-24">操作</th>
+                  <th className="py-2 pr-3">{t.nameLabel}</th>
+                  <th className="py-2 pr-3">{t.contactLabel}</th>
+                  <th className="py-2 pr-3">{t.participantCount}</th>
+                  <th className="py-2 pr-3">{t.noteLabel}</th>
+                  <th className="py-2 pr-3">{t.eventDate}</th>
+                  <th className="py-2 w-24"></th>
                 </tr>
               </thead>
               <tbody>
@@ -205,7 +207,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
                       {r.name}
                       {r.userId && (
                         <span className="ml-1.5 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
-                          账户
+                          {t.adminLinkedUser}
                         </span>
                       )}
                     </td>
@@ -213,7 +215,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
                     <td className="py-2.5 pr-3">{r.participantCount}</td>
                     <td className="py-2.5 pr-3">{r.note || '-'}</td>
                     <td className="py-2.5 pr-3 text-gray-400">
-                      {new Date(r.registeredAt).toLocaleString('zh-CN')}
+                      {new Date(r.registeredAt).toLocaleString()}
                     </td>
                     <td className="py-2.5">
                       <div className="flex gap-2">
@@ -222,7 +224,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
                           className="text-green-600 hover:underline"
                           onClick={() => openEdit(r)}
                         >
-                          编辑
+                          {t.edit}
                         </button>
                         <button
                           type="button"
@@ -230,7 +232,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
                           disabled={deletingId === r.id}
                           onClick={() => setConfirmDelete(r)}
                         >
-                          删除
+                          {t.delete}
                         </button>
                       </div>
                     </td>
@@ -240,7 +242,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
             </table>
           </div>
           <p className="text-sm text-gray-500 mt-3">
-            合计：{active.length} 人报名，共 {active.reduce((s, r) => s + r.participantCount, 0)} 人参与
+            {t.adminTotalSummary(active.length, active.reduce((s, r) => s + r.participantCount, 0))}
           </p>
         </>
       )}
@@ -248,14 +250,14 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
       <ModalSheet
         open={formMode !== null}
         onClose={closeForm}
-        title={formMode?.kind === 'edit' ? '编辑报名' : '添加报名'}
+        title={formMode?.kind === 'edit' ? `${t.edit}${t.adminRegistrationList}` : t.adminAddRegistration}
         footer={
           <div className="flex gap-2">
             <button type="button" className="btn-secondary flex-1" onClick={closeForm} disabled={saving}>
-              取消
+              {t.cancel}
             </button>
             <button type="button" className="btn-primary flex-1" onClick={handleSave} disabled={saving}>
-              {saving ? '保存中…' : '保存'}
+              {saving ? t.saving : t.save}
             </button>
           </div>
         }
@@ -263,15 +265,15 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
         <div className="space-y-3">
           <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 space-y-2">
             <label className="text-xs sm:text-sm text-gray-600 block">
-              关联平台用户（选填）
+              {t.adminSearchUser} ({t.optional})
             </label>
             {linkedUserId ? (
               <div className="flex items-center justify-between gap-2 text-sm">
                 <span className="text-green-700">
-                  已关联：{linkedLabel || '平台用户'}
+                  {t.adminUserLinked(linkedLabel || '—')}
                 </span>
                 <button type="button" className="text-gray-500 hover:text-red-500 shrink-0" onClick={clearLink}>
-                  取消关联
+                  {t.adminUnlinkUser}
                 </button>
               </div>
             ) : (
@@ -280,10 +282,10 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
                   className="input-field text-sm"
                   value={profileQuery}
                   onChange={(e) => setProfileQuery(e.target.value)}
-                  placeholder="搜索昵称或微信号（至少 2 字）"
+                  placeholder={t.adminSearchPlaceholder}
                 />
                 {profileSearching && (
-                  <p className="text-xs text-gray-400">搜索中…</p>
+                  <p className="text-xs text-gray-400">{t.adminSearchSearching}</p>
                 )}
                 {profileResults.length > 0 && (
                   <ul className="border border-gray-200 rounded-xl bg-white overflow-hidden divide-y divide-gray-100">
@@ -296,7 +298,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
                         >
                           <span className="font-medium">{profile.nickname}</span>
                           {profile.wechat && (
-                            <span className="text-gray-500 ml-2">微信 {profile.wechat}</span>
+                            <span className="text-gray-500 ml-2">{profile.wechat}</span>
                           )}
                           {!profile.wechat && profile.email && (
                             <span className="text-gray-500 ml-2">{profile.email}</span>
@@ -307,22 +309,20 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
                   </ul>
                 )}
                 {profileQuery.trim().length >= 2 && !profileSearching && profileResults.length === 0 && (
-                  <p className="text-xs text-gray-400">未找到匹配用户，可继续手动填写下方信息</p>
+                  <p className="text-xs text-gray-400">{t.adminSearchNoResult}</p>
                 )}
               </>
             )}
-            <p className="text-xs text-gray-400">
-              选中后会自动填入姓名和联系方式，也可不关联、纯手动填写。
-            </p>
+            <p className="text-xs text-gray-400">{t.adminLinkHint}</p>
           </div>
 
           <div>
-            <label className="text-xs sm:text-sm text-gray-600 mb-1.5 block">姓名 *</label>
+            <label className="text-xs sm:text-sm text-gray-600 mb-1.5 block">{t.nameLabel}</label>
             <input
               className="input-field"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="报名人姓名"
+              placeholder={t.namePlaceholder}
             />
           </div>
           <RegistrantContactFields
@@ -334,7 +334,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
             onLabelChange={(contactLabel) => setForm((f) => ({ ...f, contactLabel }))}
           />
           <div>
-            <label className="text-xs sm:text-sm text-gray-600 mb-1.5 block">参与人数</label>
+            <label className="text-xs sm:text-sm text-gray-600 mb-1.5 block">{t.participantCount}</label>
             <input
               className="input-field"
               type="number"
@@ -346,12 +346,12 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
             />
           </div>
           <div>
-            <label className="text-xs sm:text-sm text-gray-600 mb-1.5 block">备注</label>
+            <label className="text-xs sm:text-sm text-gray-600 mb-1.5 block">{t.noteLabel}</label>
             <textarea
               className="input-field min-h-[72px]"
               value={form.note}
               onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-              placeholder="选填"
+              placeholder={t.optional}
             />
           </div>
         </div>
@@ -360,7 +360,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
       <ModalSheet
         open={confirmDelete !== null}
         onClose={() => !deletingId && setConfirmDelete(null)}
-        title="确认删除"
+        title={t.adminConfirmDeleteTitle}
         footer={
           <div className="flex gap-2">
             <button
@@ -369,7 +369,7 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
               onClick={() => setConfirmDelete(null)}
               disabled={!!deletingId}
             >
-              取消
+              {t.cancel}
             </button>
             <button
               type="button"
@@ -377,13 +377,13 @@ export function AdminRegistrationManager({ activityId, registrations, onMutated,
               onClick={handleDelete}
               disabled={!!deletingId}
             >
-              {deletingId ? '删除中…' : '确认删除'}
+              {deletingId ? t.processing : t.confirm}
             </button>
           </div>
         }
       >
         <p className="text-sm text-gray-600">
-          确定要移除 <strong>{confirmDelete?.name}</strong> 的报名吗？此操作不可撤销。
+          {confirmDelete ? t.adminConfirmDeleteBody(confirmDelete.name) : ''}
         </p>
       </ModalSheet>
     </>

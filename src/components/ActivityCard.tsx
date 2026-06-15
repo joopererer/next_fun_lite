@@ -4,8 +4,9 @@ import { useUser } from '@clerk/nextjs'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { ActivityWithCount } from '../../shared/types'
-import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
-import { canRegister, getRegistrationButtonLabel } from '../lib/activityPhase'
+import { getCategoryEmoji } from '../lib/categories'
+import { getCatLabel } from './CategoryFilter'
+import { canRegister, getActivityBadge } from '../lib/activityPhase'
 import { formatEventDate } from '../lib/user'
 import { CapacityBar } from './CapacityBar'
 import { RegistrationPreview } from './RegistrationPreview'
@@ -16,6 +17,7 @@ import { getClerkDisplayName } from '../lib/displayName'
 import { notifyActivitiesChanged } from '../lib/activityEvents'
 import { saveGuestRegistration } from '../lib/guestRegistrations'
 import { addRegistrationId } from '../lib/registrations'
+import { useT } from '../i18n/LanguageContext'
 
 interface Props {
   activity: ActivityWithCount
@@ -25,6 +27,7 @@ interface Props {
 
 export function ActivityCard({ activity, registered = false, onRegistered }: Props) {
   const { isSignedIn, isLoaded, user: clerkUser } = useUser()
+  const t = useT()
   const [localRegistered, setLocalRegistered] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [participantCount, setParticipantCount] = useState(1)
@@ -35,7 +38,16 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
 
   const isRegistered = registered || localRegistered
   const open = canRegister(activity)
-  const buttonLabel = getRegistrationButtonLabel(activity, isRegistered)
+
+  const buttonLabel = (() => {
+    if (isRegistered) return t.alreadyRegistered
+    if (!open) {
+      const badge = getActivityBadge(activity)
+      if (badge === 'full') return t.full
+      return t.registrationClosed
+    }
+    return t.registerButton
+  })()
 
   const [summary, setSummary] = useState<{ total: number; previews: Array<{ name: string; avatarUrl: string | null }> }>({
     total: 0,
@@ -76,7 +88,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
   }) => {
     if (isRegistered || !open) return
     if (activity.maxParticipants != null && localRegisteredCount + participantCount > activity.maxParticipants) {
-      alert('名额不足')
+      alert(t.full)
       return
     }
 
@@ -115,7 +127,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
       setLocalRegisteredCount(previousCount)
       setLocalRegistered(false)
       setShowModal(true)
-      alert(err instanceof Error ? err.message : '报名失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setSubmitting(false)
     }
@@ -127,7 +139,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
         <Link href={`/event/${activity.id}`} className="block flex-1 group">
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
             <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block">
-              {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+              {getCategoryEmoji(activity.category)} {getCatLabel(t, activity.category)}
             </span>
             <ActivityBadge activity={{ ...activity, registeredCount: localRegisteredCount }} />
           </div>
@@ -135,7 +147,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
             {activity.title}
           </h3>
           <p className="text-sm text-gray-500 mb-2">
-            {formatEventDate(activity.date)} · {activity.location || '地点待定'}
+            {formatEventDate(activity.date)} · {activity.location || t.locationTbd}
           </p>
           <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.75rem]">
             {activity.description || ' '}
@@ -151,12 +163,12 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
           {activity.fee && (
             <p className="text-sm text-gray-600 mb-1">💰 {activity.fee}</p>
           )}
-          <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName || '管理员'} 发起</p>
-          <p className="text-xs text-green-600 mb-3">点击查看详情 →</p>
+          <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName || 'Admin'} {t.launchedBy}</p>
+          <p className="text-xs text-green-600 mb-3">{t.clickDetails}</p>
         </Link>
         {isRegistered ? (
           <div className="mt-auto text-center rounded-xl py-2.5 font-medium bg-gray-100 text-gray-500 border border-gray-200">
-            已报名
+            {t.alreadyRegistered}
           </div>
         ) : (
           <button

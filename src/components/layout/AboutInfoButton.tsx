@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ABOUT_INTRO, ABOUT_SECTIONS } from '../../../shared/aboutContent'
+import { useT } from '@/src/i18n/LanguageContext'
 
 const iconButtonClass =
   'flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-50 transition-colors'
@@ -10,6 +10,7 @@ const iconButtonClass =
 export function AboutInfoButton() {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const t = useT()
 
   useEffect(() => setMounted(true), [])
 
@@ -45,14 +46,14 @@ export function AboutInfoButton() {
           <div className="shrink-0 border-b border-gray-100 px-6 py-4 flex items-start justify-between gap-3 bg-white">
             <div>
               <h2 id="about-dialog-title" className="text-lg font-bold text-green-700">
-                关于快乐制造局
+                {t.aboutTitle}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">使用说明与权限</p>
+              <p className="text-sm text-gray-500 mt-1">{t.aboutPermissionsHint}</p>
             </div>
             <button
               type="button"
               className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-              aria-label="关闭"
+              aria-label={t.close}
               onClick={() => setOpen(false)}
             >
               ✕
@@ -60,9 +61,9 @@ export function AboutInfoButton() {
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-5 space-y-5 text-sm text-gray-700 leading-relaxed">
-            <p>{ABOUT_INTRO}</p>
+            <p>{t.aboutIntro}</p>
 
-            {ABOUT_SECTIONS.map((section) => (
+            {t.aboutSections.map((section) => (
               <section key={section.title}>
                 <h3 className="font-semibold text-gray-900 mb-2">{section.title}</h3>
                 <ul className="space-y-1.5 list-disc pl-5 text-gray-600">
@@ -83,8 +84,8 @@ export function AboutInfoButton() {
       <button
         type="button"
         className={iconButtonClass}
-        aria-label="关于快乐制造局"
-        title="关于"
+        aria-label={t.aboutTitle}
+        title={t.about}
         onClick={() => setOpen(true)}
       >
         <svg

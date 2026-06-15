@@ -6,6 +6,7 @@ import type { ActivityCategory, ActivityWithCount } from '@/shared/types'
 import { ACTIVITY_CATEGORIES } from '@/src/lib/categories'
 import { CategoryFilter, matchesCategoryFilter } from '@/src/components/CategoryFilter'
 import { ProposalCard } from '@/src/components/ProposalCard'
+import { useT } from '@/src/i18n/LanguageContext'
 import { sortProposalsForHome } from '@/src/lib/proposals'
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 
 export function ProposalsSectionClient({ proposedAll }: Props) {
   const [filter, setFilter] = useState<ActivityCategory[]>([])
+  const t = useT()
 
   const counts = useMemo(
     () =>
@@ -34,17 +36,17 @@ export function ProposalsSectionClient({ proposedAll }: Props) {
     <section className="mb-8 sm:mb-10">
       <div className="mb-4">
         <h2 className="section-title mb-0">
-          💡 提议池
+          {t.sectionProposals}
           <span className="text-base font-normal text-gray-400 ml-2">({filteredAll.length})</span>
         </h2>
-        <p className="text-sm text-gray-500 mt-1">有好去处？告诉大家</p>
+        <p className="text-sm text-gray-500 mt-1">{t.sectionProposalsSubtitle}</p>
       </div>
       <div className="mb-3">
         <CategoryFilter selected={filter} onChange={setFilter} counts={counts} totalCount={proposedAll.length} />
       </div>
       {filtered.length === 0 ? (
         <p className="text-gray-400 text-sm">
-          {filter.length > 0 ? '暂无该类型活动' : '还没有提议，来做第一个吧！'}
+          {filter.length > 0 ? t.noProposalsFilter : t.noProposals}
         </p>
       ) : (
         <div className="space-y-3 sm:space-y-4">
@@ -54,7 +56,7 @@ export function ProposalsSectionClient({ proposedAll }: Props) {
           {proposedOverflow && filter.length === 0 && (
             <div className="text-right pt-2">
               <Link href="/proposals" className="text-sm text-green-600 hover:underline">
-                查看全部提议（共{proposedAll.length}条）→
+                {t.viewAllProposals}（{proposedAll.length}）
               </Link>
             </div>
           )}

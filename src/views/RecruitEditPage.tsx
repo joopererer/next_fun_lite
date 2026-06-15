@@ -45,7 +45,7 @@ export function RecruitEditPage() {
   return (
     <div className="min-h-screen flex flex-col pb-32">
       <Header />
-      <SignInGate message="登录后即可编辑招募">
+      <SignInGate>
         {loading ? (
           <div className="text-center text-gray-400 py-16">加载中...</div>
         ) : forbidden || !activity ? (

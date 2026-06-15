@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useT } from '@/src/i18n/LanguageContext'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import { HeaderUserMenu } from './HeaderUserMenu'
 
 interface HeaderProps {
@@ -9,6 +11,7 @@ interface HeaderProps {
 }
 
 export function Header({ embedded = false }: HeaderProps) {
+  const t = useT()
   return (
     <header
       className={
@@ -19,9 +22,12 @@ export function Header({ embedded = false }: HeaderProps) {
     >
       <div className="max-w-3xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
         <Link href="/" className="block">
-          <h1 className="text-base sm:text-lg font-bold text-green-700">🎉 快乐制造局</h1>
+          <h1 className="text-base sm:text-lg font-bold text-green-700">{t.siteName}</h1>
         </Link>
-        <HeaderUserMenu />
+        <div className="flex items-center gap-1">
+          <LanguageSwitcher />
+          <HeaderUserMenu />
+        </div>
       </div>
     </header>
   )

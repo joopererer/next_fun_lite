@@ -8,6 +8,7 @@ import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { formatEventDate } from '../lib/user'
 import { api, getCancelUrl } from '../lib/api'
 import { ModalSheet } from './ui/ModalSheet'
+import { useT } from '../i18n/LanguageContext'
 
 interface Props {
   activity: ActivityWithCount
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function MyRegistrationCard({ activity, registration, onCancel }: Props) {
+  const t = useT()
   const [showConfirm, setShowConfirm] = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
@@ -34,7 +36,7 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
       setShowConfirm(false)
       onCancel?.()
     } catch (err) {
-      alert(err instanceof Error ? err.message : '取消失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setCancelling(false)
     }
@@ -43,19 +45,21 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
   if (isEndedCancelled(activity.status)) {
     return (
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-red-200 border-l-4 border-l-red-500">
-        <p className="text-sm text-red-600 font-medium mb-2">❌ 活动已取消</p>
+        <p className="text-sm text-red-600 font-medium mb-2">{t.activityCancelled}</p>
         <h3 className="font-semibold text-base mb-2">{activity.title}</h3>
         <p className="text-sm text-gray-600 mb-1">
-          原因：{getCancelReasonLabel(activity.cancelReason)}
+          {t.cancelReason(getCancelReasonLabel(activity.cancelReason))}
         </p>
         {activity.cancelNote && (
           <p className="text-sm text-gray-500 mb-2 whitespace-pre-wrap">{activity.cancelNote}</p>
         )}
-        <p className="text-xs text-gray-500 mb-3">
-          如有疑问联系：{activity.organizerWechat}
-        </p>
+        {activity.organizerWechat && (
+          <p className="text-xs text-gray-500 mb-3">
+            {t.contactOrganizer(activity.organizerWechat)}
+          </p>
+        )}
         <Link href={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline">
-          查看详情
+          {t.viewDetails}
         </Link>
       </div>
     )
@@ -69,14 +73,14 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
         </span>
         <h3 className="font-semibold text-base mb-2">{activity.title}</h3>
         <p className="text-sm text-gray-500 mb-1">📅 {formatEventDate(activity.date)}</p>
-        <p className="text-sm text-gray-500 mb-1">📍 {activity.location || '地点待定'}</p>
-        <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName} 发起</p>
+        <p className="text-sm text-gray-500 mb-1">📍 {activity.location || t.locationTbd}</p>
+        <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName} {t.launchedBy}</p>
         {registration && (
-          <p className="text-sm text-green-700 mb-3">你的报名：{registration.participantCount}人</p>
+          <p className="text-sm text-green-700 mb-3">{t.yourRegistration(registration.participantCount)}</p>
         )}
         <div className="flex items-center justify-between">
           <Link href={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline">
-            查看详情
+            {t.viewDetails}
           </Link>
           {canCancel && (
             isGuestRegistration && registration.cancelToken ? (
@@ -84,7 +88,7 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
                 href={getCancelUrl(registration.cancelToken)}
                 className="text-xs text-gray-400 hover:text-red-500"
               >
-                取消报名
+                {t.cancelRegistrationLink}
               </Link>
             ) : (
               <button
@@ -92,7 +96,7 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
                 className="text-xs text-gray-400 hover:text-red-500"
                 onClick={() => setShowConfirm(true)}
               >
-                取消报名
+                {t.cancelRegistrationLink}
               </button>
             )
           )}
@@ -103,20 +107,20 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
         <ModalSheet
           open={showConfirm}
           onClose={() => setShowConfirm(false)}
-          title={`确认取消「${activity.title}」的报名？`}
+          title={t.cancelPageTitle}
           footer={
             <div className="flex gap-2 sm:gap-3">
               <button type="button" className="btn-primary flex-1" onClick={handleCancel} disabled={cancelling}>
-                {cancelling ? '处理中...' : '确认取消'}
+                {cancelling ? t.processing : t.cancelConfirmButton}
               </button>
               <button type="button" className="btn-secondary flex-1" onClick={() => setShowConfirm(false)}>
-                返回
+                {t.back}
               </button>
             </div>
           }
         >
           <p className="text-xs sm:text-sm text-gray-500">
-            取消后名额将释放，如需重新参加请再次报名。
+            {t.cancelConfirmQuestion}
           </p>
         </ModalSheet>
       )}

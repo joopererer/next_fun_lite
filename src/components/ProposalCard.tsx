@@ -6,13 +6,15 @@ import Link from 'next/link'
 import type { ActivityWithCount } from '../../shared/types'
 import { api } from '../lib/api'
 import { formatEventDate } from '../lib/user'
-import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
+import { getCategoryEmoji } from '../lib/categories'
+import { getCatLabel } from './CategoryFilter'
 import { getFeeLevelEmoji, getFeeLevelLabel } from '../lib/feeLevel'
 import { formatRelativeTime, getSourceIcon } from '../lib/user'
 import { getDeviceId } from '../utils/device'
 import { isProposalExpired } from '../lib/activityPhase'
 import { ActivityBadge } from './ActivityBadge'
 import { ItineraryBlock } from './ItineraryBlock'
+import { useT } from '../i18n/LanguageContext'
 
 interface Props {
   activity: ActivityWithCount
@@ -21,6 +23,7 @@ interface Props {
 
 export function ProposalCard({ activity, onInterestUpdate }: Props) {
   const { isSignedIn, isLoaded, user: clerkUser } = useUser()
+  const t = useT()
   const [interested, setInterested] = useState(false)
   const [count, setCount] = useState(activity.interestedCount ?? 0)
   const [expanded, setExpanded] = useState(false)
@@ -71,7 +74,7 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
       setCount(nextCount)
       onInterestUpdate?.(activity.id, nextCount)
     } catch (err) {
-      alert(err instanceof Error ? err.message : '操作失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setLoading(false)
     }
@@ -87,7 +90,7 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
       <Link href={`/event/${activity.id}`} className="block group">
         <div className="flex items-start gap-2 mb-1 flex-wrap">
           <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full shrink-0">
-            {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+            {getCategoryEmoji(activity.category)} {getCatLabel(t, activity.category)}
           </span>
           <ActivityBadge activity={activity} />
         </div>
@@ -96,7 +99,7 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
         </h3>
       </Link>
       <p className="text-xs text-gray-400 mb-2">
-        {activity.organizerName || '匿名'} · {formatRelativeTime(activity.createdAt)}
+        {activity.organizerName || '—'} · {formatRelativeTime(activity.createdAt)}
       </p>
       <p className={`text-sm text-gray-600 mb-2 ${expanded ? '' : 'line-clamp-2'}`}>
         {activity.description}
@@ -119,17 +122,17 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
           {activity.notes && <p className="whitespace-pre-wrap text-gray-500">{activity.notes}</p>}
           {linkedRecruits.length > 0 && (
             <div className="mt-3 pt-3 border-t border-green-100">
-              <p className="text-sm font-medium text-green-800 mb-2">🟢 已有招募活动：</p>
+              <p className="text-sm font-medium text-green-800 mb-2">🟢 {t.linkedRecruits}：</p>
               <ul className="space-y-2">
                 {linkedRecruits.map((r) => (
                   <li key={r.id} className="text-sm">
                     · {r.title}{' '}
                     <span className="text-gray-500">
                       {formatEventDate(r.date).replace(/ .*/, '')}{' '}
-                      {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}人
+                      {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}
                     </span>{' '}
                     <Link href={`/event/${r.id}`} className="text-green-600 underline">
-                      去报名 →
+                      {t.registerButton} →
                     </Link>
                   </li>
                 ))}
@@ -138,11 +141,11 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
           )}
           {activity.sourceUrl && (
             <a href={activity.sourceUrl} target="_blank" rel="noreferrer" className="text-green-600 underline block truncate">
-              🔗 参考链接
+              🔗 {t.fieldSourceUrl}
             </a>
           )}
           <Link href={`/event/${activity.id}`} className="text-green-600 text-sm inline-block mt-1">
-            查看完整详情 →
+            {t.viewDetails}
           </Link>
         </div>
       )}
@@ -151,9 +154,9 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
         className="text-green-600 text-xs mb-3"
         onClick={() => setExpanded(!expanded)}
       >
-        {expanded ? '收起 ▴' : '展开更多 ▾'}
+        {expanded ? `${t.showLess} ▴` : `${t.showMore} ▾`}
       </button>
-      <p className="text-sm text-green-700 mb-3">💡 {count}人感兴趣</p>
+      <p className="text-sm text-green-700 mb-3">💡 {t.interestedCount(count)}</p>
       <div className="flex gap-2">
         <button
           type="button"
@@ -165,19 +168,19 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
           onClick={toggleInterest}
           disabled={loading || expired}
         >
-          {loading ? '...' : expired ? '信息已过期' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
+          {loading ? '...' : expired ? t.badge_proposal_expired : interested ? `❤️ ${t.notInterested}` : `❤️ ${t.interested}`}
         </button>
         {isSignedIn ? (
           <Link
             href={`/recruit/new?from=${activity.id}`}
             className="flex-1 btn-secondary text-sm text-center py-2"
           >
-            发起招募 →
+            {t.proposeToRecruit} →
           </Link>
         ) : (
           <SignInButton mode="modal">
             <button type="button" className="flex-1 btn-secondary text-sm py-2">
-              发起招募 →
+              {t.proposeToRecruit} →
             </button>
           </SignInButton>
         )}

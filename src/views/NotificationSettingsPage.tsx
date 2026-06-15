@@ -7,6 +7,7 @@ import type { Profile } from '@/shared/types'
 import { api } from '@/src/lib/api'
 import { Header } from '@/src/components/layout/Header'
 import { Footer } from '@/src/components/layout/Footer'
+import { useT } from '@/src/i18n/LanguageContext'
 
 export function NotificationSettingsPage() {
   const { user, isLoaded } = useUser()
@@ -18,6 +19,7 @@ export function NotificationSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  const t = useT()
   const loginEmail = user?.emailAddresses[0]?.emailAddress ?? ''
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function NotificationSettingsPage() {
       setProfile(updated)
       setSaved(true)
     } catch (err) {
-      alert(err instanceof Error ? err.message : '保存失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setSaving(false)
     }
@@ -60,46 +62,46 @@ export function NotificationSettingsPage() {
       <Header />
       <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6">
         <Link href="/" className="text-sm text-gray-500 hover:text-green-700 mb-4 inline-block">
-          ← 返回首页
+          ← {t.backToHome}
         </Link>
-        <h1 className="text-xl font-bold text-gray-900 mb-6">📬 通知设置</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-6">{t.notifSettingsTitle}</h1>
 
         <div className="space-y-6">
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">通知邮箱</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.notifEmail}</label>
             <input
               className="input-field"
               type="email"
               value={notificationEmail}
               onChange={(e) => setNotificationEmail(e.target.value)}
-              placeholder={loginEmail || '留空则使用登录邮箱'}
+              placeholder={t.notifEmailPlaceholder(loginEmail)}
             />
             {loginEmail && (
-              <p className="text-xs text-gray-500 mt-1">留空则使用登录邮箱（{loginEmail}）</p>
+              <p className="text-xs text-gray-500 mt-1">{t.notifEmailHint(loginEmail)}</p>
             )}
           </div>
 
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-2">邮件通知</legend>
+            <legend className="text-sm font-medium text-gray-700 mb-2">{t.notifEmailSection}</legend>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
                 checked={notifyRegistrationChange}
                 onChange={(e) => setNotifyRegistrationChange(e.target.checked)}
               />
-              我报名的活动：取消或时间/地点变更时发邮件
+              {t.notifOnActivityChange}
             </label>
           </fieldset>
 
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-2">站内通知</legend>
+            <legend className="text-sm font-medium text-gray-700 mb-2">{t.notifInAppSection}</legend>
             <label className="flex items-center gap-2 text-sm mb-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={notifyProposalRecruiting}
                 onChange={(e) => setNotifyProposalRecruiting(e.target.checked)}
               />
-              我感兴趣的提议转为招募时提醒
+              {t.notifOnProposalRecruit}
             </label>
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
@@ -107,19 +109,17 @@ export function NotificationSettingsPage() {
                 checked={notifyNewRecruit}
                 onChange={(e) => setNotifyNewRecruit(e.target.checked)}
               />
-              有新招募发布时提醒
+              {t.notifOnNewRecruit}
             </label>
           </fieldset>
 
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm text-gray-600">
-            <p className="font-medium text-gray-700 mb-1">日历提醒</p>
-            <p>
-              报名活动或关注资讯时，可点击「加入日历」按钮，手动添加到你的日历，获得系统级提醒。
-            </p>
+            <p className="font-medium text-gray-700 mb-1">{t.notifCalendarTitle}</p>
+            <p>{t.notifCalendarDesc}</p>
           </div>
 
           <button type="button" className="btn-primary w-full" onClick={handleSave} disabled={saving}>
-            {saving ? '保存中...' : saved ? '已保存 ✓' : '保存设置'}
+            {saving ? t.saving : saved ? t.saved : t.saveSettings}
           </button>
         </div>
       </main>

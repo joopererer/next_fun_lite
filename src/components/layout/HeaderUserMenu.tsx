@@ -4,6 +4,7 @@ import { SignInButton, UserButton, useUser } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PROFILE_EDIT_EVENT } from '../../lib/profileEvents'
+import { useT } from '@/src/i18n/LanguageContext'
 import { AdminNavIcon } from './AdminNavIcon'
 import { AboutInfoButton } from './AboutInfoButton'
 import { NotificationBell } from '../notifications/NotificationBell'
@@ -14,12 +15,13 @@ const adminLinkClass =
 export function HeaderUserMenu() {
   const router = useRouter()
   const { isSignedIn } = useUser()
+  const t = useT()
 
   if (!isSignedIn) {
     return (
       <div className="flex items-center gap-1">
         <AboutInfoButton />
-        <Link href="/admin" className={adminLinkClass} aria-label="管理后台" title="管理后台">
+        <Link href="/admin" className={adminLinkClass} aria-label={t.adminPanel} title={t.adminPanel}>
           <AdminNavIcon />
         </Link>
         <SignInButton mode="modal">
@@ -27,7 +29,7 @@ export function HeaderUserMenu() {
             type="button"
             className="text-sm text-green-700 font-medium px-3 py-1.5 rounded-lg hover:bg-green-50"
           >
-            登录 / 注册
+            {t.signIn}
           </button>
         </SignInButton>
       </div>
@@ -38,23 +40,23 @@ export function HeaderUserMenu() {
     <div className="flex items-center gap-1">
       <AboutInfoButton />
       <NotificationBell />
-      <Link href="/admin" className={adminLinkClass} aria-label="管理后台" title="管理后台">
+      <Link href="/admin" className={adminLinkClass} aria-label={t.adminPanel} title={t.adminPanel}>
         <AdminNavIcon />
       </Link>
       <UserButton>
         <UserButton.MenuItems>
           <UserButton.Action
-            label="编辑资料"
+            label={t.editProfile}
             labelIcon={<span aria-hidden>✏️</span>}
             onClick={() => window.dispatchEvent(new CustomEvent(PROFILE_EDIT_EVENT))}
           />
           <UserButton.Action
-            label="通知设置"
+            label={t.notificationSettings}
             labelIcon={<span aria-hidden>📬</span>}
             onClick={() => router.push('/settings/notifications')}
           />
           <UserButton.Action
-            label="我的报名"
+            label={t.myRegistrations}
             labelIcon={<span aria-hidden>📋</span>}
             onClick={() => router.push('/my')}
           />
