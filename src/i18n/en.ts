@@ -189,6 +189,21 @@ export const en: Translations = {
   cancelParticipantCount: 'Participants',
 
   // ── notification settings ──
+  // ── notification drawer / bell / banner ──
+  notifDrawerTitle: '🔔 Notifications',
+  notifMarkAllRead: 'Mark all as read',
+  notifEmpty: 'No notifications',
+  notifViewLink: 'View →',
+  notifView: 'View',
+  notifNewCount: (n) => `You have ${n} new notification${n === 1 ? '' : 's'}`,
+
+  // ── relative time ──
+  timeJustNow: 'just now',
+  timeMinutesAgo: (n) => `${n} min ago`,
+  timeHoursAgo: (n) => `${n}h ago`,
+  timeDaysAgo: (n) => `${n}d ago`,
+  dateTbd: 'TBD',
+
   notifSettingsTitle: '📬 Notification Settings',
   notifEmail: 'Notification Email',
   notifEmailPlaceholder: (email) => email || 'Leave empty to use login email',

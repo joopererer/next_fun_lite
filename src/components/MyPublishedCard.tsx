@@ -6,7 +6,7 @@ import { getStatusLabel, isEndedCancelled, isEndedSuccess, isTerminalStatus } fr
 import { isInfoPost, isProposalPost } from '@/src/lib/infoVisibility'
 import { getOrganizerEditLink } from '@/src/lib/organizerEdit'
 import { formatEventDate } from '@/src/lib/user'
-import { useT } from '@/src/i18n/LanguageContext'
+import { useT, useLang } from '@/src/i18n/LanguageContext'
 
 interface Props {
   activity: ActivityWithCount
@@ -24,18 +24,19 @@ function useTypeLabel(activity: ActivityWithCount): string {
 
 export function MyPublishedCard({ activity }: Props) {
   const t = useT()
+  const { lang } = useLang()
   const typeLabel = useTypeLabel(activity)
   const editHref = getOrganizerEditLink(activity)
 
   const subtitle = (() => {
     if (isInfoPost(activity)) {
-      if (activity.infoStartTime) return formatEventDate(activity.infoStartTime)
-      if (activity.infoDeadline) return t.statusDeadline(formatEventDate(activity.infoDeadline))
-      return formatEventDate(activity.createdAt)
+      if (activity.infoStartTime) return formatEventDate(activity.infoStartTime, lang)
+      if (activity.infoDeadline) return t.statusDeadline(formatEventDate(activity.infoDeadline, lang))
+      return formatEventDate(activity.createdAt, lang)
     }
-    if (activity.date) return formatEventDate(activity.date)
+    if (activity.date) return formatEventDate(activity.date, lang)
     if (activity.location) return activity.location
-    return formatEventDate(activity.createdAt)
+    return formatEventDate(activity.createdAt, lang)
   })()
 
   const extra = (() => {

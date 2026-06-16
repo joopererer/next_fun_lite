@@ -188,6 +188,21 @@ export interface Translations {
   cancelRegistrant: string
   cancelParticipantCount: string
 
+  // ── notification drawer / bell / banner ──
+  notifDrawerTitle: string
+  notifMarkAllRead: string
+  notifEmpty: string
+  notifViewLink: string
+  notifView: string
+  notifNewCount: (n: number) => string
+
+  // ── relative time ──
+  timeJustNow: string
+  timeMinutesAgo: (n: number) => string
+  timeHoursAgo: (n: number) => string
+  timeDaysAgo: (n: number) => string
+  dateTbd: string
+
   // ── notification settings ──
   notifSettingsTitle: string
   notifEmail: string

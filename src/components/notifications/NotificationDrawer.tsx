@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import type { Notification } from '@/shared/types'
 import { api } from '@/src/lib/api'
 import { formatRelativeTime } from '@/src/lib/user'
+import { useT } from '@/src/i18n/LanguageContext'
+import { useLang } from '@/src/i18n/LanguageContext'
 
 interface Props {
   open: boolean
@@ -16,6 +18,8 @@ interface Props {
 
 export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
   const router = useRouter()
+  const t = useT()
+  const { lang } = useLang()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -90,16 +94,16 @@ export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
       <button
         type="button"
         className="absolute inset-0 bg-black/30"
-        aria-label="关闭通知"
+        aria-label={t.close}
         onClick={onClose}
       />
       <aside
         className="absolute top-0 right-0 bottom-0 w-full max-w-sm bg-white shadow-xl flex flex-col min-h-0"
         role="dialog"
-        aria-label="通知列表"
+        aria-label={t.notifDrawerTitle}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-          <h2 className="font-semibold text-gray-900">🔔 通知</h2>
+          <h2 className="font-semibold text-gray-900">{t.notifDrawerTitle}</h2>
           <div className="flex items-center gap-2">
             {notifications.some((n) => !n.isRead) && (
               <button
@@ -107,7 +111,7 @@ export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
                 className="text-xs text-green-700 hover:underline"
                 onClick={handleMarkAllRead}
               >
-                全部标为已读
+                {t.notifMarkAllRead}
               </button>
             )}
             <button type="button" className="text-gray-400 hover:text-gray-600 px-2" onClick={onClose}>
@@ -117,9 +121,9 @@ export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
-          {loading && <p className="text-sm text-gray-500 p-4">加载中...</p>}
+          {loading && <p className="text-sm text-gray-500 p-4">{t.loading}</p>}
           {!loading && notifications.length === 0 && (
-            <p className="text-sm text-gray-500 p-4">没有通知</p>
+            <p className="text-sm text-gray-500 p-4">{t.notifEmpty}</p>
           )}
           {!loading &&
             notifications.map((n) => (
@@ -138,9 +142,9 @@ export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
                       {n.title}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
-                    <p className="text-xs text-gray-400 mt-1">{formatRelativeTime(n.createdAt)}</p>
+                    <p className="text-xs text-gray-400 mt-1">{formatRelativeTime(n.createdAt, lang)}</p>
                     {n.actionUrl && (
-                      <span className="text-xs text-green-700 mt-1 inline-block">查看 →</span>
+                      <span className="text-xs text-green-700 mt-1 inline-block">{t.notifViewLink}</span>
                     )}
                   </div>
                 </div>
@@ -150,7 +154,7 @@ export function NotificationDrawer({ open, onClose, onUnreadChange }: Props) {
 
         <div className="p-3 border-t border-gray-100 text-center shrink-0">
           <Link href="/settings/notifications" className="text-xs text-gray-500 hover:text-green-700" onClick={onClose}>
-            通知设置
+            {t.notificationSettings}
           </Link>
         </div>
       </aside>

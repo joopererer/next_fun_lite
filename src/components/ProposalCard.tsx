@@ -14,7 +14,7 @@ import { getDeviceId } from '../utils/device'
 import { isProposalExpired } from '../lib/activityPhase'
 import { ActivityBadge } from './ActivityBadge'
 import { ItineraryBlock } from './ItineraryBlock'
-import { useT } from '../i18n/LanguageContext'
+import { useT, useLang } from '../i18n/LanguageContext'
 
 interface Props {
   activity: ActivityWithCount
@@ -24,6 +24,7 @@ interface Props {
 export function ProposalCard({ activity, onInterestUpdate }: Props) {
   const { isSignedIn, isLoaded, user: clerkUser } = useUser()
   const t = useT()
+  const { lang } = useLang()
   const [interested, setInterested] = useState(false)
   const [count, setCount] = useState(activity.interestedCount ?? 0)
   const [expanded, setExpanded] = useState(false)
@@ -99,7 +100,7 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
         </h3>
       </Link>
       <p className="text-xs text-gray-400 mb-2">
-        {activity.organizerName || '—'} · {formatRelativeTime(activity.createdAt)}
+        {activity.organizerName || '—'} · {formatRelativeTime(activity.createdAt, lang)}
       </p>
       <p className={`text-sm text-gray-600 mb-2 ${expanded ? '' : 'line-clamp-2'}`}>
         {activity.description}
@@ -128,7 +129,7 @@ export function ProposalCard({ activity, onInterestUpdate }: Props) {
                   <li key={r.id} className="text-sm">
                     · {r.title}{' '}
                     <span className="text-gray-500">
-                      {formatEventDate(r.date).replace(/ .*/, '')}{' '}
+                      {formatEventDate(r.date, lang).replace(/ .*/, '')}{' '}
                       {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}
                     </span>{' '}
                     <Link href={`/event/${r.id}`} className="text-green-600 underline">

@@ -17,7 +17,7 @@ import { getClerkDisplayName } from '../lib/displayName'
 import { notifyActivitiesChanged } from '../lib/activityEvents'
 import { saveGuestRegistration } from '../lib/guestRegistrations'
 import { addRegistrationId } from '../lib/registrations'
-import { useT } from '../i18n/LanguageContext'
+import { useT, useLang } from '../i18n/LanguageContext'
 
 interface Props {
   activity: ActivityWithCount
@@ -28,6 +28,7 @@ interface Props {
 export function ActivityCard({ activity, registered = false, onRegistered }: Props) {
   const { isSignedIn, isLoaded, user: clerkUser } = useUser()
   const t = useT()
+  const { lang } = useLang()
   const [localRegistered, setLocalRegistered] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [participantCount, setParticipantCount] = useState(1)
@@ -147,7 +148,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
             {activity.title}
           </h3>
           <p className="text-sm text-gray-500 mb-2">
-            {formatEventDate(activity.date)} · {activity.location || t.locationTbd}
+            {formatEventDate(activity.date, lang)} · {activity.location || t.locationTbd}
           </p>
           <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.75rem]">
             {activity.description || ' '}

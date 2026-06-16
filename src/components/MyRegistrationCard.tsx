@@ -8,7 +8,7 @@ import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
 import { formatEventDate } from '../lib/user'
 import { api, getCancelUrl } from '../lib/api'
 import { ModalSheet } from './ui/ModalSheet'
-import { useT } from '../i18n/LanguageContext'
+import { useT, useLang } from '../i18n/LanguageContext'
 
 interface Props {
   activity: ActivityWithCount
@@ -18,6 +18,7 @@ interface Props {
 
 export function MyRegistrationCard({ activity, registration, onCancel }: Props) {
   const t = useT()
+  const { lang } = useLang()
   const [showConfirm, setShowConfirm] = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
@@ -72,7 +73,7 @@ export function MyRegistrationCard({ activity, registration, onCancel }: Props) 
           {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
         </span>
         <h3 className="font-semibold text-base mb-2">{activity.title}</h3>
-        <p className="text-sm text-gray-500 mb-1">📅 {formatEventDate(activity.date)}</p>
+        <p className="text-sm text-gray-500 mb-1">📅 {formatEventDate(activity.date, lang)}</p>
         <p className="text-sm text-gray-500 mb-1">📍 {activity.location || t.locationTbd}</p>
         <p className="text-sm text-gray-500 mb-2">👤 {activity.organizerName} {t.launchedBy}</p>
         {registration && (

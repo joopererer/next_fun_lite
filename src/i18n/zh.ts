@@ -189,6 +189,21 @@ export const zh: Translations = {
   cancelParticipantCount: '参与人数',
 
   // ── notification settings ──
+  // ── notification drawer / bell / banner ──
+  notifDrawerTitle: '🔔 通知',
+  notifMarkAllRead: '全部标为已读',
+  notifEmpty: '没有通知',
+  notifViewLink: '查看 →',
+  notifView: '查看',
+  notifNewCount: (n) => `你有 ${n} 条新通知`,
+
+  // ── relative time ──
+  timeJustNow: '刚刚',
+  timeMinutesAgo: (n) => `${n}分钟前`,
+  timeHoursAgo: (n) => `${n}小时前`,
+  timeDaysAgo: (n) => `${n}天前`,
+  dateTbd: '时间待定',
+
   notifSettingsTitle: '📬 通知设置',
   notifEmail: '通知邮箱',
   notifEmailPlaceholder: (email) => email || '留空则使用登录邮箱',

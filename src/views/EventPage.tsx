@@ -20,7 +20,7 @@ import { ActivityBadge } from '../components/ActivityBadge'
 import { getDeviceId } from '../utils/device'
 import { canRegister, getActivityBadge, isInProgress, isProposalExpired } from '../lib/activityPhase'
 import { notifyActivitiesChanged } from '../lib/activityEvents'
-import { useT } from '../i18n/LanguageContext'
+import { useT, useLang } from '../i18n/LanguageContext'
 import { getCatLabel } from '../components/CategoryFilter'
 import { saveGuestRegistration, removeGuestRegistration, getGuestRegistrations } from '../lib/guestRegistrations'
 import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
@@ -66,6 +66,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
   const [linkedRecruits, setLinkedRecruits] = useState<ActivityWithCount[]>([])
 
   const t = useT()
+  const { lang } = useLang()
   const displayName = profile?.nickname || getClerkDisplayName(clerkUser)
 
   useEffect(() => {
@@ -443,7 +444,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
           </span>
           <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
           <div className="space-y-2 text-sm text-gray-600 mb-6">
-            <p>📅 {formatEventDate(activity.date)}</p>
+            <p>📅 {formatEventDate(activity.date, lang)}</p>
             <p>📍 {activity.location || t.locationTbd}</p>
           </div>
           {activity.description && (
@@ -489,7 +490,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
         )}
 
         <div className="space-y-2 text-sm text-gray-600 mb-6">
-          <p>📅 {formatEventDate(activity.date)}</p>
+          <p>📅 {formatEventDate(activity.date, lang)}</p>
           <p>📍 {t.eventLocation}：{activity.location || t.locationTbd}</p>
           {activity.meetingLocation && (
             <p>🚉 {activity.meetingLocation}{activity.meetingTime ? ` ${activity.meetingTime}` : ''}</p>
@@ -516,7 +517,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
                   <li key={r.id} className="text-sm">
                     · {r.title}{' '}
                     <span className="text-gray-500">
-                      {formatEventDate(r.date).replace(/ .*/, '')}{' '}
+                      {formatEventDate(r.date, lang).replace(/ .*/, '')}{' '}
                       {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}
                     </span>{' '}
                     <Link href={`/event/${r.id}`} className="text-green-600 underline">
