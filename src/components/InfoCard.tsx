@@ -6,7 +6,8 @@ import { AddToCalendarButton } from './AddToCalendarButton'
 import type { Activity } from '../../shared/types'
 import { DEFAULT_INFO_ACTION_LABEL } from '../../shared/infoDefaults'
 import { buildInfoCalendarEvent } from '../lib/calendarEvents'
-import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
+import { getCategoryEmoji } from '../lib/categories'
+import { getCatLabel } from './CategoryFilter'
 import { formatEventDate } from '../lib/user'
 import {
   getInfoTimePhase,
@@ -14,12 +15,15 @@ import {
   isInfoActionEnabled,
   isInfoCountdownUrgent,
 } from '../lib/infoTiming'
+import { useT, useLang } from '../i18n/LanguageContext'
 
 interface Props {
   activity: Activity
 }
 
 export function InfoCard({ activity }: Props) {
+  const t = useT()
+  const { lang } = useLang()
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -45,13 +49,13 @@ export function InfoCard({ activity }: Props) {
     <article className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2 mb-2">
         <span className="text-xs text-gray-500">
-          {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+          {getCategoryEmoji(activity.category)} {getCatLabel(t, activity.category)}
         </span>
       </div>
       <h3 className="font-semibold text-lg mb-1">{activity.title}</h3>
       <p className="text-xs text-gray-500 mb-2">
         {activity.organizerName}
-        {activity.createdAt && ` · ${formatEventDate(activity.createdAt)}`}
+        {activity.createdAt && ` · ${formatEventDate(activity.createdAt, lang)}`}
       </p>
       {preview && <p className="text-sm text-gray-600 mb-3">{preview}</p>}
       {activity.infoPrice && (
@@ -104,10 +108,10 @@ export function InfoCard({ activity }: Props) {
           href={`/recruit/new?from_info=${activity.id}`}
           className="btn-secondary text-sm"
         >
-          我抢到了，发起组团
+          {t.proposeToRecruit}
         </Link>
         <Link href={`/event/${activity.id}`} className="text-sm text-green-600 hover:underline self-center">
-          详情
+          {t.viewInfo}
         </Link>
       </div>
     </article>

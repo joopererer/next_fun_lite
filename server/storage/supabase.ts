@@ -38,21 +38,28 @@ export class SupabaseAdapter implements StorageAdapter {
   async getActivities(): Promise<Activity[]> {
     const { data, error } = await this.db
       .from('activities')
-      .select('*')
+      .select('*, organizer:profiles!organizer_id(nickname)')
       .order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
   }
 
   async getActivity(id: string): Promise<Activity | null> {
-    const { data, error } = await this.db.from('activities').select('*').eq('id', id).single()
+    const { data, error } = await this.db
+      .from('activities')
+      .select('*, organizer:profiles!organizer_id(nickname)')
+      .eq('id', id)
+      .single()
     if (error) return null
     return this.mapActivity(data as ActivityRow)
   }
 
   async getActivitiesByIds(ids: string[]): Promise<Activity[]> {
     if (ids.length === 0) return []
-    const { data, error } = await this.db.from('activities').select('*').in('id', ids)
+    const { data, error } = await this.db
+      .from('activities')
+      .select('*, organizer:profiles!organizer_id(nickname)')
+      .in('id', ids)
     if (error) throw error
     return (data ?? []).map((row) => this.mapActivity(row as ActivityRow))
   }
@@ -60,7 +67,7 @@ export class SupabaseAdapter implements StorageAdapter {
   async getActivitiesByOrganizer(userId: string): Promise<Activity[]> {
     const { data, error } = await this.db
       .from('activities')
-      .select('*')
+      .select('*, organizer:profiles!organizer_id(nickname)')
       .eq('organizer_id', userId)
       .order('created_at', { ascending: false })
     if (error) throw error
@@ -527,7 +534,7 @@ export class SupabaseAdapter implements StorageAdapter {
       fee: String(row.fee ?? ''),
       feeLevel: row.fee_level as Activity['feeLevel'],
       notes: String(row.notes ?? ''),
-      organizerName: String(row.organizer_name ?? ''),
+      organizerName: String((row.organizer as { nickname?: string } | null)?.nickname ?? row.organizer_name ?? ''),
       organizerWechat: String(row.organizer_wechat ?? ''),
       organizerContactType: row.organizer_contact_type as Activity['organizerContactType'],
       organizerContact: row.organizer_contact ? String(row.organizer_contact) : undefined,

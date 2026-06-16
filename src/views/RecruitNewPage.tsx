@@ -47,7 +47,7 @@ export function RecruitNewPage() {
   return (
     <div className="min-h-screen flex flex-col pb-24">
       <Header />
-      <SignInGate message="登录后即可发起招募">
+      <SignInGate>
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
         <h1 className="text-2xl font-bold mb-1">发起招募 🎯</h1>
         <p className="text-gray-500 text-sm mb-6">填写活动详情，创建公开报名链接</p>

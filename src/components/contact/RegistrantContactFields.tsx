@@ -1,6 +1,7 @@
 'use client'
 
 import type { RegistrantContactType } from '../../../shared/types'
+import { useT } from '../../i18n/LanguageContext'
 
 interface Props {
   contactType: RegistrantContactType
@@ -11,12 +12,6 @@ interface Props {
   onLabelChange: (value: string) => void
 }
 
-const OPTIONS: { value: RegistrantContactType; label: string; placeholder: string }[] = [
-  { value: 'wechat', label: '微信号', placeholder: '你的微信号' },
-  { value: 'email', label: '邮箱', placeholder: 'your@email.com' },
-  { value: 'other', label: '其他', placeholder: '如 Instagram、手机号' },
-]
-
 export function RegistrantContactFields({
   contactType,
   contactValue,
@@ -25,11 +20,19 @@ export function RegistrantContactFields({
   onValueChange,
   onLabelChange,
 }: Props) {
+  const t = useT()
+
+  const OPTIONS: { value: RegistrantContactType; label: string; placeholder: string }[] = [
+    { value: 'wechat', label: t.contactWechat, placeholder: t.wechatPlaceholder },
+    { value: 'email', label: t.contactEmail, placeholder: t.emailPlaceholder },
+    { value: 'other', label: t.contactOther, placeholder: t.otherPlaceholder },
+  ]
+
   const current = OPTIONS.find((o) => o.value === contactType) ?? OPTIONS[0]
 
   return (
     <div>
-      <label className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2 block">联系方式 *</label>
+      <label className="text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2 block">{t.contactLabel} *</label>
       <div className="space-y-1.5 sm:space-y-2 mb-2 sm:mb-3">
         {OPTIONS.map((opt) => (
           <label
@@ -54,7 +57,7 @@ export function RegistrantContactFields({
           className="input-field mb-2 text-sm"
           value={contactLabel}
           onChange={(e) => onLabelChange(e.target.value)}
-          placeholder="类型说明（选填），如 Instagram"
+          placeholder={t.contactOtherPlaceholder}
         />
       )}
       <input

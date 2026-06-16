@@ -32,6 +32,7 @@ import { getClerkDisplayName } from '../../lib/displayName'
 import { buildRecruitGroupMessage } from '../../lib/recruitShareMessage'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../lib/validateSchedule'
 import { ActivityParsePanel } from '../ActivityParsePanel'
+import { useT } from '../../i18n/LanguageContext'
 import { DiningFields } from './DiningFields'
 import { ParticipantLimitFields } from './ParticipantLimitFields'
 import { SportsFields } from './SportsFields'
@@ -74,6 +75,7 @@ export function RecruitForm({
   onSuccess,
 }: Props) {
   const { isSignedIn, user: clerkUser } = useUser()
+  const t = useT()
   const dynamicRef = useRef<HTMLDivElement>(null)
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -126,9 +128,11 @@ export function RecruitForm({
 
   useEffect(() => {
     if (!isSignedIn || !clerkUser) return
-    setOrganizerName(getClerkDisplayName(clerkUser))
+    const clerkName = getClerkDisplayName(clerkUser)
+    setOrganizerName(clerkName)
     api.getProfile()
       .then((profile) => {
+        if (profile?.nickname?.trim()) setOrganizerName(profile.nickname.trim())
         if (profile?.wechat) {
           setOrganizerContactType('wechat')
           setOrganizerContact(profile.wechat)
@@ -221,7 +225,7 @@ export function RecruitForm({
     setters[field]?.(value)
   }
 
-  const handleParsed = (data: Partial<ParseResult> & { sourceUrl?: string }) => {
+  const handleParsed = (data: Partial<ParseResult>) => {
     applyParseResult(data, {
       setTitle,
       setDescription,
@@ -359,37 +363,26 @@ export function RecruitForm({
     return (
       <div className="text-center py-8 page-enter">
         <div className="text-4xl mb-3">✅</div>
-        <h3 className="text-xl font-bold mb-4">招募已创建</h3>
+        <h3 className="text-xl font-bold mb-4">{t.recruitCreated}</h3>
         {sourceProposalId && (sourceInterestedCount ?? 0) > 0 && (
           <div className="bg-blue-50 text-blue-900 text-sm rounded-xl p-4 mb-4 text-left">
             <p className="font-medium mb-1">
-              💡 原提议「{sourceProposalTitle}」有 {sourceInterestedCount} 人曾表示感兴趣
+              💡 {t.interestedCount(sourceInterestedCount ?? 0)}
             </p>
-            <p className="text-blue-800/80">可复制下方群消息，发到微信群提醒他们来报名（不会自动替他们报名）。</p>
           </div>
         )}
-        <p className="text-sm text-gray-600 mb-2 break-all">报名链接：{url}</p>
+        <p className="text-sm text-gray-600 mb-2 break-all">{t.recruitLink}：{url}</p>
         <div className="flex gap-3 justify-center mb-4 flex-wrap">
           <button type="button" className="btn-primary" onClick={() => navigator.clipboard.writeText(url)}>
-            复制链接
+            {t.copyLink}
           </button>
           <button type="button" className="btn-secondary" onClick={() => navigator.clipboard.writeText(groupMessage)}>
-            复制群消息
+            {t.copyGroupMessage}
           </button>
-          {created.organizerContactType === 'wechat' && created.organizerContact && (
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => navigator.clipboard.writeText(created.organizerContact!)}
-            >
-              复制微信号
-            </button>
-          )}
         </div>
-        <p className="text-sm text-gray-500 mb-4">分享链接到微信群，让朋友扫码报名</p>
+        <p className="text-sm text-gray-500 mb-4">{t.shareQR}</p>
         {qrDataUrl && (
           <div>
-            <p className="text-sm text-gray-500 mb-2">报名二维码</p>
             <img src={qrDataUrl} alt="QR Code" className="mx-auto rounded-xl" />
           </div>
         )}
@@ -544,7 +537,7 @@ export function RecruitForm({
         onLabelChange={setOrganizerContactLabel}
       />
       <button type="button" className="btn-primary w-full" onClick={handleSubmit} disabled={submitting}>
-        {submitting ? '保存中...' : editId ? (mode === 'organizer' ? '保存修改' : '更新活动') : mode === 'public' ? '发布招募' : '创建活动'}
+        {submitting ? t.saving : editId ? t.save : t.recruitTitle}
       </button>
     </div>
   )

@@ -12,14 +12,16 @@ import { RegistrationModal } from '../components/RegistrationModal'
 import { RegistrationPreview } from '../components/RegistrationPreview'
 import { api, getCancelUrl } from '../lib/api'
 import { getCancelReasonLabel, isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
-import { getCategoryEmoji, getCategoryLabel } from '../lib/categories'
+import { getCategoryEmoji } from '../lib/categories'
 import { getClerkDisplayName } from '../lib/displayName'
 import { formatEventDate } from '../lib/user'
 import { CapacityBar } from '../components/CapacityBar'
 import { ActivityBadge } from '../components/ActivityBadge'
 import { getDeviceId } from '../utils/device'
-import { canRegister, getRegistrationButtonLabel, isInProgress, isProposalExpired } from '../lib/activityPhase'
+import { canRegister, getActivityBadge, isInProgress, isProposalExpired } from '../lib/activityPhase'
 import { notifyActivitiesChanged } from '../lib/activityEvents'
+import { useT, useLang } from '../i18n/LanguageContext'
+import { getCatLabel } from '../components/CategoryFilter'
 import { saveGuestRegistration, removeGuestRegistration, getGuestRegistrations } from '../lib/guestRegistrations'
 import { addRegistrationId, removeRegistrationId } from '../lib/registrations'
 import { formatOrganizerContactHint, resolveOrganizerContact } from '../lib/contact'
@@ -63,6 +65,8 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
   const [sourceProposal, setSourceProposal] = useState<ActivityWithCount | null | undefined>(undefined)
   const [linkedRecruits, setLinkedRecruits] = useState<ActivityWithCount[]>([])
 
+  const t = useT()
+  const { lang } = useLang()
   const displayName = profile?.nickname || getClerkDisplayName(clerkUser)
 
   useEffect(() => {
@@ -171,7 +175,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
       setInterestCount(nextCount)
       setActivity((prev) => (prev ? { ...prev, interestedCount: nextCount } : prev))
     } catch (err) {
-      alert(err instanceof Error ? err.message : '操作失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setInterestLoading(false)
     }
@@ -186,12 +190,12 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
   }) => {
     if (!id || !activity || activity.status !== 'recruiting' || myRegistration) return
     if (!canRegister({ ...activity, registeredCount: activity.registeredCount })) {
-      alert('报名已结束')
+      alert(t.registrationClosed)
       return
     }
     const currentCount = activity.registeredCount
     if (activity.maxParticipants != null && currentCount + participantCount > activity.maxParticipants) {
-      alert('名额不足')
+      alert(t.full)
       return
     }
 
@@ -238,7 +242,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
       setActivity((prev) => (prev ? { ...prev, registeredCount: currentCount } : prev))
       setRegisteredCount(currentCount)
       setSuccess(false)
-      alert(err instanceof Error ? err.message : '报名失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setSubmitting(false)
     }
@@ -258,7 +262,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
 
   const handleCancelRegistration = async () => {
     if (!activity || !myRegistration) return
-    if (!confirm('确定取消报名？')) return
+    if (!confirm(t.cancelConfirmQuestion)) return
 
     if (!isSignedIn && myRegistration.cancelToken) {
       window.location.href = getCancelUrl(myRegistration.cancelToken)
@@ -283,7 +287,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
         .then(setRegSummary)
         .catch(() => {})
     } catch (err) {
-      alert(err instanceof Error ? err.message : '取消失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setCancelLoading(false)
     }
@@ -298,15 +302,15 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
   )
 
   if (loading) {
-    return shell(<div className="text-center text-gray-400 py-16 flex-1">加载中...</div>)
+    return shell(<div className="text-center text-gray-400 py-16 flex-1">{t.loading}</div>)
   }
 
   if (notFound || !activity) {
     return shell(
       <main className="flex-1 max-w-lg mx-auto px-4 py-16 text-center page-enter w-full">
         <div className="text-5xl mb-4">😕</div>
-        <h2 className="text-xl font-bold mb-2">活动不存在</h2>
-        <Link href="/" className="btn-primary inline-block mt-4">回到首页</Link>
+        <h2 className="text-xl font-bold mb-2">{t.eventNotFound}</h2>
+        <Link href="/" className="btn-primary inline-block mt-4">{t.backToHome}</Link>
       </main>,
     )
   }
@@ -319,14 +323,13 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
       <main className="flex-1 max-w-lg mx-auto px-4 py-16 page-enter w-full">
         <div className="text-center mb-8">
           <div className="text-5xl mb-4">🎉</div>
-          <h2 className="text-xl font-bold mb-2">报名成功！</h2>
-          <p className="text-gray-600">你已报名「{activity.title}」</p>
-          <p className="text-sm text-gray-500 mt-2">参与人数：{participantCount} 人</p>
+          <h2 className="text-xl font-bold mb-2">{t.submitRegistration}！</h2>
+          <p className="text-gray-600">{t.registerTitle(activity.title)}</p>
+          <p className="text-sm text-gray-500 mt-2">{t.participantCount}：{participantCount}</p>
         </div>
         <div className="bg-green-50 rounded-xl p-4 mb-6 text-sm text-gray-700 space-y-2">
-          <p className="font-medium text-green-800">📱 下一步：</p>
+          <p className="font-medium text-green-800">📱</p>
           <p>{organizerHint.message}</p>
-          {isSignedIn && organizerHint.copyText && <p>备注「{activity.title} 报名」</p>}
         </div>
 
         {organizerHint.copyText && (
@@ -335,28 +338,27 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
             className="btn-primary w-full mb-6"
             onClick={() => navigator.clipboard.writeText(organizerHint.copyText!)}
           >
-            {organizerHint.copyLabel ?? '复制'}
+            {organizerHint.copyLabel ?? t.copyLink}
           </button>
         )}
 
         {!isSignedIn && cancelUrl && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-            <p className="text-sm font-medium text-yellow-900 mb-2">⚠️ 请截图保存取消链接：</p>
+            <p className="text-sm font-medium text-yellow-900 mb-2">⚠️ {t.guestRegistrationHint}</p>
             <p className="text-sm break-all font-mono text-yellow-800 mb-3">{cancelUrl}</p>
             <button
               type="button"
               className="btn-secondary w-full text-sm"
               onClick={() => navigator.clipboard.writeText(cancelUrl)}
             >
-              复制链接
+              {t.copyLink}
             </button>
-            <p className="text-xs text-yellow-700 mt-3">如链接丢失，请联系发起人取消报名。</p>
           </div>
         )}
 
         {calendarEvent && (
           <div className="mt-4 pt-4 border-t border-gray-100 mb-6">
-            <p className="text-sm text-gray-500 mb-2">别忘了这次活动：</p>
+            <p className="text-sm text-gray-500 mb-2">{t.addToCalendar}</p>
             <AddToCalendarButton
               uid={calendarEvent.uid}
               title={calendarEvent.title}
@@ -371,14 +373,13 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
 
         <div className="flex flex-col gap-3">
           {isSignedIn ? (
-            <Link href="/my" className="btn-secondary block text-center">去「我的报名」查看</Link>
+            <Link href="/my" className="btn-secondary block text-center">{t.myRegistrationsSection}</Link>
           ) : (
             <>
-              <p className="text-xs text-gray-400 text-center">💡 登录后可在「我的报名」随时管理</p>
               <SignInButton mode="modal">
-                <button type="button" className="btn-secondary w-full">登录/注册</button>
+                <button type="button" className="btn-secondary w-full">{t.signInButton}</button>
               </SignInButton>
-              <Link href="/" className="text-sm text-center text-gray-500 hover:text-green-600">回到首页</Link>
+              <Link href="/" className="text-sm text-center text-gray-500 hover:text-green-600">{t.backToHome}</Link>
             </>
           )}
         </div>
@@ -390,10 +391,15 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
   const registrationOpen = canRegister({ ...activity, registeredCount: displayCount })
   const inProgress = isInProgress(activity)
   const proposalExpired = activity.status === 'proposed' && isProposalExpired(activity)
-  const registerButtonLabel = getRegistrationButtonLabel(
-    { ...activity, registeredCount: displayCount },
-    Boolean(myRegistration),
-  )
+  const registerButtonLabel = (() => {
+    if (myRegistration) return t.alreadyRegistered
+    if (!registrationOpen) {
+      const badge = getActivityBadge({ ...activity, registeredCount: displayCount })
+      if (badge === 'full') return t.full
+      return t.registrationClosed
+    }
+    return t.registerButton
+  })()
   const endedSuccess = isEndedSuccess(activity.status)
   const endedCancelled = isEndedCancelled(activity.status)
 
@@ -416,12 +422,11 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
     return shell(
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 text-red-900">
-          <p className="font-bold text-lg mb-3">❌ 本次活动已取消</p>
-          <p className="text-sm mb-1">原因：{getCancelReasonLabel(activity.cancelReason)}</p>
+          <p className="font-bold text-lg mb-3">{t.typeCancelled}</p>
+          <p className="text-sm mb-1">{t.cancelReason(getCancelReasonLabel(activity.cancelReason))}</p>
           {activity.cancelNote && (
-            <p className="text-sm whitespace-pre-wrap mb-4 opacity-90">{activity.cancelNote}</p>
+            <p className="text-sm whitespace-pre-wrap break-words mb-4 opacity-90">{activity.cancelNote}</p>
           )}
-          <p className="text-sm mb-3">如有疑问请联系发起人：</p>
           <p className="font-medium mb-3">{cancelContact.message}</p>
           {cancelContact.copyText && (
             <button
@@ -429,24 +434,24 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
               className="btn-secondary text-sm"
               onClick={() => navigator.clipboard.writeText(cancelContact.copyText!)}
             >
-              {cancelContact.copyLabel ?? '复制'}
+              {cancelContact.copyLabel ?? t.copyLink}
             </button>
           )}
         </div>
         <div className="opacity-60 pointer-events-none select-none">
           <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
-            {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+            {getCategoryEmoji(activity.category)} {getCatLabel(t, activity.category)}
           </span>
           <h1 className="text-2xl font-bold mb-4">{activity.title}</h1>
           <div className="space-y-2 text-sm text-gray-600 mb-6">
-            <p>📅 {formatEventDate(activity.date)}</p>
-            <p>📍 {activity.location || '地点待定'}</p>
+            <p>📅 {formatEventDate(activity.date, lang)}</p>
+            <p>📍 {activity.location || t.locationTbd}</p>
           </div>
           {activity.description && (
-            <p className="text-gray-700 whitespace-pre-wrap mb-6">{activity.description}</p>
+            <p className="text-gray-700 whitespace-pre-wrap break-words mb-6">{activity.description}</p>
           )}
         </div>
-        <Link href="/" className="btn-primary block text-center w-full mt-6">回到首页</Link>
+        <Link href="/" className="btn-primary block text-center w-full mt-6">{t.backToHome}</Link>
       </main>,
     )
   }
@@ -455,7 +460,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
     <>
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
         <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
-          {getCategoryEmoji(activity.category)} {getCategoryLabel(activity.category)}
+          {getCategoryEmoji(activity.category)} {getCatLabel(t, activity.category)}
         </span>
         <div className="mb-2">
           <ActivityBadge activity={{ ...activity, registeredCount: displayCount }} />
@@ -468,13 +473,13 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
 
         {inProgress && (
           <div className="bg-blue-50 text-blue-800 text-sm rounded-xl p-3 mb-4">
-            🔵 活动正在进行中
+            🔵 {t.badge_in_progress}
           </div>
         )}
 
         {activity.status === 'proposed' && !proposalExpired && (
           <div className="bg-blue-50 text-blue-800 text-sm rounded-xl p-3 mb-4">
-            💡 这是一个提议，尚未开始招募。感兴趣的人多了，管理员会发起正式活动。
+            💡 {t.sectionProposalsSubtitle}
           </div>
         )}
 
@@ -485,14 +490,14 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
         )}
 
         <div className="space-y-2 text-sm text-gray-600 mb-6">
-          <p>📅 {formatEventDate(activity.date)}</p>
-          <p>📍 活动地点：{activity.location || '地点待定'}</p>
+          <p>📅 {formatEventDate(activity.date, lang)}</p>
+          <p>📍 {t.eventLocation}：{activity.location || t.locationTbd}</p>
           {activity.meetingLocation && (
-            <p>🚉 集合地点：{activity.meetingLocation}{activity.meetingTime ? ` ${activity.meetingTime}` : ''}</p>
+            <p>🚉 {activity.meetingLocation}{activity.meetingTime ? ` ${activity.meetingTime}` : ''}</p>
           )}
           {activity.status === 'recruiting' && (
             <div>
-              <p className="mb-1">👥 已报名 {displayCount}{activity.maxParticipants ? ` / ${activity.maxParticipants}` : ''} 人</p>
+              <p className="mb-1">👥 {t.registeredCount(displayCount, activity.maxParticipants ?? null)}</p>
               <CapacityBar current={displayCount} max={activity.maxParticipants} />
               <RegistrationPreview
                 total={regSummary.total}
@@ -502,21 +507,21 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
             </div>
           )}
           {activity.status === 'proposed' && (
-            <p>💡 {interestCount} 人感兴趣</p>
+            <p>💡 {t.interestedCount(interestCount)}</p>
           )}
           {activity.status === 'proposed' && linkedRecruits.length > 0 && (
             <div className="mt-3 pt-3 border-t border-green-100">
-              <p className="text-sm font-medium text-green-800 mb-2">🟢 已有招募活动：</p>
+              <p className="text-sm font-medium text-green-800 mb-2">🟢 {t.linkedRecruits}：</p>
               <ul className="space-y-2">
                 {linkedRecruits.map((r) => (
                   <li key={r.id} className="text-sm">
                     · {r.title}{' '}
                     <span className="text-gray-500">
-                      {formatEventDate(r.date).replace(/ .*/, '')}{' '}
-                      {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}人
+                      {formatEventDate(r.date, lang).replace(/ .*/, '')}{' '}
+                      {r.registeredCount}{r.maxParticipants ? `/${r.maxParticipants}` : ''}
                     </span>{' '}
                     <Link href={`/event/${r.id}`} className="text-green-600 underline">
-                      去报名 →
+                      {t.registerButton} →
                     </Link>
                   </li>
                 ))}
@@ -526,19 +531,19 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
           {activity.fee && <p>💰 {activity.fee}</p>}
           {activity.sourceUrl && (
             <a href={activity.sourceUrl} target="_blank" rel="noreferrer" className="text-green-600 underline block truncate">
-              🔗 参考链接
+              🔗 {t.fieldSourceUrl}
             </a>
           )}
         </div>
 
         {activity.description && (
           <div className="mb-6">
-            <p className={`text-gray-700 whitespace-pre-wrap ${expanded ? '' : 'line-clamp-4'}`}>
+            <p className={`text-gray-700 whitespace-pre-wrap break-words ${expanded ? '' : 'line-clamp-4'}`}>
               {activity.description}
             </p>
             {activity.description.length > 120 && (
               <button type="button" className="text-green-600 text-sm mt-1" onClick={() => setExpanded(!expanded)}>
-                {expanded ? '收起 ▴' : '展开全文 ▾'}
+                {expanded ? `${t.showLess} ▴` : `${t.showMore} ▾`}
               </button>
             )}
           </div>
@@ -552,7 +557,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
 
         {notes.length > 0 && (
           <div className="bg-amber-50 rounded-xl p-4 mb-8">
-            <p className="font-medium text-amber-800 mb-2">⚠️ 注意事项</p>
+            <p className="font-medium text-amber-800 mb-2">⚠️ {t.eventNotes}</p>
             <ul className="text-sm text-amber-700 space-y-1">
               {notes.map((n) => <li key={n}>· {n}</li>)}
             </ul>
@@ -561,8 +566,8 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
 
         {endedSuccess && activity.recap && (
           <div className="bg-purple-50 rounded-xl p-4 mb-8">
-            <p className="font-medium text-purple-800 mb-2">📝 活动回顾</p>
-            <p className="text-sm text-purple-900 whitespace-pre-wrap">{activity.recap}</p>
+            <p className="font-medium text-purple-800 mb-2">📝 {t.sectionPast}</p>
+            <p className="text-sm text-purple-900 whitespace-pre-wrap break-words">{activity.recap}</p>
             {activity.recapImages && (
               <div className="flex gap-2 mt-3 overflow-x-auto">
                 {activity.recapImages.split('\n').filter(Boolean).map((url) => (
@@ -590,7 +595,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
 
         {endedSuccess ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
-            本次活动已结束
+            {t.typeEnded}
           </div>
         ) : !registrationOpen && activity.status === 'recruiting' && !myRegistration ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500 font-medium">
@@ -608,7 +613,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
               onClick={toggleInterest}
               disabled={interestLoading || proposalExpired}
             >
-              {interestLoading ? '...' : proposalExpired ? '信息已过期' : interested ? '❤️ 不再感兴趣' : '❤️ 我也感兴趣'}
+              {interestLoading ? '...' : proposalExpired ? t.badge_proposal_expired : interested ? `❤️ ${t.notInterested}` : `❤️ ${t.interested}`}
             </button>
             {!proposalExpired && (
               isSignedIn ? (
@@ -616,35 +621,35 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
                   href={`/recruit/new?from=${activity.id}`}
                   className="btn-secondary block text-center w-full py-3"
                 >
-                  发起招募 →
+                  {t.proposeToRecruit} →
                 </Link>
               ) : (
                 <SignInButton mode="modal">
                   <button type="button" className="btn-secondary w-full py-3">
-                    发起招募 →
+                    {t.proposeToRecruit} →
                   </button>
                 </SignInButton>
               )
             )}
-            <Link href="/" className="btn-secondary block text-center">回到首页</Link>
+            <Link href="/" className="btn-secondary block text-center">{t.backToHome}</Link>
           </div>
         ) : activity.status !== 'recruiting' ? (
           <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-500">
-            该活动暂未开放报名
+            {t.registrationClosed}
           </div>
         ) : myRegistration ? (
           <div className="space-y-4">
             <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-1">
-              <p>姓名：{myRegistration.name}</p>
-              <p>参与人数：{myRegistration.participantCount} 人</p>
-              {myRegistration.note && <p>备注：{myRegistration.note}</p>}
+              <p>{myRegistration.name}</p>
+              <p>{t.yourRegistration(myRegistration.participantCount)}</p>
+              {myRegistration.note && <p>{myRegistration.note}</p>}
             </div>
             <button
               type="button"
               className="w-full rounded-xl py-3 font-medium border border-gray-200 bg-gray-100 text-gray-500 cursor-default"
               disabled
             >
-              已报名
+              {t.alreadyRegistered}
             </button>
             <button
               type="button"
@@ -652,7 +657,7 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
               onClick={handleCancelRegistration}
               disabled={cancelLoading}
             >
-              {cancelLoading ? '取消中...' : '取消报名'}
+              {cancelLoading ? t.processing : t.cancelRegistration}
             </button>
           </div>
         ) : !isSignedIn ? (
@@ -670,21 +675,16 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
           <>
             <div className="flex items-center gap-3 text-gray-400 text-sm mb-6">
               <div className="flex-1 h-px bg-gray-200" />
-              <span>我要报名</span>
+              <span>{t.registerButton}</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
             <div className="space-y-4 mb-8">
               <div className="bg-green-50 rounded-xl p-4 text-sm text-gray-700">
-                <p>以 <span className="font-medium">{displayName}</span> 的身份报名</p>
-                {!profile?.wechat && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    可在头像菜单 → 编辑资料 中补充微信号，方便组织者联系
-                  </p>
-                )}
+                <p>{t.registerAs(displayName)}</p>
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">参与人数（含同行）</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.participantCount}</label>
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
@@ -704,21 +704,21 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
                 </div>
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">备注（过敏/有车等）</label>
-                <input className="input-field" value={note} onChange={(e) => setNote(e.target.value)} />
+                <label className="text-sm text-gray-600 mb-1 block">{t.noteLabel}</label>
+                <input className="input-field" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.notePlaceholder} />
               </div>
             </div>
 
             <div className="sticky bottom-0 bg-warm-bg pt-3 pb-safe -mx-4 px-4">
               <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting || !registrationOpen}>
-                {submitting ? '提交中...' : registerButtonLabel === '我要报名' ? '提交报名' : registerButtonLabel}
+                {submitting ? t.submitting : t.submitRegistration}
               </button>
             </div>
           </>
         )}
 
         <div className="mt-8 text-sm text-gray-500 text-center">
-          <p>发起人：{activity.organizerName}</p>
+          <p>{t.eventOrganizer}：{activity.organizerName}</p>
           {activity.status === 'recruiting' && (
             <p>{formatOrganizerContactHint(resolveOrganizerContact(activity)).message}</p>
           )}

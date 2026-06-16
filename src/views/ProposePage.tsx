@@ -13,6 +13,7 @@ import { OrganizerContactFields } from '../components/contact/OrganizerContactFi
 import { SimilarProposalsDialog } from '../components/SimilarProposalsDialog'
 import { api, getEventUrl } from '../lib/api'
 import { notifyActivitiesChanged } from '../lib/activityEvents'
+import { useT } from '../i18n/LanguageContext'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../lib/validateSchedule'
 import { ACTIVITY_CATEGORIES } from '../lib/categories'
 import { FEE_LEVELS } from '../lib/feeLevel'
@@ -23,6 +24,7 @@ import { ImageUploadZone } from '../components/ImageUploadZone'
 type InputMode = 'link' | 'image' | 'manual'
 
 export function ProposePage() {
+  const t = useT()
   const { user: clerkUser } = useUser()
   const [mode, setMode] = useState<InputMode>('link')
   const [url, setUrl] = useState('')
@@ -43,6 +45,7 @@ export function ProposePage() {
   const [feeLevel, setFeeLevel] = useState<FeeLevel>('unknown')
   const [feeDetail, setFeeDetail] = useState('')
   const [itinerary, setItinerary] = useState('')
+  const [organizerName, setOrganizerName] = useState('')
   const [organizerContactType, setOrganizerContactType] = useState<OrganizerContactType>('private')
   const [organizerContact, setOrganizerContact] = useState('')
   const [organizerContactLabel, setOrganizerContactLabel] = useState('')
@@ -53,8 +56,10 @@ export function ProposePage() {
 
   useEffect(() => {
     if (!clerkUser) return
+    setOrganizerName(getClerkDisplayName(clerkUser))
     api.getProfile()
       .then((p) => {
+        if (p?.nickname?.trim()) setOrganizerName(p.nickname.trim())
         if (p?.wechat) {
           setOrganizerContactType('wechat')
           setOrganizerContact(p.wechat)
@@ -66,7 +71,7 @@ export function ProposePage() {
       .catch(() => {})
   }, [clerkUser])
 
-  const applyParsed = (data: Partial<ParseResult> & { sourceUrl?: string }) => {
+  const applyParsed = (data: Partial<ParseResult>) => {
     applyParseResult(data, {
       setTitle,
       setDescription,
@@ -157,7 +162,7 @@ export function ProposePage() {
         setQrDataUrl('')
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : '提交失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setSubmitting(false)
     }
@@ -205,38 +210,23 @@ export function ProposePage() {
         <Header />
         <main className="flex-1 max-w-lg mx-auto px-4 py-16 text-center page-enter w-full">
           <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-2xl font-bold mb-3">提议已收到！</h2>
-          <p className="text-gray-500 mb-6">
-            大家会在首页看到你的提议。感兴趣的人多了，管理员会发起招募。
-          </p>
-          <p className="text-sm text-gray-600 mb-2 break-all">提议链接：{url}</p>
+          <h2 className="text-2xl font-bold mb-3">{t.proposeReceived}</h2>
+          <p className="text-gray-500 mb-6">{t.proposeReceivedDesc}</p>
+          <p className="text-sm text-gray-600 mb-2 break-all">{t.proposeLink}：{url}</p>
           <div className="flex gap-3 justify-center mb-4 flex-wrap">
             <button type="button" className="btn-primary" onClick={() => navigator.clipboard.writeText(url)}>
-              复制链接
+              {t.copyLink}
             </button>
-            {created.organizerContactType === 'wechat' && created.organizerContact && (
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => navigator.clipboard.writeText(created.organizerContact!)}
-              >
-                复制微信号
-              </button>
-            )}
           </div>
-          <p className="text-sm text-gray-500 mb-4">分享到微信群，让朋友扫码查看或表达兴趣</p>
+          <p className="text-sm text-gray-500 mb-4">{t.proposeQR}</p>
           {qrDataUrl && (
             <div className="mb-8">
-              <p className="text-sm text-gray-500 mb-2">提议二维码</p>
               <img src={qrDataUrl} alt="QR Code" className="mx-auto rounded-xl" />
             </div>
           )}
           <div className="flex gap-3 justify-center">
-            <Link href="/" className="btn-primary">回到首页</Link>
-            <Link href={`/event/${created.id}`} className="btn-secondary">查看提议</Link>
-            <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
-              再提交一个
-            </button>
+            <Link href="/" className="btn-primary">{t.backToHome}</Link>
+            <Link href={`/event/${created.id}`} className="btn-secondary">{t.proposeLink}</Link>
           </div>
         </main>
         <Footer />
@@ -247,10 +237,10 @@ export function ProposePage() {
   return (
     <div className="min-h-screen flex flex-col pb-24 sm:pb-32">
       <Header />
-      <SignInGate message="登录后即可提交提议">
+      <SignInGate>
       <main className="max-w-lg mx-auto px-4 py-4 sm:py-6 page-enter w-full">
-        <h1 className="text-xl sm:text-2xl font-bold mb-1">分享一个好去处 💡</h1>
-        <p className="text-gray-500 text-xs sm:text-sm mb-4 sm:mb-6">有趣的活动、餐厅、景点都可以，大家一起决定要不要去</p>
+        <h1 className="text-xl sm:text-2xl font-bold mb-1">{t.proposeTitle} 💡</h1>
+        <p className="text-gray-500 text-xs sm:text-sm mb-4 sm:mb-6">{t.proposeSubtitle}</p>
 
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
           {(['link', 'image', 'manual'] as InputMode[]).map((m) => (
@@ -393,7 +383,7 @@ export function ProposePage() {
         <div className="border-t border-gray-100 pt-6 mb-8">
           <h3 className="font-medium mb-3">联系方式</h3>
           <p className="text-sm text-gray-500 mb-3">
-            以 <span className="font-medium text-gray-700">{getClerkDisplayName(clerkUser)}</span> 的身份提交
+            以 <span className="font-medium text-gray-700">{organizerName || getClerkDisplayName(clerkUser)}</span> 的身份提交
           </p>
           <OrganizerContactFields
             contactType={organizerContactType}

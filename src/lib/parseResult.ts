@@ -24,7 +24,7 @@ export interface ParseFormSetters {
 }
 
 export function applyParseResult(
-  data: Partial<ParseResult> & { sourceUrl?: string },
+  data: Partial<ParseResult>,
   setters: ParseFormSetters,
   options?: { getNotes?: () => string; dateHintOnly?: boolean },
 ): void {

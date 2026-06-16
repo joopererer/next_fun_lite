@@ -75,9 +75,8 @@ function scrapedToParseResult(activity: ScrapedActivity, sourceUrl: string): Par
   const noteParts = [dateRangeLabel ? `活动时间：${dateRangeLabel}` : ''].filter(Boolean)
   return {
     title: activity.title || null,
-    description: activity.description
-      ? `${activity.description}\n\n来源：${sourceUrl}`
-      : null,
+    description: activity.description?.trim() || null,
+    sourceUrl,
     date: activity.startAt || null,
     dateEnd: activity.endAt || null,
     location: [activity.address, activity.city].filter(Boolean).join(', ') || null,

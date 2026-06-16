@@ -6,9 +6,11 @@ import { useEffect, useState } from 'react'
 import type { Notification } from '@/shared/types'
 import { api } from '@/src/lib/api'
 import { openNotificationDrawer } from '@/src/lib/notificationUiEvents'
+import { useT } from '@/src/i18n/LanguageContext'
 
 export function HomeNotificationBanner() {
   const { isSignedIn, isLoaded } = useUser()
+  const t = useT()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [dismissed, setDismissed] = useState(false)
 
@@ -43,7 +45,7 @@ export function HomeNotificationBanner() {
               className="text-green-600 underline shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
-              查看
+              {t.notifView}
             </Link>
           )}
         </button>
@@ -51,7 +53,7 @@ export function HomeNotificationBanner() {
           type="button"
           onClick={handleDismiss}
           className="text-green-600/70 hover:text-green-800 px-1 shrink-0"
-          aria-label="关闭"
+          aria-label={t.close}
         >
           ×
         </button>
@@ -68,7 +70,7 @@ export function HomeNotificationBanner() {
         onClick={openNotificationDrawer}
       >
         <span>🔔</span>
-        <span>你有 {notifications.length} 条新通知</span>
+        <span>{t.notifNewCount(notifications.length)}</span>
         <span className="text-gray-400">·</span>
         {first.actionUrl ? (
           <Link
@@ -86,7 +88,7 @@ export function HomeNotificationBanner() {
         type="button"
         onClick={handleDismiss}
         className="text-green-600/70 hover:text-green-800 px-1 shrink-0"
-        aria-label="关闭"
+        aria-label={t.close}
       >
         ×
       </button>

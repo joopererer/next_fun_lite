@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { ActivityWithCount } from '@/shared/types'
 import { PastActivityCard } from '@/src/components/PastActivityCard'
+import { useT } from '@/src/i18n/LanguageContext'
 
 interface Props {
   activities: ActivityWithCount[]
@@ -10,6 +11,7 @@ interface Props {
 
 export function PastSectionClient({ activities }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const t = useT()
 
   if (activities.length === 0) return null
 
@@ -21,7 +23,7 @@ export function PastSectionClient({ activities }: Props) {
         onClick={() => setExpanded(!expanded)}
       >
         <h2 className="section-title mb-0">
-          ✅ 往期活动
+          ✅ {t.sectionPast}
           <span className="text-base font-normal text-gray-400 ml-2">({activities.length})</span>
         </h2>
         <span className="text-sm text-gray-400">{expanded ? '▴' : '▾'}</span>

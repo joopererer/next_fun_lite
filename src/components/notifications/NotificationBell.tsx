@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/src/lib/api'
 import { NOTIFICATION_DRAWER_OPEN_EVENT, emitNotificationDrawerState } from '@/src/lib/notificationUiEvents'
 import { NotificationDrawer } from './NotificationDrawer'
+import { useT } from '@/src/i18n/LanguageContext'
 
 export function NotificationBell() {
+  const t = useT()
   const [unreadCount, setUnreadCount] = useState(0)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -50,7 +52,7 @@ export function NotificationBell() {
       <button
         type="button"
         className="relative flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-50 transition-colors"
-        aria-label={`通知${unreadCount > 0 ? `，${unreadCount} 条未读` : ''}`}
+        aria-label={t.notifDrawerTitle}
         aria-expanded={drawerOpen}
         onClick={() => (drawerOpen ? closeDrawer() : openDrawer())}
       >

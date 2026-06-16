@@ -13,6 +13,7 @@ import { isEndedCancelled, isEndedSuccess } from '@/src/lib/activityStatus'
 import { api } from '@/src/lib/api'
 import { getGuestRegistrations, type GuestRegistrationRecord } from '@/src/lib/guestRegistrations'
 import { ACTIVITIES_CHANGED_EVENT } from '@/src/lib/activityEvents'
+import { useT } from '@/src/i18n/LanguageContext'
 
 type ViewMode = 'list' | 'calendar'
 const VIEW_KEY = 'nfl_my_view'
@@ -42,6 +43,7 @@ export function MyRegistrationsPage() {
   const [registrations, setRegistrations] = useState<Map<string, Registration>>(new Map())
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<ViewMode>('list')
+  const t = useT()
 
   const loadGuestOnly = useCallback(async () => {
     const guests = getGuestRegistrations()
@@ -141,7 +143,7 @@ export function MyRegistrationsPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 max-w-lg mx-auto px-4 py-16 text-center text-gray-400">加载中...</main>
+        <main className="flex-1 max-w-lg mx-auto px-4 py-16 text-center text-gray-400">{t.loading}</main>
         <Footer />
       </div>
     )
@@ -152,10 +154,10 @@ export function MyRegistrationsPage() {
       <Header />
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
         <Link href="/" className="text-sm text-gray-500 hover:text-green-600 mb-4 inline-block">
-          ← 返回首页
+          ← {t.backToHome}
         </Link>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">我的</h1>
+          <h1 className="text-2xl font-bold">{t.myTitle}</h1>
           {hasRegistrations && (
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
               <button
@@ -163,14 +165,14 @@ export function MyRegistrationsPage() {
                 className={`px-3 py-1.5 ${view === 'list' ? 'bg-green-50 text-green-700' : 'text-gray-500'}`}
                 onClick={() => switchView('list')}
               >
-                列表
+                {t.viewModeList}
               </button>
               <button
                 type="button"
                 className={`px-3 py-1.5 ${view === 'calendar' ? 'bg-green-50 text-green-700' : 'text-gray-500'}`}
                 onClick={() => switchView('calendar')}
               >
-                日历
+                {t.viewModeCalendar}
               </button>
             </div>
           )}
@@ -178,24 +180,21 @@ export function MyRegistrationsPage() {
 
         {!isSignedIn && getGuestRegistrations().length > 0 && (
           <p className="text-xs text-gray-400 mb-4 bg-gray-50 rounded-lg px-3 py-2">
-            以下为本设备保存的报名记录。登录后不会自动合并，请保留取消链接。
+            {t.guestHint}
           </p>
         )}
 
         {loading ? (
-          <p className="text-center text-gray-400 py-12">加载中...</p>
+          <p className="text-center text-gray-400 py-12">{t.loading}</p>
         ) : !hasAnyContent ? (
           <div className="text-center py-16">
-            <p className="text-gray-500 mb-2">还没有报名或发布记录</p>
-            <p className="text-sm text-gray-400 mb-6">去首页看看有什么活动，或分享你的想法</p>
-            {!isSignedIn && (
-              <p className="text-xs text-gray-400 mb-4">登录后可同步报名与发布记录</p>
-            )}
+            <p className="text-gray-500 mb-2">{t.noMyRegistrations}</p>
+            <p className="text-sm text-gray-400 mb-6">{t.backToHome}</p>
             <div className="flex flex-col gap-3 items-center">
-              <Link href="/" className="btn-primary inline-block">去首页</Link>
+              <Link href="/" className="btn-primary inline-block">{t.backToHome}</Link>
               {!isSignedIn && (
                 <SignInButton mode="modal">
-                  <button type="button" className="btn-secondary">登录 / 注册</button>
+                  <button type="button" className="btn-secondary">{t.signInButton}</button>
                 </SignInButton>
               )}
             </div>
@@ -204,14 +203,14 @@ export function MyRegistrationsPage() {
           <div className="space-y-10">
             {hasRegistrations && (
               <section>
-                <h2 className="text-sm font-semibold text-gray-700 mb-4">📋 我的报名</h2>
+                <h2 className="text-sm font-semibold text-gray-700 mb-4">📋 {t.myRegistrationsSection}</h2>
                 {view === 'calendar' ? (
                   <MyRegistrationsCalendar activities={activities} registrations={registrations} onCancel={load} />
                 ) : (
                   <div className="space-y-8">
                     {upcoming.length > 0 && (
                       <div>
-                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">🟢 即将参加</h3>
+                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">🟢 {t.sectionRecruiting}</h3>
                         <div className="space-y-3">
                           {upcoming.map((a) => (
                             <MyRegistrationCard
@@ -226,7 +225,7 @@ export function MyRegistrationsPage() {
                     )}
                     {finished.length > 0 && (
                       <div>
-                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">✅ 已结束</h3>
+                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">{t.typeEnded}</h3>
                         <div className="space-y-3">
                           {finished.map((a) => (
                             <MyRegistrationCard
@@ -240,7 +239,7 @@ export function MyRegistrationsPage() {
                     )}
                     {cancelled.length > 0 && (
                       <div>
-                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">❌ 已取消</h3>
+                        <h3 className="text-sm text-gray-400 mb-3 border-b border-gray-100 pb-2">{t.typeCancelled}</h3>
                         <div className="space-y-3">
                           {cancelled.map((a) => (
                             <MyRegistrationCard key={a.id} activity={a} />
@@ -255,7 +254,7 @@ export function MyRegistrationsPage() {
 
             {isSignedIn && (
               <section>
-                <h2 className="text-sm font-semibold text-gray-700 mb-4">✏️ 我发布的</h2>
+                <h2 className="text-sm font-semibold text-gray-700 mb-4">✏️ {t.myPublishedSection}</h2>
                 {hasPublished ? (
                   <div className="space-y-3">
                     {published.map((a) => (
@@ -264,13 +263,13 @@ export function MyRegistrationsPage() {
                   </div>
                 ) : (
                   <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-100">
-                    <p className="text-sm text-gray-500 mb-4">还没有发布过提议、招募或资讯</p>
+                    <p className="text-sm text-gray-500 mb-4">{t.noMyPublished}</p>
                     <div className="flex flex-wrap gap-2 justify-center text-sm">
-                      <Link href="/propose" className="text-green-600 hover:underline">发个提议</Link>
+                      <Link href="/propose" className="text-green-600 hover:underline">{t.quickPropose}</Link>
                       <span className="text-gray-300">·</span>
-                      <Link href="/recruit/new" className="text-green-600 hover:underline">发起招募</Link>
+                      <Link href="/recruit/new" className="text-green-600 hover:underline">{t.quickRecruit}</Link>
                       <span className="text-gray-300">·</span>
-                      <Link href="/info/new" className="text-green-600 hover:underline">发布资讯</Link>
+                      <Link href="/info/new" className="text-green-600 hover:underline">{t.quickInfo}</Link>
                     </div>
                   </div>
                 )}

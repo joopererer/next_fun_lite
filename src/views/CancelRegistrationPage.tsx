@@ -9,6 +9,7 @@ import { Footer } from '@/src/components/layout/Footer'
 import { formatEventDate } from '@/src/lib/user'
 import { removeGuestRegistration } from '@/src/lib/guestRegistrations'
 import { notifyActivitiesChanged } from '@/src/lib/activityEvents'
+import { useT } from '@/src/i18n/LanguageContext'
 
 export function CancelRegistrationPage() {
   const { token } = useParams<{ token: string }>()
@@ -19,6 +20,7 @@ export function CancelRegistrationPage() {
   const [alreadyCancelled, setAlreadyCancelled] = useState(false)
   const [success, setSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const t = useT()
 
   useEffect(() => {
     if (!token) return
@@ -43,8 +45,8 @@ export function CancelRegistrationPage() {
     try {
       const res = await fetch(`/api/cancel/${encodeURIComponent(token)}`, { method: 'POST' })
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: '取消失败' }))
-        alert((err as { error?: string }).error ?? '取消失败')
+        const err = await res.json().catch(() => ({ error: t.error }))
+        alert((err as { error?: string }).error ?? t.error)
         return
       }
       if (activity) {
@@ -53,7 +55,7 @@ export function CancelRegistrationPage() {
       }
       setSuccess(true)
     } catch {
-      alert('取消失败')
+      alert(t.error)
     } finally {
       setSubmitting(false)
     }
@@ -64,52 +66,52 @@ export function CancelRegistrationPage() {
       <Header />
       <main className="flex-1 max-w-lg mx-auto px-4 py-8 page-enter w-full">
         {loading ? (
-          <p className="text-center text-gray-400 py-16">加载中...</p>
+          <p className="text-center text-gray-400 py-16">{t.loading}</p>
         ) : invalid ? (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">😕</div>
-            <h2 className="text-xl font-bold mb-2">链接无效或已过期</h2>
-            <Link href="/" className="btn-primary inline-block mt-4">回到首页</Link>
+            <h2 className="text-xl font-bold mb-2">{t.cancelInvalidLink}</h2>
+            <Link href="/" className="btn-primary inline-block mt-4">{t.backToHome}</Link>
           </div>
         ) : success ? (
           <div className="text-center py-8">
             <div className="text-5xl mb-4">✅</div>
-            <h2 className="text-xl font-bold mb-2">已取消报名</h2>
-            <p className="text-gray-600 mb-2">你的报名已成功取消。</p>
-            <p className="text-sm text-gray-500 mb-8">名额已释放，其他人可以报名。</p>
+            <h2 className="text-xl font-bold mb-2">{t.cancelSuccessTitle}</h2>
+            <p className="text-gray-600 mb-2">{t.cancelSuccessDesc}</p>
+            <p className="text-sm text-gray-500 mb-8">{t.cancelSuccessSlotReleased}</p>
             <div className="flex flex-col gap-3">
               {activity && (
                 <Link href={`/event/${activity.id}`} className="btn-primary block text-center">
-                  查看活动
+                  {t.viewDetails}
                 </Link>
               )}
-              <Link href="/" className="btn-secondary block text-center">回到首页</Link>
+              <Link href="/" className="btn-secondary block text-center">{t.backToHome}</Link>
             </div>
           </div>
         ) : alreadyCancelled ? (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">ℹ️</div>
-            <h2 className="text-xl font-bold mb-2">该报名已取消</h2>
+            <h2 className="text-xl font-bold mb-2">{t.cancelAlreadyTitle}</h2>
             {activity && (
               <Link href={`/event/${activity.id}`} className="btn-secondary inline-block mt-4">
-                返回活动页
+                {t.backToActivity}
               </Link>
             )}
           </div>
         ) : registration && activity ? (
           <div>
-            <h1 className="text-xl font-bold mb-6">取消报名确认</h1>
+            <h1 className="text-xl font-bold mb-6">{t.cancelPageTitle}</h1>
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3 mb-6">
-              <p><span className="text-gray-500">活动：</span>{activity.title}</p>
+              <p><span className="text-gray-500">{t.cancelActivity}：</span>{activity.title}</p>
               {activity.date && (
-                <p><span className="text-gray-500">时间：</span>{formatEventDate(activity.date)}</p>
+                <p><span className="text-gray-500">{t.cancelDate}：</span>{formatEventDate(activity.date)}</p>
               )}
-              <p><span className="text-gray-500">地点：</span>{activity.location || '待定'}</p>
+              <p><span className="text-gray-500">{t.cancelLocation}：</span>{activity.location || t.locationTbd}</p>
               <hr className="border-gray-100" />
-              <p><span className="text-gray-500">报名人：</span>{registration.name}</p>
-              <p><span className="text-gray-500">参与人数：</span>{registration.participantCount} 人</p>
+              <p><span className="text-gray-500">{t.cancelRegistrant}：</span>{registration.name}</p>
+              <p><span className="text-gray-500">{t.cancelParticipantCount}：</span>{registration.participantCount}</p>
             </div>
-            <p className="text-gray-600 mb-6 text-center">确认要取消这次报名吗？</p>
+            <p className="text-gray-600 mb-6 text-center">{t.cancelConfirmQuestion}</p>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -117,10 +119,10 @@ export function CancelRegistrationPage() {
                 onClick={handleConfirm}
                 disabled={submitting}
               >
-                {submitting ? '处理中...' : '确认取消'}
+                {submitting ? t.processing : t.cancelConfirmButton}
               </button>
               <Link href={`/event/${activity.id}`} className="btn-secondary flex-1 text-center">
-                返回活动页
+                {t.backToActivity}
               </Link>
             </div>
           </div>
