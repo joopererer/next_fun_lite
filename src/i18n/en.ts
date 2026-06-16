@@ -26,7 +26,7 @@ export const en: Translations = {
   processing: 'Processing...',
 
   // ── nav / layout ──
-  siteName: '🎉 Next Fun',
+  siteName: 'HappyMakerClub',
   siteSubtitle: 'Next Fun Club',
   adminPanel: 'Admin',
   about: 'About',

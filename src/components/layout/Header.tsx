@@ -25,8 +25,8 @@ export function Header({ embedded = false }: HeaderProps) {
           <h1 className="text-base sm:text-lg font-bold text-green-700">{t.siteName}</h1>
         </Link>
         <div className="flex items-center gap-1">
-          <LanguageSwitcher />
           <HeaderUserMenu />
+          <LanguageSwitcher />
         </div>
       </div>
     </header>

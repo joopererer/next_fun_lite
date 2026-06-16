@@ -13,8 +13,7 @@ export function LanguageSwitcher() {
       title={lang === 'zh' ? 'Switch to English' : '切换为中文'}
       aria-label={lang === 'zh' ? 'Switch to English' : '切换为中文'}
     >
-      <span className="text-base leading-none">{lang === 'zh' ? '🇨🇳' : '🇬🇧'}</span>
-      <span className="text-xs text-gray-500 hidden sm:inline">{lang === 'zh' ? 'EN' : '中'}</span>
+      <span className="text-xs font-medium text-gray-600">{lang === 'zh' ? 'CN' : 'EN'}</span>
     </button>
   )
 }
