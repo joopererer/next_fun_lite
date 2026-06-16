@@ -10,6 +10,7 @@ import { RecruitForm } from '../components/recruit/RecruitForm'
 import { Footer } from '../components/layout/Footer'
 import { api } from '../lib/api'
 import { isInfoPost } from '../lib/infoVisibility'
+import { useT } from '../i18n/LanguageContext'
 
 export function RecruitNewPage() {
   const searchParams = useSearchParams()
@@ -18,6 +19,7 @@ export function RecruitNewPage() {
   const sourceId = fromId ?? fromInfoId
   const [sourceActivity, setSourceActivity] = useState<ActivityWithCount | null>(null)
   const [loading, setLoading] = useState(!!sourceId)
+  const t = useT()
 
   useEffect(() => {
     if (!sourceId) return
@@ -49,26 +51,26 @@ export function RecruitNewPage() {
       <Header />
       <SignInGate>
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
-        <h1 className="text-2xl font-bold mb-1">发起招募 🎯</h1>
-        <p className="text-gray-500 text-sm mb-6">填写活动详情，创建公开报名链接</p>
+        <h1 className="text-2xl font-bold mb-1">{t.recruitTitle} 🎯</h1>
+        <p className="text-gray-500 text-sm mb-6">{t.recruitSubtitle}</p>
 
         {loading ? (
-          <div className="text-center text-gray-400 py-12">加载中...</div>
+          <div className="text-center text-gray-400 py-12">{t.loading}</div>
         ) : (
           <>
             {sourceActivity && fromInfo && (
               <div className="bg-green-50 text-green-800 text-sm rounded-xl p-3 mb-6">
-                📢 从资讯「{sourceActivity.title}」发起组团，以下信息已自动填入
+                {t.recruitFromInfo(sourceActivity.title)}
               </div>
             )}
             {sourceActivity && fromId && !fromInfo && (
               <div className="bg-green-50 text-green-800 text-sm rounded-xl p-3 mb-6">
-                💡 从提议「{sourceActivity.title}」转为招募，以下信息已自动填入
+                {t.recruitFromProposal(sourceActivity.title)}
               </div>
             )}
             {sourceId && !sourceActivity && !loading && (
               <div className="bg-amber-50 text-amber-800 text-sm rounded-xl p-3 mb-6">
-                ⚠️ 未找到来源内容，请手动填写
+                {t.recruitSourceNotFound}
               </div>
             )}
             <RecruitForm
@@ -79,7 +81,7 @@ export function RecruitNewPage() {
               sourceInterestedCount={sourceActivity && fromId && !fromInfo ? sourceActivity.interestedCount : undefined}
               sourceInfoId={fromInfo ? fromInfoId ?? undefined : undefined}
             />
-            <Link href="/" className="block text-center text-sm text-gray-500 mt-6">← 回到首页</Link>
+            <Link href="/" className="block text-center text-sm text-gray-500 mt-6">{t.backToHome}</Link>
           </>
         )}
       </main>

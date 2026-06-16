@@ -24,6 +24,7 @@ export interface Translations {
   skip: string
   or: string
   processing: string
+  other: string
 
   // ── nav / layout ──
   siteName: string
@@ -255,14 +256,98 @@ export interface Translations {
   fieldTitle: string
   fieldDescription: string
   fieldLocation: string
+  fieldLocationPlaceholder: string
   fieldDate: string
+  fieldDatePlaceholder: string
   fieldDateEnd: string
+  fieldDateEndHint: string
+  fieldRegistrationDeadline: string
+  fieldRegistrationDeadlineHint: string
+  fieldMeetingLocation: string
+  fieldMeetingLocationPlaceholder: string
+  fieldMeetingTime: string
+  fieldMeetingTimePlaceholder: string
   fieldFee: string
+  fieldFeeDetail: string
+  fieldFeeDetailPlaceholder: string
   fieldNotes: string
+  fieldNotesPlaceholder: string
   fieldCategory: string
   fieldSourceUrl: string
   fieldMaxParticipants: string
   fieldMinParticipants: string
+  fieldItinerary: string
+  fieldItineraryPlaceholder: string
+  fieldItineraryHint: string
+  fieldDateHintLabel: string
+  fieldDateHintPlaceholder: string
+  fieldExpiryLabel: string
+  fieldExpiryHint: string
+
+  // ── parse panel ──
+  parsePasteLink: string
+  parseUploadImage: string
+  parseManual: string
+  parsePlaceholder: string
+  parseButton: string
+  parseXiaohongshuHint: string
+  parseSuccessMsg: string
+  parseFailMsg: string
+  parseErrorMsg: string
+
+  // ── propose form ──
+  proposeCheckingSimilar: string
+  proposeSubmitting: string
+  proposeSubmitButton: string
+  proposeFeeDetailLabel: string
+
+  // ── edit pages ──
+  editProposalTitle: string
+  editRecruitTitle: string
+  editForbiddenProposal: string
+  editForbiddenRecruit: string
+  backToProposalPage: string
+
+  // ── delete confirmations ──
+  deleteProposalConfirmTitle: string
+  deleteProposalConfirmBody: string
+  deleteRecruitConfirmTitle: string
+  deleteRecruitConfirmBody: string
+  deleting: string
+
+  // ── info form ──
+  infoFieldDescription: string
+  infoFieldStartTime: string
+  infoFieldStartTimeHint: string
+  infoFieldDeadline: string
+  infoFieldDeadlineHint: string
+  infoFieldPrice: string
+  infoFieldPricePlaceholder: string
+  infoFieldActionLabel: string
+  infoFieldActionUrl: string
+  infoFieldOrganizerName: string
+  infoAutoFilledName: string
+  infoPublishButton: string
+  infoStartDateMustBeBeforeDeadline: string
+
+  // ── organizer contact fields ──
+  organizerContactPrivate: string
+  organizerContactOtherLabelPlaceholder: string
+  organizerContactValuePlaceholder: string
+
+  // ── recruit new page ──
+  recruitFromInfo: (title: string) => string
+  recruitFromProposal: (title: string) => string
+  recruitSourceNotFound: string
+
+  // ── proposals page ──
+  proposalsPageTitle: string
+  proposalsSearchPlaceholder: string
+  proposalsSortNewest: string
+  proposalsSortMostInterested: string
+  proposalsSortOldest: string
+  proposalsEmpty: string
+  proposalsAddButton: string
 
   // ── admin registration manager ──
   adminAddRegistration: string

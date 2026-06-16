@@ -24,6 +24,7 @@ export const en: Translations = {
   skip: 'Skip',
   or: 'or',
   processing: 'Processing...',
+  other: 'Other',
 
   // ── nav / layout ──
   siteName: 'HappyMakerClub',
@@ -295,15 +296,99 @@ export const en: Translations = {
   // ── activity form fields ──
   fieldTitle: 'Activity name',
   fieldDescription: 'Description',
-  fieldLocation: 'Location',
-  fieldDate: 'Start time',
-  fieldDateEnd: 'End time',
-  fieldFee: 'Fee',
+  fieldLocation: 'Venue *',
+  fieldLocationPlaceholder: 'Main activity location',
+  fieldDate: 'Date & time *',
+  fieldDatePlaceholder: 'e.g. 2026-06-15 09:00',
+  fieldDateEnd: 'End time (optional)',
+  fieldDateEndHint: 'Leave blank: defaults to 23:59 on start day (Paris time)',
+  fieldRegistrationDeadline: 'Registration deadline (optional)',
+  fieldRegistrationDeadlineHint: 'Leave blank: open until activity starts',
+  fieldMeetingLocation: 'Meeting point (optional)',
+  fieldMeetingLocationPlaceholder: 'If different from venue, enter departure point',
+  fieldMeetingTime: 'Meeting time (optional)',
+  fieldMeetingTimePlaceholder: 'e.g. 09:00, if early meeting needed',
+  fieldFee: 'Fee details',
+  fieldFeeDetail: 'Fee details',
+  fieldFeeDetailPlaceholder: 'e.g. budget range · 58.86 – 116.52 EUR',
   fieldNotes: 'Notes',
+  fieldNotesPlaceholder: 'One item per line',
   fieldCategory: 'Category',
-  fieldSourceUrl: 'Source / Reference link',
+  fieldSourceUrl: 'Reference link',
   fieldMaxParticipants: 'Max participants',
   fieldMinParticipants: 'Min participants',
+  fieldItinerary: 'Itinerary (optional)',
+  fieldItineraryPlaceholder: '18:30 Meet up\n19:00 Activity starts\n21:30 Free chat',
+  fieldItineraryHint: 'One waypoint per line; auto-filled after link parsing',
+  fieldDateHintLabel: 'Approx. time (optional)',
+  fieldDateHintPlaceholder: "e.g. 'weekend', 'afternoon'",
+  fieldExpiryLabel: 'Info expires at (optional)',
+  fieldExpiryHint: 'e.g. exhibition end date; shows expired tag after, handled by admin or proposer',
+
+  // ── parse panel ──
+  parsePasteLink: '🔗 Paste link',
+  parseUploadImage: '🖼 Upload image',
+  parseManual: '✏️ Fill manually',
+  parsePlaceholder: 'Paste Sortir A Paris, PlayInParis, Eventbrite, or any URL...',
+  parseButton: 'Parse',
+  parseXiaohongshuHint: '⚠️ Xiaohongshu tip: if parsing fails, copy the page text into the description below, or switch to Upload image mode.',
+  parseSuccessMsg: 'Info extracted — please verify and complete',
+  parseFailMsg: 'Could not extract content — please fill in manually',
+  parseErrorMsg: 'Parse failed — try manual entry or upload a screenshot',
+
+  // ── propose form ──
+  proposeCheckingSimilar: 'Checking...',
+  proposeSubmitting: 'Submitting...',
+  proposeSubmitButton: 'Submit idea 🎉',
+  proposeFeeDetailLabel: 'Fee details',
+
+  // ── edit pages ──
+  editProposalTitle: 'Edit proposal',
+  editRecruitTitle: 'Edit recruitment',
+  editForbiddenProposal: 'Cannot edit this proposal',
+  editForbiddenRecruit: 'Cannot edit this activity',
+  backToProposalPage: '← Back to proposal',
+
+  // ── delete confirmations ──
+  deleteProposalConfirmTitle: 'Delete proposal?',
+  deleteProposalConfirmBody: 'This cannot be undone — the proposal will be permanently deleted.',
+  deleteRecruitConfirmTitle: 'Delete recruitment?',
+  deleteRecruitConfirmBody: 'This cannot be undone — the recruitment will be permanently deleted.',
+  deleting: 'Deleting...',
+
+  // ── info form ──
+  infoFieldDescription: 'Content / Description',
+  infoFieldStartTime: 'Action start time (optional)',
+  infoFieldStartTimeHint: 'Leave blank: available right now',
+  infoFieldDeadline: 'Action deadline (optional)',
+  infoFieldDeadlineHint: 'Leave blank: no deadline',
+  infoFieldPrice: 'Price info (optional)',
+  infoFieldPricePlaceholder: 'e.g. from 39€',
+  infoFieldActionLabel: 'Button label (optional)',
+  infoFieldActionUrl: 'Button URL (optional)',
+  infoFieldOrganizerName: 'Publisher name *',
+  infoAutoFilledName: 'Signed in — your nickname was auto-filled, you can edit it',
+  infoPublishButton: 'Publish 📢',
+  infoStartDateMustBeBeforeDeadline: 'Action start time must be before the deadline',
+
+  // ── organizer contact fields ──
+  organizerContactPrivate: 'Private (I will reach out after sign-up)',
+  organizerContactOtherLabelPlaceholder: 'Label, e.g. Instagram, phone',
+  organizerContactValuePlaceholder: 'Contact info',
+
+  // ── recruit new page ──
+  recruitFromInfo: (title) => `📢 Starting from info post「${title}」— details pre-filled`,
+  recruitFromProposal: (title) => `💡 Converting idea「${title}」to recruitment — details pre-filled`,
+  recruitSourceNotFound: '⚠️ Source not found — please fill in manually',
+
+  // ── proposals page ──
+  proposalsPageTitle: '💡 All Ideas',
+  proposalsSearchPlaceholder: '🔍 Search by title or location...',
+  proposalsSortNewest: 'Sort: Newest',
+  proposalsSortMostInterested: 'Sort: Most interested',
+  proposalsSortOldest: 'Sort: Oldest',
+  proposalsEmpty: 'No matching ideas',
+  proposalsAddButton: '+ Share an idea',
 
   // ── admin registration manager ──
   adminAddRegistration: 'Add Registration',
