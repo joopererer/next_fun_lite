@@ -45,6 +45,7 @@ export function ProposePage() {
   const [feeLevel, setFeeLevel] = useState<FeeLevel>('unknown')
   const [feeDetail, setFeeDetail] = useState('')
   const [itinerary, setItinerary] = useState('')
+  const [organizerName, setOrganizerName] = useState('')
   const [organizerContactType, setOrganizerContactType] = useState<OrganizerContactType>('private')
   const [organizerContact, setOrganizerContact] = useState('')
   const [organizerContactLabel, setOrganizerContactLabel] = useState('')
@@ -55,8 +56,10 @@ export function ProposePage() {
 
   useEffect(() => {
     if (!clerkUser) return
+    setOrganizerName(getClerkDisplayName(clerkUser))
     api.getProfile()
       .then((p) => {
+        if (p?.nickname?.trim()) setOrganizerName(p.nickname.trim())
         if (p?.wechat) {
           setOrganizerContactType('wechat')
           setOrganizerContact(p.wechat)
@@ -380,7 +383,7 @@ export function ProposePage() {
         <div className="border-t border-gray-100 pt-6 mb-8">
           <h3 className="font-medium mb-3">联系方式</h3>
           <p className="text-sm text-gray-500 mb-3">
-            以 <span className="font-medium text-gray-700">{getClerkDisplayName(clerkUser)}</span> 的身份提交
+            以 <span className="font-medium text-gray-700">{organizerName || getClerkDisplayName(clerkUser)}</span> 的身份提交
           </p>
           <OrganizerContactFields
             contactType={organizerContactType}

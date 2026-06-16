@@ -43,7 +43,7 @@ export const en: Translations = {
   quickRecruit: 'Start recruiting',
   quickRecruitMobile: 'Recruit',
   quickInfo: 'Post info',
-  quickInfoMobile: 'Post',
+  quickInfoMobile: 'Info',
 
   // ── home sections ──
   sectionRecruiting: '🟢 Recruiting',

@@ -15,6 +15,7 @@ import { FEE_LEVELS } from '../lib/feeLevel'
 import { canOrganizerEditActivity } from '../lib/organizerEdit'
 import { isProposalPost } from '../lib/infoVisibility'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../lib/validateSchedule'
+import { useT } from '../i18n/LanguageContext'
 
 function toDatetimeLocal(iso?: string | null): string {
   if (!iso) return ''
@@ -33,9 +34,12 @@ export function ProposeEditPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { user, isLoaded, isSignedIn } = useUser()
+  const t = useT()
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -113,6 +117,20 @@ export function ProposeEditPage() {
       alert(err instanceof Error ? err.message : '保存失败')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!id) return
+    setDeleting(true)
+    try {
+      await api.deleteActivity(id)
+      router.push('/')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '删除失败')
+    } finally {
+      setDeleting(false)
+      setConfirmDelete(false)
     }
   }
 
@@ -212,11 +230,47 @@ export function ProposeEditPage() {
               onLabelChange={setOrganizerContactLabel}
             />
             <button type="button" className="btn-primary w-full text-lg mt-6" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? '保存中...' : '保存修改'}
+              {submitting ? t.saving : t.save}
+            </button>
+            <button
+              type="button"
+              className="w-full mt-3 py-2.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors"
+              onClick={() => setConfirmDelete(true)}
+              disabled={submitting || deleting}
+            >
+              {t.delete}
             </button>
           </main>
         )}
       </SignInGate>
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="font-semibold text-lg mb-2">删除提议？</h3>
+            <p className="text-sm text-gray-500 mb-6">此操作不可撤销，提议将被永久删除。</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-60"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? '删除中...' : t.delete}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   )
