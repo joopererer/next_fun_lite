@@ -32,7 +32,7 @@ import { getClerkDisplayName } from '../../lib/displayName'
 import { buildRecruitGroupMessage } from '../../lib/recruitShareMessage'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../lib/validateSchedule'
 import { ActivityParsePanel } from '../ActivityParsePanel'
-import { useT } from '../../i18n/LanguageContext'
+import { useT, useLang } from '../../i18n/LanguageContext'
 import { DiningFields } from './DiningFields'
 import { ParticipantLimitFields } from './ParticipantLimitFields'
 import { SportsFields } from './SportsFields'
@@ -76,6 +76,7 @@ export function RecruitForm({
 }: Props) {
   const { isSignedIn, user: clerkUser } = useUser()
   const t = useT()
+  const { lang } = useLang()
   const dynamicRef = useRef<HTMLDivElement>(null)
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -286,17 +287,17 @@ export function RecruitForm({
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      alert('请填写标题')
+      alert(t.fieldTitle + ' ' + t.error)
       return
     }
     if (!date || !location.trim()) {
-      alert('请填写活动时间和地点')
+      alert(t.fieldDate + ' / ' + t.fieldLocation + ' ' + t.error)
       return
     }
     const min = parseMinParticipants(minParticipants)
     const max = parseMaxParticipants(maxParticipants)
     if (max != null && min > max) {
-      alert('最少人数不能大于最多人数')
+      alert(t.fieldMinParticipants + ' > ' + t.fieldMaxParticipants)
       return
     }
     if (isEndTimeInPast(dateEnd || undefined)) {
@@ -320,19 +321,19 @@ export function RecruitForm({
         onSuccess?.(res.activity)
       } else if (mode === 'organizer') {
         if (!editId) {
-          alert('缺少活动 ID')
+          alert(t.error)
           return
         }
         const result = await api.updateActivity(editId, data)
         onSuccess?.(result)
-        alert('活动已更新')
+        alert(t.saved)
       } else {
         const result = editId
           ? await api.updateActivity(editId, data)
           : await api.createActivity(data)
         if (editId) {
           onSuccess?.(result)
-          alert('活动已更新')
+          alert(t.saved)
           return
         }
         setCreated(result)
@@ -344,7 +345,7 @@ export function RecruitForm({
         onSuccess?.(result)
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : '保存失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setSubmitting(false)
     }
@@ -399,19 +400,19 @@ export function RecruitForm({
         <ActivityParsePanel onParsed={handleParsed} className="border-b border-gray-100 pb-4 mb-2" />
       )}
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">活动名称 *</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldTitle} *</label>
         <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">简介</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldDescription}</label>
         <textarea className="input-field min-h-[80px]" value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">参考链接</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldSourceUrl}</label>
         <input className="input-field" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">活动类型 *</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldCategory} *</label>
         <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
           {ACTIVITY_CATEGORIES.map((c) => (
             <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
@@ -420,48 +421,48 @@ export function RecruitForm({
       </div>
       <div className={mode === 'admin' ? 'grid grid-cols-2 gap-3' : ''}>
         <div>
-          <label className="text-sm text-gray-600 mb-1 block">活动时间 *</label>
+          <label className="text-sm text-gray-600 mb-1 block">{t.fieldDate}</label>
           <input type="datetime-local" className="input-field" value={date} onChange={(e) => setDate(e.target.value)} />
-          <p className="text-xs text-gray-400 mt-1">如：2026-06-15 09:00</p>
+          <p className="text-xs text-gray-400 mt-1">{t.fieldDatePlaceholder}</p>
           {date && (
-            <p className="text-xs text-green-600 mt-0.5">{formatEventDate(new Date(date).toISOString())}</p>
+            <p className="text-xs text-green-600 mt-0.5">{formatEventDate(new Date(date).toISOString(), lang)}</p>
           )}
         </div>
         {mode === 'admin' && (
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">状态</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldCategory}</label>
             <select className="input-field" value={status} onChange={(e) => setStatus(e.target.value as ActivityStatus)}>
-              <option value="proposed">提议池</option>
-              <option value="recruiting">招募中</option>
-              <option value="ended_success">已结束</option>
-              <option value="ended_cancelled">已取消</option>
+              <option value="proposed">{t.typeProposal}</option>
+              <option value="recruiting">{t.typeRecruiting}</option>
+              <option value="ended_success">{t.typeEnded}</option>
+              <option value="ended_cancelled">{t.typeCancelled}</option>
             </select>
           </div>
         )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-sm text-gray-600 mb-1 block">结束时间（选填）</label>
+          <label className="text-sm text-gray-600 mb-1 block">{t.fieldDateEnd}</label>
           <input type="datetime-local" className="input-field" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
-          <p className="text-xs text-gray-400 mt-1">留空则开始日当天 23:59（巴黎时间）视为结束</p>
+          <p className="text-xs text-gray-400 mt-1">{t.fieldDateEndHint}</p>
         </div>
         <div>
-          <label className="text-sm text-gray-600 mb-1 block">报名截止（选填）</label>
+          <label className="text-sm text-gray-600 mb-1 block">{t.fieldRegistrationDeadline}</label>
           <input type="datetime-local" className="input-field" value={registrationDeadline} onChange={(e) => setRegistrationDeadline(e.target.value)} />
-          <p className="text-xs text-gray-400 mt-1">留空则活动开始前均可报名</p>
+          <p className="text-xs text-gray-400 mt-1">{t.fieldRegistrationDeadlineHint}</p>
         </div>
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">活动地点 *</label>
-        <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="活动举办的主要地点" />
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldLocation}</label>
+        <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t.fieldLocationPlaceholder} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">集合地点（选填）</label>
-        <input className="input-field" value={meetingLocation} onChange={(e) => setMeetingLocation(e.target.value)} placeholder="如与活动地点不同，填写集合出发地点" />
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldMeetingLocation}</label>
+        <input className="input-field" value={meetingLocation} onChange={(e) => setMeetingLocation(e.target.value)} placeholder={t.fieldMeetingLocationPlaceholder} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">集合时间（选填）</label>
-        <input className="input-field" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} placeholder="如 09:00，如需提前集合请填写" />
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldMeetingTime}</label>
+        <input className="input-field" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} placeholder={t.fieldMeetingTimePlaceholder} />
       </div>
       <ParticipantLimitFields
         min={minParticipants}
@@ -470,22 +471,22 @@ export function RecruitForm({
         onMaxChange={setMaxParticipants}
       />
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">费用说明</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldFee}</label>
         <input className="input-field" value={fee} onChange={(e) => setFee(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">注意事项</label>
-        <textarea className="input-field min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="多条用换行分隔" />
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldNotes}</label>
+        <textarea className="input-field min-h-[60px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t.fieldNotesPlaceholder} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">行程（选填）</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldItinerary}</label>
         <textarea
           className="input-field min-h-[80px]"
-          placeholder={'18:30 集合\n19:00 开始活动\n21:30 自由交流'}
+          placeholder={t.fieldItineraryPlaceholder}
           value={itinerary}
           onChange={(e) => setItinerary(e.target.value)}
         />
-        <p className="text-xs text-gray-400 mt-1">每行一个时间节点，粘贴链接解析后会自动填入</p>
+        <p className="text-xs text-gray-400 mt-1">{t.fieldItineraryHint}</p>
       </div>
 
       <div ref={dynamicRef}>
@@ -521,9 +522,9 @@ export function RecruitForm({
       </div>
 
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">发起人</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.organizerLabel}</label>
         {isSignedIn ? (
-          <div className="input-field bg-gray-50 text-gray-700">{organizerName || '你的账号'}</div>
+          <div className="input-field bg-gray-50 text-gray-700">{organizerName || t.organizerYourAccount}</div>
         ) : (
           <input className="input-field" value={organizerName} onChange={(e) => setOrganizerName(e.target.value)} />
         )}

@@ -24,6 +24,7 @@ export const zh: Translations = {
   skip: '跳过',
   or: '或',
   processing: '处理中...',
+  other: '其他',
 
   // ── nav / layout ──
   siteName: '🎉 快乐制造局',
@@ -295,15 +296,99 @@ export const zh: Translations = {
   // ── activity form fields ──
   fieldTitle: '活动名称',
   fieldDescription: '活动介绍',
-  fieldLocation: '地点',
-  fieldDate: '开始时间',
-  fieldDateEnd: '结束时间',
-  fieldFee: '费用',
-  fieldNotes: '备注',
-  fieldCategory: '分类',
+  fieldLocation: '活动地点 *',
+  fieldLocationPlaceholder: '活动举办的主要地点',
+  fieldDate: '活动时间 *',
+  fieldDatePlaceholder: '如：2026-06-15 09:00',
+  fieldDateEnd: '结束时间（选填）',
+  fieldDateEndHint: '留空则开始日当天 23:59（巴黎时间）视为结束',
+  fieldRegistrationDeadline: '报名截止（选填）',
+  fieldRegistrationDeadlineHint: '留空则活动开始前均可报名',
+  fieldMeetingLocation: '集合地点（选填）',
+  fieldMeetingLocationPlaceholder: '如与活动地点不同，填写集合出发地点',
+  fieldMeetingTime: '集合时间（选填）',
+  fieldMeetingTimePlaceholder: '如 09:00，如需提前集合请填写',
+  fieldFee: '费用说明',
+  fieldFeeDetail: '费用说明',
+  fieldFeeDetailPlaceholder: '如：预算区间 · 58.86 – 116.52 EUR',
+  fieldNotes: '注意事项',
+  fieldNotesPlaceholder: '多条用换行分隔',
+  fieldCategory: '活动类型',
   fieldSourceUrl: '参考链接',
   fieldMaxParticipants: '最多人数',
   fieldMinParticipants: '最少人数',
+  fieldItinerary: '行程（选填）',
+  fieldItineraryPlaceholder: '18:30 集合\n19:00 开始活动\n21:30 自由交流',
+  fieldItineraryHint: '每行一个时间节点，粘贴链接解析后会自动填入',
+  fieldDateHintLabel: '大概时间（选填）',
+  fieldDateHintPlaceholder: '如「周末」「下午」',
+  fieldExpiryLabel: '信息有效期至（选填）',
+  fieldExpiryHint: '如展览结束日；过期后显示标签，由管理员或提议人处理',
+
+  // ── parse panel ──
+  parsePasteLink: '🔗 粘贴链接',
+  parseUploadImage: '🖼 上传图片',
+  parseManual: '✏️ 直接填写',
+  parsePlaceholder: '粘贴小红书、Sortir A Paris、PlayInParis、Eventbrite、任意链接...',
+  parseButton: '解析',
+  parseXiaohongshuHint: '⚠️ 小红书链接提示：如解析失败，可将页面文字复制粘贴到下方「活动介绍」，或切换到「上传图片」模式。',
+  parseSuccessMsg: '已自动提取信息，请确认并补充',
+  parseFailMsg: '未能提取内容，请手动填写',
+  parseErrorMsg: '解析失败，请手动填写或上传截图',
+
+  // ── propose form ──
+  proposeCheckingSimilar: '检查中...',
+  proposeSubmitting: '提交中...',
+  proposeSubmitButton: '提交提议 🎉',
+  proposeFeeDetailLabel: '费用说明（可编辑）',
+
+  // ── edit pages ──
+  editProposalTitle: '编辑提议',
+  editRecruitTitle: '编辑招募',
+  editForbiddenProposal: '无法编辑此提议',
+  editForbiddenRecruit: '无法编辑此活动',
+  backToProposalPage: '← 返回提议页',
+
+  // ── delete confirmations ──
+  deleteProposalConfirmTitle: '删除提议？',
+  deleteProposalConfirmBody: '此操作不可撤销，提议将被永久删除。',
+  deleteRecruitConfirmTitle: '删除招募？',
+  deleteRecruitConfirmBody: '此操作不可撤销，招募活动将被永久删除。',
+  deleting: '删除中...',
+
+  // ── info form ──
+  infoFieldDescription: '内容/简介',
+  infoFieldStartTime: '行动开始时间（选填）',
+  infoFieldStartTimeHint: '留空表示现在即可操作',
+  infoFieldDeadline: '行动截止时间（选填）',
+  infoFieldDeadlineHint: '留空表示无截止',
+  infoFieldPrice: '价格信息（选填）',
+  infoFieldPricePlaceholder: '如 39€起',
+  infoFieldActionLabel: '按钮文字（选填）',
+  infoFieldActionUrl: '按钮链接（选填）',
+  infoFieldOrganizerName: '发布人昵称 *',
+  infoAutoFilledName: '已登录，已自动填入你的昵称，可修改',
+  infoPublishButton: '发布资讯 📢',
+  infoStartDateMustBeBeforeDeadline: '行动开始时间必须早于截止时间',
+
+  // ── organizer contact fields ──
+  organizerContactPrivate: '不公开（报名后我主动联系）',
+  organizerContactOtherLabelPlaceholder: '标签，如 Instagram、手机',
+  organizerContactValuePlaceholder: '联系方式内容',
+
+  // ── recruit new page ──
+  recruitFromInfo: (title) => `📢 从资讯「${title}」发起组团，以下信息已自动填入`,
+  recruitFromProposal: (title) => `💡 从提议「${title}」转为招募，以下信息已自动填入`,
+  recruitSourceNotFound: '⚠️ 未找到来源内容，请手动填写',
+
+  // ── proposals page ──
+  proposalsPageTitle: '💡 所有提议',
+  proposalsSearchPlaceholder: '🔍 搜索提议标题、地点...',
+  proposalsSortNewest: '排序：最新',
+  proposalsSortMostInterested: '排序：最多感兴趣',
+  proposalsSortOldest: '排序：最早提议',
+  proposalsEmpty: '暂无匹配的提议',
+  proposalsAddButton: '+ 我有个提议',
 
   // ── admin registration manager ──
   adminAddRegistration: '添加报名',

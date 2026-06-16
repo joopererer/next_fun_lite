@@ -10,6 +10,7 @@ import { ProposalCard } from '@/src/components/ProposalCard'
 import { isEndedCancelled } from '@/src/lib/activityStatus'
 import { api } from '@/src/lib/api'
 import { filterProposalsBySearch, sortProposals, type ProposalSort } from '@/src/lib/proposals'
+import { useT } from '@/src/i18n/LanguageContext'
 
 export function ProposalsPage() {
   const [activities, setActivities] = useState<ActivityWithCount[]>([])
@@ -17,6 +18,7 @@ export function ProposalsPage() {
   const [filter, setFilter] = useState<ActivityCategory[]>([])
   const [sort, setSort] = useState<ProposalSort>('newest')
   const [search, setSearch] = useState('')
+  const t = useT()
 
   const load = useCallback(() => {
     setLoading(true)
@@ -38,9 +40,9 @@ export function ProposalsPage() {
       <Header />
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 page-enter w-full">
         <Link href="/" className="text-sm text-gray-500 hover:text-green-600 mb-4 inline-block">
-          ← 返回首页
+          {t.backToHome}
         </Link>
-        <h1 className="text-2xl font-bold mb-6">💡 所有提议</h1>
+        <h1 className="text-2xl font-bold mb-6">{t.proposalsPageTitle}</h1>
 
         <div className="mb-4">
           <CategoryFilter selected={filter} onChange={setFilter} />
@@ -49,7 +51,7 @@ export function ProposalsPage() {
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <input
             className="input-field flex-1"
-            placeholder="🔍 搜索提议标题、地点..."
+            placeholder={t.proposalsSearchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -58,16 +60,16 @@ export function ProposalsPage() {
             value={sort}
             onChange={(e) => setSort(e.target.value as ProposalSort)}
           >
-            <option value="newest">排序：最新</option>
-            <option value="most_interested">排序：最多感兴趣</option>
-            <option value="oldest">排序：最早提议</option>
+            <option value="newest">{t.proposalsSortNewest}</option>
+            <option value="most_interested">{t.proposalsSortMostInterested}</option>
+            <option value="oldest">{t.proposalsSortOldest}</option>
           </select>
         </div>
 
         {loading ? (
-          <p className="text-center text-gray-400 py-12">加载中...</p>
+          <p className="text-center text-gray-400 py-12">{t.loading}</p>
         ) : displayed.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">暂无匹配的提议</p>
+          <p className="text-center text-gray-400 py-12">{t.proposalsEmpty}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {displayed.map((a) => (
@@ -89,7 +91,7 @@ export function ProposalsPage() {
         href="/propose"
         className="fixed bottom-6 right-6 btn-primary rounded-full shadow-lg px-5 py-3 text-sm z-40"
       >
-        + 我有个提议
+        {t.proposalsAddButton}
       </Link>
 
       <Footer />

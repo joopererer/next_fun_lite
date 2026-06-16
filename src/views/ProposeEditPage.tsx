@@ -87,7 +87,7 @@ export function ProposeEditPage() {
 
   const handleSubmit = async () => {
     if (!id || !title.trim()) {
-      alert('请填写活动/地点名称')
+      alert(t.fieldTitle + ' ' + t.error)
       return
     }
     if (isEndTimeInPast(dateEnd || undefined)) {
@@ -114,7 +114,7 @@ export function ProposeEditPage() {
       })
       router.push(`/event/${id}`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : '保存失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setSubmitting(false)
     }
@@ -127,7 +127,7 @@ export function ProposeEditPage() {
       await api.deleteActivity(id)
       router.push('/')
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setDeleting(false)
       setConfirmDelete(false)
@@ -139,45 +139,45 @@ export function ProposeEditPage() {
       <Header />
       <SignInGate>
         {loading ? (
-          <div className="text-center text-gray-400 py-16">加载中...</div>
+          <div className="text-center text-gray-400 py-16">{t.loading}</div>
         ) : forbidden ? (
           <main className="max-w-lg mx-auto px-4 py-16 text-center">
-            <p className="text-gray-600 mb-4">无法编辑此提议</p>
-            <Link href={id ? `/event/${id}` : '/'} className="btn-primary">返回提议页</Link>
+            <p className="text-gray-600 mb-4">{t.editForbiddenProposal}</p>
+            <Link href={id ? `/event/${id}` : '/'} className="btn-primary">{t.backToProposalPage}</Link>
           </main>
         ) : (
           <main className="max-w-lg mx-auto px-4 py-6 page-enter w-full">
             <Link href={`/event/${id}`} className="text-sm text-gray-400 hover:text-green-600 mb-4 inline-block">
-              ← 返回提议页
+              {t.backToProposalPage}
             </Link>
-            <h1 className="text-2xl font-bold mb-6">编辑提议</h1>
+            <h1 className="text-2xl font-bold mb-6">{t.editProposalTitle}</h1>
             <div className="space-y-4 mb-8">
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">活动/地点名称 *</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldTitle} *</label>
                 <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">简介</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldDescription}</label>
                 <textarea className="input-field min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">行程（选填）</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldItinerary}</label>
                 <textarea className="input-field min-h-[80px]" value={itinerary} onChange={(e) => setItinerary(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">参考链接</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldSourceUrl}</label>
                 <input className="input-field" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">大概时间（选填）</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldDateHintLabel}</label>
                 <input className="input-field" value={dateHint} onChange={(e) => setDateHint(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">信息有效期至（选填）</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldExpiryLabel}</label>
                 <input type="datetime-local" className="input-field" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">活动类型</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldCategory}</label>
                 <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
                   {ACTIVITY_CATEGORIES.map((c) => (
                     <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
@@ -185,11 +185,11 @@ export function ProposeEditPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">大概地点（选填）</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldMeetingLocation}</label>
                 <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-gray-600 mb-1 block">费用水平</label>
+                <label className="text-sm text-gray-600 mb-1 block">{t.fieldFee}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {FEE_LEVELS.map((f) => (
                     <label
@@ -214,7 +214,7 @@ export function ProposeEditPage() {
                 {feeLevel === 'paid' && (
                   <input
                     className="input-field text-sm mt-3"
-                    placeholder="费用说明"
+                    placeholder={t.fieldFeeDetail}
                     value={feeDetail}
                     onChange={(e) => setFeeDetail(e.target.value)}
                   />
@@ -247,8 +247,8 @@ export function ProposeEditPage() {
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="font-semibold text-lg mb-2">删除提议？</h3>
-            <p className="text-sm text-gray-500 mb-6">此操作不可撤销，提议将被永久删除。</p>
+            <h3 className="font-semibold text-lg mb-2">{t.deleteProposalConfirmTitle}</h3>
+            <p className="text-sm text-gray-500 mb-6">{t.deleteProposalConfirmBody}</p>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -264,7 +264,7 @@ export function ProposeEditPage() {
                 onClick={handleDelete}
                 disabled={deleting}
               >
-                {deleting ? '删除中...' : t.delete}
+                {deleting ? t.deleting : t.delete}
               </button>
             </div>
           </div>

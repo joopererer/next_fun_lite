@@ -8,6 +8,7 @@ import { api } from '../../lib/api'
 import { ACTIVITY_CATEGORIES } from '../../lib/categories'
 import { getClerkDisplayName } from '../../lib/displayName'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../lib/validateSchedule'
+import { useT } from '../../i18n/LanguageContext'
 
 function toDatetimeLocal(iso?: string | null): string {
   if (!iso) return ''
@@ -32,6 +33,7 @@ export interface InfoFormProps {
 
 export function InfoForm({ mode, initial, editId, onSuccess, submitLabel }: InfoFormProps) {
   const { user, isSignedIn, isLoaded } = useUser()
+  const t = useT()
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [category, setCategory] = useState<ActivityCategory>(initial?.category ?? 'culture')
@@ -72,11 +74,11 @@ export function InfoForm({ mode, initial, editId, onSuccess, submitLabel }: Info
 
   const validate = (): boolean => {
     if (!title.trim()) {
-      alert('请填写标题')
+      alert(t.fieldTitle + ' ' + t.error)
       return false
     }
     if (!organizerName.trim()) {
-      alert('请填写发布人昵称')
+      alert(t.infoFieldOrganizerName + ' ' + t.error)
       return false
     }
     if (isEndTimeInPast(infoDeadline || undefined)) {
@@ -87,7 +89,7 @@ export function InfoForm({ mode, initial, editId, onSuccess, submitLabel }: Info
       const start = new Date(infoStartTime).getTime()
       const end = new Date(infoDeadline).getTime()
       if (!Number.isNaN(start) && !Number.isNaN(end) && start >= end) {
-        alert('行动开始时间必须早于截止时间')
+        alert(t.infoStartDateMustBeBeforeDeadline)
         return false
       }
     }
@@ -104,26 +106,26 @@ export function InfoForm({ mode, initial, editId, onSuccess, submitLabel }: Info
         : await api.createInfo(payload)
       onSuccess?.(activity)
     } catch (err) {
-      alert(err instanceof Error ? err.message : '保存失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setSubmitting(false)
     }
   }
 
-  const defaultSubmitLabel = mode === 'edit' ? '保存修改' : '发布资讯 📢'
+  const defaultSubmitLabel = mode === 'edit' ? t.save : t.infoPublishButton
 
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">标题 *</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldTitle} *</label>
         <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">内容/简介</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.infoFieldDescription}</label>
         <textarea className="input-field min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">活动类型</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldCategory}</label>
         <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
           {ACTIVITY_CATEGORIES.map((c) => (
             <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
@@ -131,26 +133,26 @@ export function InfoForm({ mode, initial, editId, onSuccess, submitLabel }: Info
         </select>
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">参考链接</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.fieldSourceUrl}</label>
         <input className="input-field" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">行动开始时间（选填）</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.infoFieldStartTime}</label>
         <input type="datetime-local" className="input-field" value={infoStartTime} onChange={(e) => setInfoStartTime(e.target.value)} />
-        <p className="text-xs text-gray-400 mt-1">留空表示现在即可操作</p>
+        <p className="text-xs text-gray-400 mt-1">{t.infoFieldStartTimeHint}</p>
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">行动截止时间（选填）</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.infoFieldDeadline}</label>
         <input type="datetime-local" className="input-field" value={infoDeadline} onChange={(e) => setInfoDeadline(e.target.value)} />
-        <p className="text-xs text-gray-400 mt-1">留空表示无截止</p>
+        <p className="text-xs text-gray-400 mt-1">{t.infoFieldDeadlineHint}</p>
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">价格信息（选填）</label>
-        <input className="input-field" value={infoPrice} onChange={(e) => setInfoPrice(e.target.value)} placeholder="如 39€起" />
+        <label className="text-sm text-gray-600 mb-1 block">{t.infoFieldPrice}</label>
+        <input className="input-field" value={infoPrice} onChange={(e) => setInfoPrice(e.target.value)} placeholder={t.infoFieldPricePlaceholder} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-sm text-gray-600 mb-1 block">按钮文字（选填）</label>
+          <label className="text-sm text-gray-600 mb-1 block">{t.infoFieldActionLabel}</label>
           <input
             className="input-field"
             value={infoActionLabel}
@@ -159,14 +161,14 @@ export function InfoForm({ mode, initial, editId, onSuccess, submitLabel }: Info
           />
         </div>
         <div>
-          <label className="text-sm text-gray-600 mb-1 block">按钮链接（选填）</label>
+          <label className="text-sm text-gray-600 mb-1 block">{t.infoFieldActionUrl}</label>
           <input className="input-field" value={infoActionUrl} onChange={(e) => setInfoActionUrl(e.target.value)} placeholder="https://..." />
         </div>
       </div>
       <div>
-        <label className="text-sm text-gray-600 mb-1 block">发布人昵称 *</label>
+        <label className="text-sm text-gray-600 mb-1 block">{t.infoFieldOrganizerName}</label>
         {isSignedIn && (
-          <p className="text-xs text-gray-400 mb-1">已登录，已自动填入你的昵称，可修改</p>
+          <p className="text-xs text-gray-400 mb-1">{t.infoAutoFilledName}</p>
         )}
         <input
           className="input-field"
@@ -178,7 +180,7 @@ export function InfoForm({ mode, initial, editId, onSuccess, submitLabel }: Info
         />
       </div>
       <button type="button" className="btn-primary w-full text-lg" onClick={handleSubmit} disabled={submitting}>
-        {submitting ? '保存中...' : (submitLabel ?? defaultSubmitLabel)}
+        {submitting ? t.saving : (submitLabel ?? defaultSubmitLabel)}
       </button>
     </div>
   )

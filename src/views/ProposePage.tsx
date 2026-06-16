@@ -98,11 +98,11 @@ export function ProposePage() {
     try {
       const res = await api.parse({ url: url.trim() })
       setParseSuccess(res.success)
-      setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
+      setParseMessage(res.message ?? (res.success ? t.parseSuccessMsg : t.parseFailMsg))
       if (res.success) applyParsed({ ...res.data, sourceUrl: url.trim() })
     } catch {
       setParseSuccess(false)
-      setParseMessage('解析失败，请手动填写或上传截图')
+      setParseMessage(t.parseErrorMsg)
     } finally {
       setParsing(false)
     }
@@ -117,11 +117,11 @@ export function ProposePage() {
       try {
         const res = await api.parse({ imageBase64: base64, mimeType: file.type })
         setParseSuccess(res.success)
-        setParseMessage(res.message ?? (res.success ? '已自动提取信息，请确认并补充' : '未能提取内容，请手动填写'))
+        setParseMessage(res.message ?? (res.success ? t.parseSuccessMsg : t.parseFailMsg))
         if (res.success) applyParsed(res.data)
       } catch {
         setParseSuccess(false)
-        setParseMessage('解析失败，请手动填写')
+        setParseMessage(t.parseErrorMsg)
       } finally {
         setParsing(false)
       }
@@ -252,7 +252,7 @@ export function ProposePage() {
               }`}
               onClick={() => setMode(m)}
             >
-              {m === 'link' ? '🔗 粘贴链接' : m === 'image' ? '🖼 上传图片' : '✏️ 直接填写'}
+              {m === 'link' ? t.parsePasteLink : m === 'image' ? t.parseUploadImage : t.parseManual}
             </button>
           ))}
         </div>
@@ -262,17 +262,15 @@ export function ProposePage() {
             <div className="flex gap-2">
               <input
                 className="input-field flex-1"
-                placeholder="粘贴小红书、Sortir A Paris、PlayInParis、Eventbrite、任意链接..."
+                placeholder={t.parsePlaceholder}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
               <button type="button" className="btn-primary shrink-0" onClick={handleParseUrl} disabled={parsing}>
-                {parsing ? '...' : '解析'}
+                {parsing ? '...' : t.parseButton}
               </button>
             </div>
-            <p className="text-xs text-amber-600 mt-2">
-              ⚠️ 小红书链接提示：如解析失败，可将页面文字复制粘贴到下方「活动介绍」，或切换到「上传图片」模式。
-            </p>
+            <p className="text-xs text-amber-600 mt-2">{t.parseXiaohongshuHint}</p>
           </div>
         )}
 
@@ -294,38 +292,38 @@ export function ProposePage() {
 
         <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">活动/地点名称 *</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldTitle} *</label>
             <input className="input-field" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">简介</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldDescription}</label>
             <textarea className="input-field min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">行程（选填）</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldItinerary}</label>
             <textarea
               className="input-field min-h-[80px]"
-              placeholder={'18:30 集合\n19:00 开始活动\n21:30 自由交流'}
+              placeholder={t.fieldItineraryPlaceholder}
               value={itinerary}
               onChange={(e) => setItinerary(e.target.value)}
             />
-            <p className="text-xs text-gray-400 mt-1">每行一个时间节点，粘贴链接解析后会自动填入</p>
+            <p className="text-xs text-gray-400 mt-1">{t.fieldItineraryHint}</p>
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">参考链接</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldSourceUrl}</label>
             <input className="input-field" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">大概时间（选填）</label>
-            <input className="input-field" placeholder="如「周末」「下午」" value={dateHint} onChange={(e) => setDateHint(e.target.value)} />
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldDateHintLabel}</label>
+            <input className="input-field" placeholder={t.fieldDateHintPlaceholder} value={dateHint} onChange={(e) => setDateHint(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">信息有效期至（选填）</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldExpiryLabel}</label>
             <input type="datetime-local" className="input-field" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
-            <p className="text-xs text-gray-400 mt-1">如展览结束日；过期后显示标签，由管理员或提议人处理</p>
+            <p className="text-xs text-gray-400 mt-1">{t.fieldExpiryHint}</p>
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">活动类型</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldCategory}</label>
             <select className="input-field" value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
               {ACTIVITY_CATEGORIES.map((c) => (
                 <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>
@@ -333,11 +331,11 @@ export function ProposePage() {
             </select>
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">大概地点（选填）</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldMeetingLocation}</label>
             <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm text-gray-600 mb-1 block">费用水平</label>
+            <label className="text-sm text-gray-600 mb-1 block">{t.fieldFee}</label>
             <div className="grid grid-cols-2 gap-2">
               {FEE_LEVELS.map((f) => (
                 <label
@@ -368,10 +366,10 @@ export function ProposePage() {
             </div>
             {feeLevel === 'paid' && (
               <div className="mt-3">
-                <label className="text-xs text-gray-500 mb-1 block">费用说明（可编辑）</label>
+                <label className="text-xs text-gray-500 mb-1 block">{t.proposeFeeDetailLabel}</label>
                 <input
                   className="input-field text-sm"
-                  placeholder="如：预算区间 · 58.86 – 116.52 EUR"
+                  placeholder={t.fieldFeeDetailPlaceholder}
                   value={feeDetail}
                   onChange={(e) => setFeeDetail(e.target.value)}
                 />
@@ -381,9 +379,9 @@ export function ProposePage() {
         </div>
 
         <div className="border-t border-gray-100 pt-6 mb-8">
-          <h3 className="font-medium mb-3">联系方式</h3>
+          <h3 className="font-medium mb-3">{t.contactLabel}</h3>
           <p className="text-sm text-gray-500 mb-3">
-            以 <span className="font-medium text-gray-700">{organizerName || getClerkDisplayName(clerkUser)}</span> 的身份提交
+            {t.proposeSubmitAs(organizerName || getClerkDisplayName(clerkUser))}
           </p>
           <OrganizerContactFields
             contactType={organizerContactType}
@@ -401,7 +399,7 @@ export function ProposePage() {
           onClick={handleSubmit}
           disabled={submitting || checkingSimilar}
         >
-          {checkingSimilar ? '检查中...' : submitting ? '提交中...' : '提交提议 🎉'}
+          {checkingSimilar ? t.proposeCheckingSimilar : submitting ? t.proposeSubmitting : t.proposeSubmitButton}
         </button>
       </main>
       </SignInGate>

@@ -1,6 +1,7 @@
 'use client'
 
 import type { OrganizerContactType } from '../../../shared/types'
+import { useT } from '../../i18n/LanguageContext'
 
 interface Props {
   contactType: OrganizerContactType
@@ -11,13 +12,6 @@ interface Props {
   onLabelChange: (value: string) => void
 }
 
-const OPTIONS: { value: OrganizerContactType; label: string }[] = [
-  { value: 'private', label: '不公开（报名后我主动联系）' },
-  { value: 'wechat', label: '微信号' },
-  { value: 'email', label: '邮箱' },
-  { value: 'other', label: '其他' },
-]
-
 export function OrganizerContactFields({
   contactType,
   contact,
@@ -26,9 +20,18 @@ export function OrganizerContactFields({
   onContactChange,
   onLabelChange,
 }: Props) {
+  const t = useT()
+
+  const OPTIONS: { value: OrganizerContactType; label: string }[] = [
+    { value: 'private', label: t.organizerContactPrivate },
+    { value: 'wechat', label: 'WeChat' },
+    { value: 'email', label: 'Email' },
+    { value: 'other', label: t.other },
+  ]
+
   return (
     <div>
-      <label className="text-sm text-gray-600 mb-2 block">发起人联系方式</label>
+      <label className="text-sm text-gray-600 mb-2 block">{t.organizerContactLabel}</label>
       <div className="space-y-2">
         {OPTIONS.map((opt) => (
           <label
@@ -52,7 +55,7 @@ export function OrganizerContactFields({
                   className="input-field mt-2 text-sm"
                   value={contact}
                   onChange={(e) => onContactChange(e.target.value)}
-                  placeholder="微信号"
+                  placeholder="WeChat ID"
                   onClick={(e) => e.stopPropagation()}
                 />
               )}
@@ -62,7 +65,7 @@ export function OrganizerContactFields({
                   type="email"
                   value={contact}
                   onChange={(e) => onContactChange(e.target.value)}
-                  placeholder="邮箱地址"
+                  placeholder="email@example.com"
                   onClick={(e) => e.stopPropagation()}
                 />
               )}
@@ -72,13 +75,13 @@ export function OrganizerContactFields({
                     className="input-field text-sm"
                     value={contactLabel}
                     onChange={(e) => onLabelChange(e.target.value)}
-                    placeholder="标签，如 Instagram、手机"
+                    placeholder={t.organizerContactOtherLabelPlaceholder}
                   />
                   <input
                     className="input-field text-sm"
                     value={contact}
                     onChange={(e) => onContactChange(e.target.value)}
-                    placeholder="联系方式内容"
+                    placeholder={t.organizerContactValuePlaceholder}
                   />
                 </div>
               )}

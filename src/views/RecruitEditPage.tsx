@@ -53,7 +53,7 @@ export function RecruitEditPage() {
       await api.deleteActivity(id)
       router.push('/')
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败')
+      alert(err instanceof Error ? err.message : t.error)
     } finally {
       setDeleting(false)
       setConfirmDelete(false)
@@ -65,18 +65,18 @@ export function RecruitEditPage() {
       <Header />
       <SignInGate>
         {loading ? (
-          <div className="text-center text-gray-400 py-16">加载中...</div>
+          <div className="text-center text-gray-400 py-16">{t.loading}</div>
         ) : forbidden || !activity ? (
           <main className="max-w-lg mx-auto px-4 py-16 text-center">
-            <p className="text-gray-600 mb-4">无法编辑此活动</p>
-            <Link href={id ? `/event/${id}` : '/'} className="btn-primary">返回活动页</Link>
+            <p className="text-gray-600 mb-4">{t.editForbiddenRecruit}</p>
+            <Link href={id ? `/event/${id}` : '/'} className="btn-primary">{t.backToActivity}</Link>
           </main>
         ) : (
           <main className="max-w-lg mx-auto px-4 py-6 page-enter w-full">
             <Link href={`/event/${activity.id}`} className="text-sm text-gray-400 hover:text-green-600 mb-4 inline-block">
-              ← 返回活动页
+              {t.backToActivity}
             </Link>
-            <h1 className="text-2xl font-bold mb-6">编辑招募</h1>
+            <h1 className="text-2xl font-bold mb-6">{t.editRecruitTitle}</h1>
             <RecruitForm
               mode="organizer"
               initial={activity}
@@ -98,8 +98,8 @@ export function RecruitEditPage() {
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="font-semibold text-lg mb-2">删除招募？</h3>
-            <p className="text-sm text-gray-500 mb-6">此操作不可撤销，招募活动将被永久删除。</p>
+            <h3 className="font-semibold text-lg mb-2">{t.deleteRecruitConfirmTitle}</h3>
+            <p className="text-sm text-gray-500 mb-6">{t.deleteRecruitConfirmBody}</p>
             <div className="flex gap-3">
               <button
                 type="button"
@@ -115,7 +115,7 @@ export function RecruitEditPage() {
                 onClick={handleDelete}
                 disabled={deleting}
               >
-                {deleting ? '删除中...' : t.delete}
+                {deleting ? t.deleting : t.delete}
               </button>
             </div>
           </div>
