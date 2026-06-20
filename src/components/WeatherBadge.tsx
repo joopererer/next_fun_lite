@@ -32,6 +32,7 @@ export function WeatherBadge({ activityId, activityDate }: Props) {
 
   return (
     <span className="ml-auto text-xs text-gray-500 flex items-center gap-0.5 shrink-0">
+      <span className="text-gray-400">当日天气：</span>
       <span>{weather.emoji}</span>
       <span className="font-medium">{weather.temp}°</span>
       {weather.precipProb >= 20 && (
