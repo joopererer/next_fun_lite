@@ -46,7 +46,7 @@ export function WeatherWidget({ activityId }: Props) {
   useEffect(() => {
     fetch(`/api/weather?activityId=${activityId}`)
       .then((r) => r.json())
-      .then((data: WeatherResult | null) => setWeather(data))
+      .then((data: unknown) => setWeather(data as WeatherResult | null))
       .catch(() => setWeather(null))
   }, [activityId])
 
