@@ -11,6 +11,7 @@ import { formatEventDate, formatEventDateRange } from '../lib/user'
 import { CapacityBar } from './CapacityBar'
 import { RegistrationPreview } from './RegistrationPreview'
 import { ActivityBadge } from './ActivityBadge'
+import { WeatherBadge } from './WeatherBadge'
 import { RegistrationModal } from './RegistrationModal'
 import { api } from '../lib/api'
 import { getClerkDisplayName } from '../lib/displayName'
@@ -160,6 +161,7 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
                 {TAG_LABELS[tag]}
               </span>
             ))}
+            <WeatherBadge activityId={activity.id} activityDate={activity.date} />
           </div>
           <h3 className="font-semibold text-base mb-1 group-hover:text-green-700 transition-colors">
             {activity.title}

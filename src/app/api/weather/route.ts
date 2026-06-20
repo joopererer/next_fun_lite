@@ -31,6 +31,13 @@ export interface WeatherResult {
   timezone: string
 }
 
+export interface WeatherCompact {
+  emoji: string
+  label: string
+  temp: number
+  precipProb: number
+}
+
 async function geocode(location: string): Promise<{ lat: number; lon: number } | null> {
   try {
     const url = `${NOMINATIM_URL}?q=${encodeURIComponent(location)}&format=json&limit=1`
@@ -165,6 +172,7 @@ const getCachedWeatherForLocation = unstable_cache(
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const activityId = searchParams.get('activityId')
+  const compact = searchParams.get('compact') === '1'
   if (!activityId) {
     return Response.json({ error: 'Missing activityId' }, { status: 400 })
   }
@@ -184,5 +192,28 @@ export async function GET(request: Request) {
     activity.date,
     activity.dateEnd ?? null,
   )
-  return Response.json(result ?? null)
+  if (!result) return Response.json(null)
+
+  if (compact) {
+    // Return just the single hour closest to activity start (or first daily entry)
+    const { getWeatherDesc } = await import('@/src/lib/weatherCode')
+    if (result.type === 'daily' && result.daily?.length) {
+      const d = result.daily[0]
+      const { emoji, label } = getWeatherDesc(d.weathercode)
+      return Response.json({ emoji, label, temp: d.tempMax, precipProb: d.precipProbMax } satisfies WeatherCompact)
+    }
+    if (result.type === 'hourly' && result.hourly?.length) {
+      const actStart = new Date(activity.date).getTime()
+      // Find the hour closest to activity start
+      const best = result.hourly.reduce((prev, cur) =>
+        Math.abs(new Date(cur.time).getTime() - actStart) <
+        Math.abs(new Date(prev.time).getTime() - actStart) ? cur : prev
+      )
+      const { emoji, label } = getWeatherDesc(best.weathercode)
+      return Response.json({ emoji, label, temp: best.temp, precipProb: best.precipProb } satisfies WeatherCompact)
+    }
+    return Response.json(null)
+  }
+
+  return Response.json(result)
 }
