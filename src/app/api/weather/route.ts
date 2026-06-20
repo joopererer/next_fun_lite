@@ -83,10 +83,10 @@ async function fetchWeather(
       const unixMs = (Number(hourlyTime) + i * 3600 + utcOffset) * 1000
       hourlyData.push({
         time: new Date(unixMs).toISOString(),
-        temp: Math.round(temp2m.values(i)),
-        weathercode: Math.round(weathercode.values(i)),
-        precipProb: Math.round(precipProb.values(i)),
-        windspeed: Math.round(windspeed.values(i) * 10) / 10,
+        temp: Math.round(temp2m.values(i) ?? 0),
+        weathercode: Math.round(weathercode.values(i) ?? 0),
+        precipProb: Math.round(precipProb.values(i) ?? 0),
+        windspeed: Math.round((windspeed.values(i) ?? 0) * 10) / 10,
       })
     }
 
@@ -102,10 +102,10 @@ async function fetchWeather(
       const unixMs = (Number(dailyTime) + i * 86400 + utcOffset) * 1000
       dailyData.push({
         date: getParisDateKey(new Date(unixMs)),
-        tempMax: Math.round(tempMax.values(i)),
-        tempMin: Math.round(tempMin.values(i)),
-        weathercode: Math.round(dailyWeathercode.values(i)),
-        precipProbMax: Math.round(precipProbMax.values(i)),
+        tempMax: Math.round(tempMax.values(i) ?? 0),
+        tempMin: Math.round(tempMin.values(i) ?? 0),
+        weathercode: Math.round(dailyWeathercode.values(i) ?? 0),
+        precipProbMax: Math.round(precipProbMax.values(i) ?? 0),
       })
     }
 
