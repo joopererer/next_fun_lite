@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { fetchWeatherApi } from 'openmeteo'
-import { getCachedActivityById } from '@/lib/cached-data'
+import { createStorageAdapter } from '@/server/storage'
+import { getEnvConfig } from '@/lib/env'
 import { getParisDateKey } from '@/shared/activityPhase'
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
@@ -8,7 +9,7 @@ const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
 const WEATHER_DAYS = 7
 
 export interface HourlyWeather {
-  time: string
+  time: string       // actual UTC ISO, display with provided timezone
   temp: number
   weathercode: number
   precipProb: number
@@ -16,7 +17,7 @@ export interface HourlyWeather {
 }
 
 export interface DailyWeather {
-  date: string
+  date: string       // YYYY-MM-DD in location's timezone
   tempMax: number
   tempMin: number
   weathercode: number
@@ -38,7 +39,7 @@ async function geocode(location: string): Promise<{ lat: number; lon: number } |
       next: { revalidate: 86400 },
     })
     if (!res.ok) return null
-    const data = await res.json()
+    const data = await res.json() as Array<{ lat: string; lon: string }>
     if (!Array.isArray(data) || data.length === 0) return null
     return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) }
   } catch {
@@ -46,7 +47,7 @@ async function geocode(location: string): Promise<{ lat: number; lon: number } |
   }
 }
 
-async function fetchWeather(
+async function fetchWeatherData(
   lat: number,
   lon: number,
   startDate: string,
@@ -65,13 +66,14 @@ async function fetchWeather(
     const responses = await fetchWeatherApi(OPEN_METEO_URL, params)
     const response = responses[0]
     const timezone = response.timezone() ?? 'UTC'
+    const utcOffset = response.utcOffsetSeconds()
 
     const hourly = response.hourly()
     const daily = response.daily()
     if (!hourly || !daily) return null
 
-    const utcOffset = response.utcOffsetSeconds()
-    const hourlyTime = hourly.time()
+    // hourly.time() is Unix seconds (UTC). Store as actual UTC ISO.
+    const hourlyTimeBase = Number(hourly.time())
     const hourlyLen = Number(hourly.variables(0)!.valuesLength())
     const temp2m = hourly.variables(0)!
     const weathercode = hourly.variables(1)!
@@ -80,9 +82,9 @@ async function fetchWeather(
 
     const hourlyData: HourlyWeather[] = []
     for (let i = 0; i < hourlyLen; i++) {
-      const unixMs = (Number(hourlyTime) + i * 3600 + utcOffset) * 1000
+      const utcMs = (hourlyTimeBase + i * 3600) * 1000
       hourlyData.push({
-        time: new Date(unixMs).toISOString(),
+        time: new Date(utcMs).toISOString(),
         temp: Math.round(temp2m.values(i) ?? 0),
         weathercode: Math.round(weathercode.values(i) ?? 0),
         precipProb: Math.round(precipProb.values(i) ?? 0),
@@ -90,7 +92,7 @@ async function fetchWeather(
       })
     }
 
-    const dailyTime = daily.time()
+    const dailyTimeBase = Number(daily.time())
     const dailyLen = Number(daily.variables(0)!.valuesLength())
     const tempMax = daily.variables(0)!
     const tempMin = daily.variables(1)!
@@ -99,9 +101,10 @@ async function fetchWeather(
 
     const dailyData: DailyWeather[] = []
     for (let i = 0; i < dailyLen; i++) {
-      const unixMs = (Number(dailyTime) + i * 86400 + utcOffset) * 1000
+      // daily.time() is midnight UTC of each day; add utcOffset to get local midnight
+      const localMidnightMs = (dailyTimeBase + i * 86400 + utcOffset) * 1000
       dailyData.push({
-        date: getParisDateKey(new Date(unixMs)),
+        date: getParisDateKey(new Date(localMidnightMs)),
         tempMax: Math.round(tempMax.values(i) ?? 0),
         tempMin: Math.round(tempMin.values(i) ?? 0),
         weathercode: Math.round(dailyWeathercode.values(i) ?? 0),
@@ -123,32 +126,30 @@ function isWithinDays(dateIso: string | null, days: number): boolean {
   return diffMs > -24 * 3600 * 1000 && diffMs < days * 24 * 3600 * 1000
 }
 
-const getCachedWeather = unstable_cache(
-  async (activityId: string): Promise<WeatherResult | null> => {
-    const activity = await getCachedActivityById(activityId)
-    if (!activity?.location || !activity.date) return null
-    if (!isWithinDays(activity.date, WEATHER_DAYS)) return null
-
-    const geo = await geocode(activity.location)
+// Cache only the weather+geocode fetch; activity lookup is done outside to avoid nested cache calls.
+const getCachedWeatherForLocation = unstable_cache(
+  async (
+    location: string,
+    actDate: string,
+    actDateEnd: string | null,
+  ): Promise<WeatherResult | null> => {
+    const geo = await geocode(location)
     if (!geo) return null
 
-    const startDate = getParisDateKey(new Date(activity.date))
-    const endDate = activity.dateEnd
-      ? getParisDateKey(new Date(activity.dateEnd))
-      : startDate
+    const startDate = getParisDateKey(new Date(actDate))
+    const endDate = actDateEnd ? getParisDateKey(new Date(actDateEnd)) : startDate
 
-    const raw = await fetchWeather(geo.lat, geo.lon, startDate, endDate)
+    const raw = await fetchWeatherData(geo.lat, geo.lon, startDate, endDate)
     if (!raw) return null
-
-    const actStart = new Date(activity.date).getTime()
-    const actEnd = activity.dateEnd ? new Date(activity.dateEnd).getTime() : actStart + 86400000
 
     const isMultiDayActivity = startDate !== endDate
     if (isMultiDayActivity) {
       return { type: 'daily', daily: raw.daily, timezone: raw.timezone }
     }
 
-    // Single-day: filter hourly to [start-1h, end+1h]
+    // Single-day: filter hourly to [actStart-1h, actEnd+1h] using actual UTC times
+    const actStart = new Date(actDate).getTime()
+    const actEnd = actDateEnd ? new Date(actDateEnd).getTime() : actStart + 86400000
     const windowStart = actStart - 3600 * 1000
     const windowEnd = actEnd + 3600 * 1000
     const filtered = (raw.hourly ?? []).filter((h) => {
@@ -157,7 +158,7 @@ const getCachedWeather = unstable_cache(
     })
     return { type: 'hourly', hourly: filtered, timezone: raw.timezone }
   },
-  ['weather'],
+  ['weather-location'],
   { revalidate: 3600, tags: ['weather'] },
 )
 
@@ -167,9 +168,21 @@ export async function GET(request: Request) {
   if (!activityId) {
     return Response.json({ error: 'Missing activityId' }, { status: 400 })
   }
-  const result = await getCachedWeather(activityId)
-  if (!result) {
+
+  // Fetch activity directly (no nested unstable_cache)
+  const storage = createStorageAdapter(getEnvConfig())
+  const activity = await storage.getActivity(activityId)
+  if (!activity?.location || !activity.date) {
     return Response.json(null)
   }
-  return Response.json(result)
+  if (!isWithinDays(activity.date, WEATHER_DAYS)) {
+    return Response.json(null)
+  }
+
+  const result = await getCachedWeatherForLocation(
+    activity.location,
+    activity.date,
+    activity.dateEnd ?? null,
+  )
+  return Response.json(result ?? null)
 }

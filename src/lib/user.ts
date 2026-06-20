@@ -97,6 +97,19 @@ export function formatListDate(iso: string | null, lang: Lang = 'zh'): string {
   return `${month}月${day}日 ${time}`
 }
 
+/**
+ * Converts a UTC ISO string to a local "YYYY-MM-DDTHH:mm" string suitable for
+ * datetime-local inputs. Using .slice(0,16) on a UTC ISO string feeds UTC time
+ * into an input that expects local time, causing a timezone offset on every save.
+ */
+export function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 /** Returns a compact date range string, e.g. "6月20日 ~ 6月22日" or "Jun 20 ~ Jun 22". */
 export function formatEventDateRange(startIso: string | null, endIso: string | null, lang: Lang = 'zh'): string {
   const start = formatEventDate(startIso, lang)

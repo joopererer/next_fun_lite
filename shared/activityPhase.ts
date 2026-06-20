@@ -236,7 +236,11 @@ export function getActivityTags(
 ): ActivityTag[] {
   const tags: ActivityTag[] = []
   if (isMultiDay(activity)) tags.push('multi_day')
-  if (isStartingSoon(activity, now)) tags.push('starting_soon')
-  if (isLastChance(activity, now)) tags.push('last_chance')
+  // last_chance and starting_soon are mutually exclusive; last_chance takes priority
+  if (isLastChance(activity, now)) {
+    tags.push('last_chance')
+  } else if (isStartingSoon(activity, now)) {
+    tags.push('starting_soon')
+  }
   return tags
 }

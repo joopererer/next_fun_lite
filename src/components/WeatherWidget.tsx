@@ -8,9 +8,9 @@ interface Props {
   activityId: string
 }
 
-function HourlyRow({ h }: { h: HourlyWeather }) {
+function HourlyRow({ h, timezone }: { h: HourlyWeather; timezone: string }) {
   const { emoji, label } = getWeatherDesc(h.weathercode)
-  const time = new Date(h.time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const time = new Date(h.time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone })
   return (
     <div className="flex items-center gap-2 text-sm py-1 border-b border-gray-50 last:border-0">
       <span className="text-gray-500 w-12 shrink-0">{time}</span>
@@ -73,7 +73,7 @@ export function WeatherWidget({ activityId }: Props) {
     <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 text-sm">
       <p className="text-xs text-sky-600 font-medium mb-2">🌤 活动天气预报</p>
       {weather.type === 'hourly'
-        ? (weather.hourly ?? []).map((h) => <HourlyRow key={h.time} h={h} />)
+        ? (weather.hourly ?? []).map((h) => <HourlyRow key={h.time} h={h} timezone={weather.timezone} />)
         : (weather.daily ?? []).map((d) => <DailyRow key={d.date} d={d} />)
       }
       <p className="text-xs text-gray-400 mt-2">数据来源：Open-Meteo · 仅供参考</p>
