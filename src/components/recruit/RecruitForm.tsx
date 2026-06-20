@@ -313,8 +313,8 @@ export function RecruitForm({
           sourceProposalId,
         })
         setCreated(res.activity)
-        setEventUrl(res.eventUrl || getEventUrl(res.activity.id))
-        const url = res.eventUrl || getEventUrl(res.activity.id)
+        const url = getEventUrl(res.activity.id)
+        setEventUrl(url)
         const qr = await QRCode.toDataURL(url, { width: 200 })
         setQrDataUrl(qr)
         notifyActivitiesChanged()
