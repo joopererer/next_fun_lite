@@ -17,6 +17,7 @@ import { getClerkDisplayName } from '../lib/displayName'
 import { formatEventDate, formatEventDateRange } from '../lib/user'
 import { CapacityBar } from '../components/CapacityBar'
 import { ActivityBadge } from '../components/ActivityBadge'
+import { WeatherWidget } from '../components/WeatherWidget'
 import { getDeviceId } from '../utils/device'
 import { canRegister, getActivityBadge, isInProgress, isProposalExpired, getActivityTags, TAG_LABELS, isMultiDay } from '../lib/activityPhase'
 import { notifyActivitiesChanged } from '../lib/activityEvents'
@@ -555,6 +556,12 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
             </a>
           )}
         </div>
+
+        {activity.status === 'recruiting' && activity.location && (
+          <div className="mb-6">
+            <WeatherWidget activityId={activity.id} />
+          </div>
+        )}
 
         {activity.description && (
           <div className="mb-6">
