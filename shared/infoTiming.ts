@@ -1,6 +1,8 @@
 import type { Activity } from './types'
 
-export type InfoTimePhase = 'not_started' | 'active_with_deadline' | 'active_open' | 'expired'
+export const PRE_OPEN_MINUTES = 30
+
+export type InfoTimePhase = 'not_started' | 'pre_open' | 'active_with_deadline' | 'active_open' | 'expired'
 
 function parseTime(value: string | undefined): Date | null {
   if (!value) return null
@@ -20,7 +22,8 @@ export function getInfoTimePhase(
     return 'expired'
   }
   if (startTime && nowMs < startTime.getTime()) {
-    return 'not_started'
+    const diffMin = (startTime.getTime() - nowMs) / 60_000
+    return diffMin <= PRE_OPEN_MINUTES ? 'pre_open' : 'not_started'
   }
   if (deadline && nowMs < deadline.getTime()) {
     return 'active_with_deadline'
@@ -64,6 +67,10 @@ export function getInfoTimeStatusLabel(
     const { text } = formatInfoCountdown(startTime, now)
     return `⏰ 还有 ${text} 开始`
   }
+  if (phase === 'pre_open' && startTime) {
+    const { text } = formatInfoCountdown(startTime, now)
+    return `🔔 即将开始 · 还有 ${text}`
+  }
   if (phase === 'active_with_deadline' && deadline) {
     const { text } = formatInfoCountdown(deadline, now)
     return `🔥 进行中 · 还有 ${text}截止`
@@ -77,7 +84,7 @@ export function isInfoCountdownUrgent(
   now: Date = new Date(),
 ): boolean {
   const target =
-    phase === 'not_started'
+    phase === 'not_started' || phase === 'pre_open'
       ? parseTime(info.infoStartTime)
       : phase === 'active_with_deadline'
         ? parseTime(info.infoDeadline)
@@ -86,9 +93,11 @@ export function isInfoCountdownUrgent(
   return formatInfoCountdown(target, now).urgent
 }
 
+/** Action is enabled for pre_open (≤30 min before start) and all active phases. */
 export function isInfoActionEnabled(
   info: Pick<Activity, 'infoStartTime' | 'infoDeadline'>,
   now: Date = new Date(),
 ): boolean {
-  return getInfoTimePhase(info, now) !== 'not_started'
+  const phase = getInfoTimePhase(info, now)
+  return phase !== 'not_started' && phase !== 'expired'
 }

@@ -47,14 +47,19 @@ export function InfoEventSection({ activity }: Props) {
         {activity.location && <p>📍 {activity.location}</p>}
         {activity.infoPrice && <p>💰 {activity.infoPrice}</p>}
         {statusLabel && (
-          <p className={urgent ? 'text-red-600 font-medium' : phase === 'active_with_deadline' ? 'text-amber-700' : ''}>
+          <p className={
+            urgent ? 'text-red-600 font-medium'
+              : phase === 'pre_open' ? 'text-orange-700 font-medium'
+              : phase === 'active_with_deadline' ? 'text-amber-700'
+              : ''
+          }>
             {statusLabel}
           </p>
         )}
-        {activity.infoStartTime && phase === 'not_started' && (
+        {activity.infoStartTime && (phase === 'not_started' || phase === 'pre_open') && (
           <p className="text-gray-500">开始：{formatEventDate(activity.infoStartTime)}</p>
         )}
-        {activity.infoDeadline && phase !== 'not_started' && !statusLabel && (
+        {activity.infoDeadline && phase !== 'not_started' && phase !== 'pre_open' && !statusLabel && (
           <p>⏰ 截止：{formatEventDate(activity.infoDeadline)}</p>
         )}
         {activity.sourceUrl && (
@@ -73,7 +78,9 @@ export function InfoEventSection({ activity }: Props) {
               className={`w-full text-center text-sm ${
                 phase === 'active_with_deadline'
                   ? 'btn-primary ring-2 ring-amber-300/80'
-                  : 'btn-primary'
+                  : phase === 'pre_open'
+                    ? 'btn-primary ring-2 ring-orange-300/80'
+                    : 'btn-primary'
               }`}
             >
               {actionLabel} →
