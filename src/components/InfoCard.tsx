@@ -64,7 +64,10 @@ export function InfoCard({ activity }: Props) {
       {statusLabel && (
         <p
           className={`text-sm mb-3 ${
-            urgent ? 'text-red-600 font-medium' : phase === 'active_with_deadline' ? 'text-amber-700' : 'text-gray-600'
+            urgent ? 'text-red-600 font-medium'
+              : phase === 'pre_open' ? 'text-orange-700 font-medium'
+              : phase === 'active_with_deadline' ? 'text-amber-700'
+              : 'text-gray-600'
           }`}
         >
           {statusLabel}
@@ -80,7 +83,9 @@ export function InfoCard({ activity }: Props) {
               className={`text-sm ${
                 phase === 'active_with_deadline'
                   ? 'btn-primary ring-2 ring-amber-300/80'
-                  : 'btn-primary'
+                  : phase === 'pre_open'
+                    ? 'btn-primary ring-2 ring-orange-300/80'
+                    : 'btn-primary'
               }`}
             >
               {actionLabel} →

@@ -186,3 +186,61 @@ export function isRecruitingOnHome(
 ): boolean {
   return activity.status === 'recruiting' && !shouldAutoEndSuccess(activity, now)
 }
+
+const STARTING_SOON_MS = 24 * 60 * 60 * 1000
+const LAST_CHANCE_MS = 24 * 60 * 60 * 1000
+
+/** True when start and end span different Paris calendar days. */
+export function isMultiDay(activity: Pick<Activity, 'date' | 'dateEnd'>): boolean {
+  const start = parseInstant(activity.date)
+  const end = parseInstant(activity.dateEnd)
+  if (!start || !end) return false
+  return getParisDateKey(start) !== getParisDateKey(end)
+}
+
+/** True when the activity starts within the next 24 h but hasn't begun yet. */
+export function isStartingSoon(
+  activity: Pick<Activity, 'status' | 'date' | 'dateEnd'>,
+  now: Date = new Date(),
+): boolean {
+  if (activity.status !== 'recruiting') return false
+  const start = getActivityStart(activity)
+  if (!start) return false
+  const diff = start.getTime() - now.getTime()
+  return diff > 0 && diff <= STARTING_SOON_MS
+}
+
+/** True when registration closes within the next 24 h and is still open. */
+export function isLastChance(
+  activity: Pick<Activity, 'status' | 'date' | 'dateEnd' | 'registrationDeadline' | 'maxParticipants'> & { registeredCount?: number },
+  now: Date = new Date(),
+): boolean {
+  if (!isRegistrationOpen(activity, now)) return false
+  const deadline = getRegistrationDeadline(activity)
+  if (!deadline) return false
+  const diff = deadline.getTime() - now.getTime()
+  return diff > 0 && diff <= LAST_CHANCE_MS
+}
+
+export type ActivityTag = 'multi_day' | 'starting_soon' | 'last_chance'
+
+export const TAG_LABELS: Record<ActivityTag, string> = {
+  multi_day: '多日活动',
+  starting_soon: '即将开始',
+  last_chance: 'Last Chance',
+}
+
+export function getActivityTags(
+  activity: Activity & { registeredCount?: number },
+  now: Date = new Date(),
+): ActivityTag[] {
+  const tags: ActivityTag[] = []
+  if (isMultiDay(activity)) tags.push('multi_day')
+  // last_chance and starting_soon are mutually exclusive; last_chance takes priority
+  if (isLastChance(activity, now)) {
+    tags.push('last_chance')
+  } else if (isStartingSoon(activity, now)) {
+    tags.push('starting_soon')
+  }
+  return tags
+}

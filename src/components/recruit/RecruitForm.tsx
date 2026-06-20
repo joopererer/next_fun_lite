@@ -27,7 +27,7 @@ import {
   parseMaxParticipants,
   parseMinParticipants,
 } from '../../lib/participants'
-import { formatEventDate } from '../../lib/user'
+import { formatEventDate, isoToLocalInput } from '../../lib/user'
 import { getClerkDisplayName } from '../../lib/displayName'
 import { buildRecruitGroupMessage } from '../../lib/recruitShareMessage'
 import { isEndTimeInPast, PAST_END_TIME_MESSAGE } from '../../lib/validateSchedule'
@@ -80,9 +80,9 @@ export function RecruitForm({
   const dynamicRef = useRef<HTMLDivElement>(null)
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
-  const [date, setDate] = useState(initial?.date?.slice(0, 16) ?? '')
-  const [dateEnd, setDateEnd] = useState(initial?.dateEnd?.slice(0, 16) ?? '')
-  const [registrationDeadline, setRegistrationDeadline] = useState(initial?.registrationDeadline?.slice(0, 16) ?? '')
+  const [date, setDate] = useState(isoToLocalInput(initial?.date))
+  const [dateEnd, setDateEnd] = useState(isoToLocalInput(initial?.dateEnd))
+  const [registrationDeadline, setRegistrationDeadline] = useState(isoToLocalInput(initial?.registrationDeadline))
   const [location, setLocation] = useState(initial?.location ?? '')
   const [meetingLocation, setMeetingLocation] = useState(initial?.meetingLocation ?? '')
   const [meetingTime, setMeetingTime] = useState(initial?.meetingTime ?? '')
@@ -109,7 +109,7 @@ export function RecruitForm({
   const [status, setStatus] = useState<ActivityStatus>(initial?.status ?? 'recruiting')
   const [ticketPrices, setTicketPrices] = useState(initial?.ticketPrices ?? '')
   const [ticketUrl, setTicketUrl] = useState(initial?.ticketUrl ?? '')
-  const [ticketDeadline, setTicketDeadline] = useState(initial?.ticketDeadline?.slice(0, 16) ?? '')
+  const [ticketDeadline, setTicketDeadline] = useState(isoToLocalInput(initial?.ticketDeadline))
   const [ticketMethod, setTicketMethod] = useState<TicketMethod | ''>(initial?.ticketMethod ?? '')
   const [refundPolicy, setRefundPolicy] = useState(initial?.refundPolicy ?? '')
   const [difficulty, setDifficulty] = useState<Difficulty | ''>(initial?.difficulty ?? '')
@@ -149,9 +149,9 @@ export function RecruitForm({
     if (!initial) return
     setTitle(initial.title ?? '')
     setDescription(initial.description ?? '')
-    setDate(initial.date?.slice(0, 16) ?? '')
-    setDateEnd(initial.dateEnd?.slice(0, 16) ?? '')
-    setRegistrationDeadline(initial.registrationDeadline?.slice(0, 16) ?? '')
+    setDate(isoToLocalInput(initial.date))
+    setDateEnd(isoToLocalInput(initial.dateEnd))
+    setRegistrationDeadline(isoToLocalInput(initial.registrationDeadline))
     setLocation(initial.location ?? '')
     setMeetingLocation(initial.meetingLocation ?? '')
     setMeetingTime(initial.meetingTime ?? '')
@@ -175,7 +175,7 @@ export function RecruitForm({
     setStatus(initial.status ?? 'recruiting')
     setTicketPrices(initial.ticketPrices ?? '')
     setTicketUrl(initial.ticketUrl ?? '')
-    setTicketDeadline(initial.ticketDeadline?.slice(0, 16) ?? '')
+    setTicketDeadline(isoToLocalInput(initial.ticketDeadline))
     setTicketMethod(initial.ticketMethod ?? '')
     setRefundPolicy(initial.refundPolicy ?? '')
     setDifficulty(initial.difficulty ?? '')
@@ -313,8 +313,8 @@ export function RecruitForm({
           sourceProposalId,
         })
         setCreated(res.activity)
-        setEventUrl(res.eventUrl || getEventUrl(res.activity.id))
-        const url = res.eventUrl || getEventUrl(res.activity.id)
+        const url = getEventUrl(res.activity.id)
+        setEventUrl(url)
         const qr = await QRCode.toDataURL(url, { width: 200 })
         setQrDataUrl(qr)
         notifyActivitiesChanged()

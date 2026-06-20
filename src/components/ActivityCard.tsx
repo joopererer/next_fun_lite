@@ -6,11 +6,12 @@ import Link from 'next/link'
 import type { ActivityWithCount } from '../../shared/types'
 import { getCategoryEmoji } from '../lib/categories'
 import { getCatLabel } from './CategoryFilter'
-import { canRegister, getActivityBadge } from '../lib/activityPhase'
-import { formatEventDate } from '../lib/user'
+import { canRegister, getActivityBadge, getActivityTags, TAG_LABELS, isMultiDay } from '../lib/activityPhase'
+import { formatEventDate, formatEventDateRange } from '../lib/user'
 import { CapacityBar } from './CapacityBar'
 import { RegistrationPreview } from './RegistrationPreview'
 import { ActivityBadge } from './ActivityBadge'
+import { WeatherBadge } from './WeatherBadge'
 import { RegistrationModal } from './RegistrationModal'
 import { api } from '../lib/api'
 import { getClerkDisplayName } from '../lib/displayName'
@@ -134,6 +135,9 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
     }
   }
 
+  const activityTags = getActivityTags({ ...activity, registeredCount: localRegisteredCount })
+  const multiDay = isMultiDay(activity)
+
   return (
     <>
       <div className="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-gray-100 card-hover flex flex-col h-full">
@@ -143,12 +147,30 @@ export function ActivityCard({ activity, registered = false, onRegistered }: Pro
               {getCategoryEmoji(activity.category)} {getCatLabel(t, activity.category)}
             </span>
             <ActivityBadge activity={{ ...activity, registeredCount: localRegisteredCount }} />
+            {activityTags.map((tag) => (
+              <span
+                key={tag}
+                className={`text-xs px-2 py-0.5 rounded-full inline-block font-medium ${
+                  tag === 'multi_day'
+                    ? 'bg-blue-50 text-blue-700'
+                    : tag === 'starting_soon'
+                      ? 'bg-orange-50 text-orange-700'
+                      : 'bg-red-50 text-red-700'
+                }`}
+              >
+                {TAG_LABELS[tag]}
+              </span>
+            ))}
+            <WeatherBadge activityId={activity.id} activityDate={activity.date} />
           </div>
           <h3 className="font-semibold text-base mb-1 group-hover:text-green-700 transition-colors">
             {activity.title}
           </h3>
           <p className="text-sm text-gray-500 mb-2">
-            {formatEventDate(activity.date, lang)} · {activity.location || t.locationTbd}
+            {multiDay
+              ? formatEventDateRange(activity.date, activity.dateEnd ?? null, lang)
+              : formatEventDate(activity.date, lang)
+            } · {activity.location || t.locationTbd}
           </p>
           <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.75rem]">
             {activity.description || ' '}

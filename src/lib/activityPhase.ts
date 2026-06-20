@@ -14,7 +14,13 @@ export {
   getRegistrationButtonLabel,
   canRegister,
   isRecruitingOnHome,
+  isMultiDay,
+  isStartingSoon,
+  isLastChance,
+  getActivityTags,
   BADGE_LABELS,
+  TAG_LABELS,
   type RecruitingPhase,
   type ActivityBadgeKind,
+  type ActivityTag,
 } from '../../shared/activityPhase'

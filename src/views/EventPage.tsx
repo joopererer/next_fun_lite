@@ -14,11 +14,12 @@ import { api, getCancelUrl } from '../lib/api'
 import { getCancelReasonLabel, isEndedCancelled, isEndedSuccess } from '../lib/activityStatus'
 import { getCategoryEmoji } from '../lib/categories'
 import { getClerkDisplayName } from '../lib/displayName'
-import { formatEventDate } from '../lib/user'
+import { formatEventDate, formatEventDateRange } from '../lib/user'
 import { CapacityBar } from '../components/CapacityBar'
 import { ActivityBadge } from '../components/ActivityBadge'
+import { WeatherWidget } from '../components/WeatherWidget'
 import { getDeviceId } from '../utils/device'
-import { canRegister, getActivityBadge, isInProgress, isProposalExpired } from '../lib/activityPhase'
+import { canRegister, getActivityBadge, isInProgress, isProposalExpired, getActivityTags, TAG_LABELS, isMultiDay } from '../lib/activityPhase'
 import { notifyActivitiesChanged } from '../lib/activityEvents'
 import { useT, useLang } from '../i18n/LanguageContext'
 import { getCatLabel } from '../components/CategoryFilter'
@@ -456,14 +457,31 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
     )
   }
 
+  const activityTags = getActivityTags({ ...activity, registeredCount: displayCount })
+  const multiDay = isMultiDay(activity)
+
   return shell(
     <>
       <main className="flex-1 max-w-lg mx-auto px-4 py-6 page-enter w-full">
-        <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block mb-2">
-          {getCategoryEmoji(activity.category)} {getCatLabel(t, activity.category)}
-        </span>
-        <div className="mb-2">
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full inline-block">
+            {getCategoryEmoji(activity.category)} {getCatLabel(t, activity.category)}
+          </span>
           <ActivityBadge activity={{ ...activity, registeredCount: displayCount }} />
+          {activityTags.map((tag) => (
+            <span
+              key={tag}
+              className={`text-xs px-2 py-0.5 rounded-full inline-block font-medium ${
+                tag === 'multi_day'
+                  ? 'bg-blue-50 text-blue-700'
+                  : tag === 'starting_soon'
+                    ? 'bg-orange-50 text-orange-700'
+                    : 'bg-red-50 text-red-700'
+              }`}
+            >
+              {TAG_LABELS[tag]}
+            </span>
+          ))}
         </div>
         <OrganizerEditBar
           activity={activity}
@@ -490,7 +508,10 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
         )}
 
         <div className="space-y-2 text-sm text-gray-600 mb-6">
-          <p>📅 {formatEventDate(activity.date, lang)}</p>
+          <p>📅 {multiDay
+            ? formatEventDateRange(activity.date, activity.dateEnd ?? null, lang)
+            : formatEventDate(activity.date, lang)
+          }</p>
           <p>📍 {t.eventLocation}：{activity.location || t.locationTbd}</p>
           {activity.meetingLocation && (
             <p>🚉 {activity.meetingLocation}{activity.meetingTime ? ` ${activity.meetingTime}` : ''}</p>
@@ -535,6 +556,12 @@ export function EventPage({ initialActivity }: EventPageProps = {}) {
             </a>
           )}
         </div>
+
+        {activity.status === 'recruiting' && activity.location && (
+          <div className="mb-6">
+            <WeatherWidget activityId={activity.id} />
+          </div>
+        )}
 
         {activity.description && (
           <div className="mb-6">
